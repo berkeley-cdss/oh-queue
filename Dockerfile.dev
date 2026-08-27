@@ -1,0 +1,30 @@
+FROM python:3.10-slim
+
+ENV APP_HOME=/app
+WORKDIR $APP_HOME
+
+# so the container can find /common
+ENV PYTHONPATH=$APP_HOME
+ENV HOST=0.0.0.0
+ENV PORT=3000
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY common/requirements.txt common/requirements.txt
+COPY apps/oh/requirements.txt requirements.txt
+
+RUN pip install -r requirements.txt
+
+# Set node_modules as volume so that local mount doesn't overwrite it
+COPY apps/oh/package.json apps/oh/package.json
+RUN cd apps/oh && npm install
+VOLUME /app/apps/oh/node_modules
+
+COPY apps/oh/ .
+
+WORKDIR /app/apps/oh
+
+CMD ["python", "manage.py", "run_server"]

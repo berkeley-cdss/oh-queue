@@ -1,0 +1,746 @@
+let AfHomePage = ({ match, state, children }) => {
+  return (
+    <div>
+      Service failed.<br/>
+      Resolving stack trace... <br/>
+      Resolution failed... <br/>
+      <br/>
+
+      <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">Troubleshoot</a>
+      <br/>
+      <br/>
+      <br/>
+      <a href="/old">Report Error to Course Staff</a>
+
+      <br/><br/>
+
+
+      Dumping error as plaintext... <br/> <br/>
+
+
+      Traceback (most recent call last):
+  File "app.py", line 32, in 
+    app.run(debug=True)
+  File "/usr/local/lib/python3.8/site-packages/flask/app.py", line 990, in run
+    run_simple(host, port, self, **options)
+  File "/usr/local/lib/python3.8/site-packages/werkzeug/serving.py", line 1047, in run_simple
+    run_with_reloader(inner, extra_files, reloader_interval, reloader_type)
+  File "/usr/local/lib/python3.8/site-packages/werkzeug/_reloader.py", line 332, in run_with_reloader
+    reloader.run()
+  File "/usr/local/lib/python3.8/site-packages/werkzeug/_reloader.py", line 121, in run
+    for filename in chain(_iter_module_files(), self.extra_files):
+  File "/usr/local/lib/python3.8/site-packages/werkzeug/_reloader.py", line 56, in _iter_module_files
+    for package_path in _iter_package_files(path):
+  File "/usr/local/lib/python3.8/site-packages/werkzeug/_reloader.py", line 37, in _iter_package_files
+    prefix_filenames(package_path, package.__path__[0], suffix):
+  File "/usr/local/lib/python3.8/site-packages/werkzeug/_reloader.py", line 22, in prefix_filenames
+    for filename in filenames:
+  File "/usr/local/lib/python3.8/site-packages/flask/scaffold.py", line 105, in __getattr__
+    return getattr(self._module, name)
+  File "/usr/local/lib/python3.8/site-packages/flask/__init__.py", line 96, in __getattr__
+    return getattr(self.import_name, item)
+  File "/usr/local/lib/python3.8/site-packages/flask/__init__.py", line 126, in import_name
+    raise ImportError(
+ImportError: No module named 'app'
+
+<br/><br/> During handling of the above exception, another exception occurred: <br/><br/>
+
+Traceback (most recent call last):
+  File "app.py", line 34, in
+    app.run(debug=True)
+  File "/usr/local/lib/python3.8/site-packages/flask/app.py", line 990, in run
+    run_simple(host, port, self, **options)
+  File "/usr/local/lib/python3.8/site-packages/werkzeug/serving.py", line 1047, in run_simple
+    run_with_reloader(inner, extra_files, reloader_interval, reloader_type)
+  File "/usr/local/lib/python3.8/site-packages/werkzeug/_reloader.py", line 332, in run_with_reloader
+    reloader.run()
+  File "/usr/local/lib/python3.8/site-packages/werkzeug/_reloader.py", line 121, in run
+    for filename in chain(_iter_module_files(), self.extra_files):
+  File "/usr/local/lib/python3.8/site-packages/werkzeug/_reloader.py", line 56, in _iter_module_files
+    for package_path in _iter_package_files(path):
+  File "/usr/local/lib/python3.8/site-packages/werkzeug/_reloader.py", line 37, in _iter_package_files
+    prefix_filenames(package_path, package.__path__[0], suffix):
+  File "/usr/local/lib/python3.8/site-packages/werkzeug/_reloader.py", line 22, in prefix_filenames
+    for filename in filenames:
+  File "/usr/local/lib/python3.8/site-packages/flask/scaffold.py", line 105, in __getattr__
+    return getattr(self._module, name)
+  File "/usr/local/lib/python3.8/site-packages/flask/__init__.py", line 96, in __getattr__
+    return getattr(self.import_name, item)
+  File "/usr/local/lib/python3.8/site-packages/flask/__init__.py", line 126, in import_name
+    raise ImportError(
+ImportError: No module named 'app'
+
+<br/><br/> During handling of the above exception, another exception occurred: <br/> <br/>
+
+Exception: Segmentation fault (core dumped)
+Stack trace:
+0x000000000040056d in calculate_total at /home/user/project/src/orders.c:103
+0x00000000004009af in update_inventory at /home/user/project/src/inventory.c:212
+0x0000000000400d12 in process_order at /home/user/project/src/orders.c:321
+0x0000000000400f75 in main at /home/user/project/src/main.c:45
+
+<br/><br/>During handling of the above exception, another exception occurred: <br/><br/>
+
+System.NullReferenceException: Object reference not set to an instance of an object.
+   at MyApp.Data.Repositories.UserRepository.GetUserByIdAsync(Int32 id) in C:\Projects\MyApp\src\Data\Repositories\UserRepository.cs:line 52
+   at MyApp.Services.UserService.GetUserDetailsAsync(Int32 userId) in C:\Projects\MyApp\src\Services\UserService.cs:line 78
+   at MyApp.Controllers.UserController.GetUserDetails(Int32 id) in C:\Projects\MyApp\src\Controllers\UserController.cs:line 124
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.TaskOfIActionResultExecutor.Execute(IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeActionMethodAsync g__Logged|12_1(ControllerActionInvoker invoker)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeNextActionFilterAsync g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.InvokeNextResourceFilter g__Awaited|24_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Rethrow(ResourceExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.InvokeFilterPipelineAsync()
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.InvokeAsync g__Logged|17_1(ResourceInvoker invoker)
+   at Microsoft.AspNetCore.Routing.EndpointMiddleware.Invoke g__AwaitRequestTask|6_0(Endpoint endpoint, Task requestTask, ILogger logger)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware.Invoke g__Awaited|6_0(ExceptionHandlerMiddleware middleware, HttpContext context, Task task)
+   at Microsoft.AspNetCore.Server.IIS.Core.IISHttpContextOfT`1.ProcessRequestAsync()
+
+
+   <br/><br/> Dumping symbol table... <br/><br/>
+
+   mN53F3JhNwAg1QlqQFf6tL1TeBg3mvYk
+QlnJoItNLYgeFZK3DxwwrCpLxNyQew3p
+XeD1aPrmqXheybqcB2aU4fRbfxjIhPtf
+HVZTuw6NUQ0qiU9wGeEigNmZ5fGDprQA
+68gSQ6nYDYMSbM2z4lDJe8vd9CpQR4co
+52sKenzRpnN5EURFHQWs70xqvgEhLsMf
+<a href="https://solutions.cs61a.org">61a solutions</a>
+33wrhHvDYCZf4OY3cSCe3UrTCFDbaD5e
+9OGt5UR4YqBotBjhk58uXuw6bug106A3
+1PWEwVZMpHQSvEcHl8jdY2J7n6tC8BQe
+4NshdSc619bi8ViDqBK7DilaU3j7SaNa
+CP4iLrieqv4aEIsOvo2ncyVSLBqIYF0z
+<a href="https://tinyurl.com/cs61bsolutions">61b solutions</a>
+D1i9qBUrKFADfl9Y4DODay42RtKwIKJi
+HrrwafwQlqdTTPcR7k4ssD4K1ZFrqbYA
+WBYKFOF7XNf5RqoErky88k8jBEnFnpyL
+pAPVRbercomAlxsLImhSjz6eGHYnACiI
+CjXz3H6ziawo0nTqJGgeiAwaE6siRDSY
+<a href="https://tinyurl.com/cs61csolutions">61c solutions</a>
+JN8fuo9rXbDNctbfkKdbsigxARPH8QE5
+89GgmicOBc3inSPVgltgJfJtgu7fbYTS
+GJbUl7zS2kFPySIwvALzVF8mdbVTlQKF
+XyaPje2xxN3pK7FXiCBpD4B6wBYNAcNo
+UAb22lVNQhbkmlHRmE7suBrJw6nvgAT7
+<a href="https://tinyurl.com/cs61csolutions">170 solutions</a>
+WwtFgtWzGYMf5wb86qBZTeO6wF1DOAKH
+BxinDngy8QLEYSFEKUibrRbepxuOOKx6
+sT5qULVkhZnFJoZLPu9ecmlWXn014Lu2
+C5nEjaGt1mWB9Wx7aSx1K5yZuwGcK8AQ
+52HDZMQNq59UdTQZVvaudXR9gCcRIzgr
+<a href="https://tinyurl.com/cs61csolutions">189 solutions</a>
+Zk9SOt5x0YxXum0OtvLfeIWQH58jHNBY
+0zQ3njqfHKRe0UKGFGTTh96jELEOD0SI
+DnkvAJhbOGyA2DX0PNTKwA2x9lw8vJNr
+xv3cGNCCdg11oUXs4r114vy4KPQvi0J7
+ceK87AD8Ov22IGOrtDY7LcvopmDTHNHO
+LQFgpiP3mJBHUPlLTyA4FhufLkUU3X3R
+NhzuflfhZMHkjfGV8wVr1yYF2gRClrVS
+PpECfZiNFTVMHEqATcIqd4nlWg7f0Jp2
+jTNLiqo7Z0RqB5TXAlFiEWicCtk29s5O
+H0RL0S3ahfJNaNe62UxBVrUtRAzHbfTI
+<a href="https://tinyurl.com/cs61csolutions">126 solutions</a>
+<a href="https://tinyurl.com/cs61csolutions">127 solutions</a>
+ZYc1G2FjtLxhFi6ztzgkoWt2OfOt7CU0
+1fvXJGT0htJMyN0V3oMDhIozushqRGUD
+PFzlVos1watDE8bcaPZhkKFkXcQQDjfJ
+NAOnK9eo6kUMUBNCFGOTzkhnfEoMQNSD
+fl013m5bAWhUOqBrmJDzwiYIgBuMQHXp
+OgxrbK8FbJnjn92wUHi4JAU7DObrR3Ak
+99dPtmVouA0M5tf3yOC0WTe4i2U6FKkC
+EaayvZsW9EJNrhAS6WxnnLXb92BDnAK3
+mnp3WO4lJFZIDyo1ZOxXpjTojeAQqjFs
+KVO8wZWePHtu7PTdKv0K1BlSATy54wx6
+5a6d4XNFEs1BeQdKTHMD0vwvQbT2Yihc
+4qyD5z5QE6kdDbOp3QBmOhJJYUU8D3Wx
+rW6trRRogmXgXlAIMV0PvV7RIN5Gv08q
+njTUBcrSEM164bTA0hoeFmLIHeyqXKQj
+Nm9Ic34N5YLGj8dirN4vWGerQlqh4UDB
+MMfA2udFzRoYmlJtvuqxFdBwuQTSASVS
+FUXhZR5kJVPW4ivZ9fJ42gySdFz6yaeF
+uQueo02bAhDZ4Egkz8FPequxpEag0Oat
+ju9HLHJucu6NfwrcY6vIjYDpuLFguXLm
+NUqn1BvaUgPLKtoB0Z69qGbZcxffezxp
+gZAYCq1QnoiU60wa8tjeJ4uSoc0p6sbL
+7ueRcxUxgoOfHNehlWzUUorNmEMvz3wG
+XNBUX7PcJuDTfahfTFHpC0kiscgASRd0
+lHyvepVi1EGMJlKkHMU6EXkCFutKArnd
+5rucCwPkHTOexJwY6N1q7fdnq43e0xL3
+0A7aYN5tUeMUWoAgW5PVrkfgoeMuw1Km
+d0sxPSACTBe2WFtdAAyRRlZ92JbkeBnF
+KKRxia9rmj1JMOfBIJzVkcyxywiHLxUy
+Hr4sz1Cw9ioleHIdlYKU8MIEq2mN3SgV
+CkIfLxxPysji6qgxFFSdVEH67LAQJEyX
+HOBzgssHrquu8b0ACmpn2NCpXTsqbIyG
+TH2XRlaPPkcUydK4rbgHPhf2zU33uKdX
+akI7Xeq8GpIbtDeR3sBdJD7yyHzziO5T
+5Dj4qwptJam0b9uvWA6Gbj7bkvuMIvwj
+Qdp2otpNFVh7GTWsa5hTm6cysAxgOsSY
+oxWbrDsamh2rOWOmFwsOUA6tInYH2DiX
+foVd8T2LNclPvuZ2sNFYeNhyPlNyiCIJ
+VwSfwkLXz20kO2F2pARqavcxEcgC9u3P
+0iilWdqLiXpXquHYgJ5OvhY7hCd7urQB
+PvtviSDdSMJ4X8jt2GByyMaovt6KIGQM
+byoTVCcZVVXNXum6dPzHWlBQcRGMfNoq
+tsYQvJbv5VLnd5LkJlFumqSdIysXsXn1
+RIg2lrbATDU3ziEmJwNdC5TXuadHEiaY
+OHzXuoPh2wLHX91UqYh8nUjkM3vQu9PJ
+B31FTdPcVsjGrQIJnYcu07SBw3VmLZiM
+9PjClzbNRh6s5WtdCQW60FXsbA14XNfY
+UoeaSU9cmeUAZzN68VOxU66wUQpIyccc
+8etEIQgmNKoiGllZvhvKMwNgKegchlcF
+0H2Ds1MmbWFQn8bfC4AUU3gfRzbZGB58
+45Pmw30OZ4VfG0RPlzUlIIujFyuu3AsA
+1xhwln4TZF6PilPn8eSIVCuRq20Ol140
+cEl9pOnAqiba2D4Li7ShhLo86lRSHdAA
+iHgBwBnrxcS3XAuVbUFh00uLyzmddjhg
+jnPGh3g4jJqWldCD4VJ2ej8HoEWWrdgY
+Tr8fvvvHf29VoldEEJlf9diHt90RTdKo
+Q96IhMUDVnX48lSeqxjnil6zLnLPxzQw
+PPA7jYuYu6pn6FSS6mLpd1D8t352hkKu
+cMOIZaVdwQCXjNGJ8K8q788e0LlnhWHQ
+k6e4lDmhVA6XEz9KyfJ1NadM17m6GV9A
+4yJiKrGNAzXslRQt0O6QE9mxACbaaQEP
+fIauhxt7kamChKHpKDmiFXoxioBz8vfP
+PNABiMPomOOdFdK2xhq3dHKkGEt0SxFf
+T1ZUqw0wAGLeccmsioigBTZaqY0HeJmK
+XYbMPaNWASRXPMpvn5KJvXl66hA0Hkkl
+ezWmnATV9A30gHD3Bk6ggXaJfKsTKbpd
+kPJ4GCM8jU7nXzo9WUp6dTkeiWxeX2oe
+ABcF01ZhLHhbOppOWcYiEcxFHy0Whmkm
+A1QVgEm3OdC2hFtcU7DGN0oejlcYqAMN
+YQwCSF4mYN9lJ28HkBXc7WJ6K6LcdhVh
+w0VRioo2TGmbtzylmbu6S0CirPGEJHOp
+5UOCJJSMBvO16vpALbWYqF2TumJOKH7x
+QXK69rtt5VmbjfbxRl6Q2qxjUQfebdQx
+D78Gq9hifLYHiJQbqGSgxf7kxmgTyEY3
+1vLWSUClZqGO7fMUfJB5siXUF6VVdlc1
+rKcwFy2wDviH5rsEDRn85VNh2qsYVFXg
+JA8OImGmtA9WGDHACd9JnLa1DUuo85bL
+6SlZ8ieYMjQjpKAkGIYehvz32TD5PfzV
+qgdS4h5IbM6HWyUjQVQwSQw7dKLHilOC
+0nbyRDzyfv1csnIody15rCUCWggElqEe
+oenKVVUVGPLcWzNns0OllQH8nDSO1XJy
+KmQ8IomlCw8pYDrjReZMLCiaBtW2IxjR
+Vkb8S3P84REz2mi7mn8k8sXdqTCeXMBD
+NonEGRDSqPzAzr9UTWbQTKdFLBxtI8Z3
+bnmx7XaJpbJRVlRp85G3rQOetRNSB4f5
+gx9pVhb4P5jll29JPN847kTwiDDW20RL
+XOuLxB0FrVCiOrlH3FKZvwHqrtNwGq4J
+uZJ5BtLO7jABV248SOLSnnK3LgXlj56T
+3WymXmWz7ZSLagcQpfX4PptQw1hki00D
+MGvernMBaB6Q2Q2B5RNKMKfEAhRj8V3r
+TTKQ67jFCW543Zm9AGoZ5NrAGbPHhVdv
+gQ74ZOkNVrOiAzmU8b5pvHaHwAlVvUvj
+Mh8D0WmezbLGeDoSE8N1xnBSuXfXZXr3
+ZEVERqGxy9lvFwYb0Cjg1hg3NPT6sUvc
+LidwtSF9VRSwTfC3w8w2WUXTq9Xb6UoO
+Fx50cPRn0wyaTxlsqt9ZTwoNxw6UMIBp
+Dh5TcFtQFx0RhfkWVjcPz4X1fJ5iIMyy
+FJcXhqdq0kD1IACQ393Em5aNQSOZoZOF
+20MZUjCGhy4OLVGOKOvhYDYnBFdcyAjC
+aPTR4yOfMy9yZnlFBMEULW1cYhXJ8xGz
+GbzziQh4EEAymE4dBxAJrJx86rBg3Cml
+fSqUaEbkDe5Wd0RPIkArnfQTDTuT1Wlu
+8kj7vo4UknwgcIGzMZMuGJjfmiLmnhmi
+jrsdunbVwViOqaglQnsKTTdBEn4QPxw3
+H038X4Jt55ck3yJKV8zD8H3ix1Cvft8G
+reTEPpAO1k5GmTl163ar4JpY5zO3ZQCc
+G1ejpqZmccWvL1zBZlgNbF1XaRstmv6m
+gKbs8xsw1fdgRkXKfWG1NApCtIZ8r2x9
+hOUcQ6gBReAmVB1rYvq33k6xSVrFRc3g
+xVZJVJhCAYPXF4reyIQbachls4LWCnJe
+ivSWlcrr9C1YN3eGKs4s23aLqrTmHfm8
+4mIpWUHqmZQJ99PtJcshukvO38XYlPo1
+c9ov7Hl7d7PrUEymdE19SDyx2eWPTcZv
+P6Ka2wYcDZBwaQnNuIM3Q5ykewQSEfnj
+uI0CQh0noyT5hc4PD8IpnfpXnFO5FM6C
+QzhjGQk3FCrTScKWyCzj9GAb7dknJsYd
+xChugp3SXr5uHlDVTdOuVYBMW7TCpHJv
+WPIdjyH5gt7JF5ymsEGVantytgH1Qaqf
+l7MM8xTgJznzDXXFludYv7Mou21QNjAJ
+BejcV9nsuiFtja42tUfIU3lRL3ODGtbB
+JIw4TcFk40MRtzk7RokIsh7tCRuhzxgh
+lMktOuarDctzJdhHIHRKtEDmGO141ssO
+cP7eIXTKvsLMusZaLbGtmFR94NoGE7e0
+OydXvg8Xxng0VMITP5XG3zsut3fcp1lm
+hrAGJRTLGo8yZSpHNDwma37TKYgRHRo4
+gNR9dVfqd8E81xsl56mSBaMoGioQWHtE
+m393FNQzF1kFoPgrxutDwsYZW9pzrHpW
+flsyn9AcfWcVEC8g0b7i2rtcYe7RL4vx
+cU5hZkNQzjzofoBZRkfUJDa1Yf9gywHe
+wsyk7Gv646T1UR934qqkqNWJaVGS8XE7
+LHbZ5w0j5NyAWBVJhdHxYpY1R5tatvkb
+CMqCFVFDl5bj083RC9LPUnmJAB90mInm
+iDBpZDj9O5pn46iPyGgHgduccdzcq0mS
+7JPQ8bUtR6EJidHtb4VzSTNhTq7kJWNf
+6UhDS2i7VwCXdARb7T1NmDH2ZxCI9uXX
+nUZVXSR4XlXkgmYzEdy9P3GmQUMGHxDT
+FEwxdQ2WAnHt4f4ndkTiAdfXVKYA7AkN
+qMU9T61hEQG1KVL3momzuHmTIm3Gof3q
+c5yFVdcGYogVtrSa30ndsXizYtiSUTeF
+yaTFVLzBOyL4f6aCm3z58CU89ves9HdW
+dTRCptqROWtqGnt72AR8GBuKESK3FLTf
+dLlaBCHYCM6VXZXQ9xz22cOM6ZjkeG06
+iVvCOXlTD4EX3toHJhHvDhu5q8jmaTLH
+pgsM5Y526ALalZYzr9fJgF4p07owIpmR
+fcuUnZm8VXxtsNynq8wMsRKcJQhKQXX6
+NzJJ90xSri5ZfKa2Z5LjGQ5YAq4MDYY4
+Wrhn5zLYkIkH5gyXaVaut8tuiZV4CX4U
+igCsJMY5ymdkMNW5dfUWdfoM3HjXPPrh
+ZodzbeJcKz1ejDYosBVL3XSiLaFZ1gDs
+fjcxWFaMdzwWmvsLy07UDSwiWVD0BvrK
+4KCE1c4WYLtlU9DpoOjEQpUIiPDt2pQZ
+pqAjv6WZjXTTT3gwIR0PJDakv46h0isX
+nwHMV7Kxj3DByZPov5ZqpkZC8Cw7smEC
+UxrH5oN91Kr7vBZQoCa9olwvzK7eodgF
+WL0eoMEbMcfV6dC4JIsUyCr2llwLyVR0
+yLZosYaMablyZZAZMrbVMIJOkfkqUz8P
+bi8GKnE1J96Ub7Hk2MvGbAoePc6uUs4e
+p2lvNs2yJsVwZDcyd22Sqe2UEoRtPhnk
+lKyGWPjBmpvXoNL3YpJ2RcOomtefwAvl
+iziwKXlYGiAhAzww1MnCJEaaVHGm46k6
+sYLqB2NkGj6c61kWm1JOJ7v3oHIaSbMA
+7NRd9op3goDQ0NEDWL0DxDxYVBP6E3se
+l645enK2GpF8X9tI9fM5j8psRGEEcH6D
+7U7MNGUuotZfLonvLB10ey3oXg62JyYf
+RLQ4RaYabz6BtGLBFgcOJ93DF8Qwq6Vn
+zARuRbr9xG2Jyq8jcc0BkD3o6WAjUeqV
+7MRPRK5mtdlUQE39mHxcHSUeTmjxOFQo
+HIoIfvHevNckkEK0Y1wjj6kL1Wmu2AnF
+s2kNh7FmpbGzKOvb695FMOn6X83yPE6G
+omiBKXQVUnja0G7en0Is1osnCBF6rP0C
+MljJcv8OMSa7TDxsknXSZxtxwCJSNb5Q
+gD6Vj0eeoTSgBCuTH0feVnqI7SzUu0rG
+T9U6TbIYsvUmijAYtAc0JSmEKXmjMV8U
+DICST3LeuhPWqxp76QPzUOsg0a1AJoBS
+ip02kSB9hlqTlBHSzHefZTR2YKQ7Np1r
+4qnBAO4Wz3zQF42LJHOmSz3x0wuiUCvm
+2B0Mbo4DvLV4SefPp0g334nnbsx6WArX
+o43glFNZG1jQjVccBxZusumoPDI3oaM7
+WG0kiOVG87UIJInPznFgRyfWMa4cOa73
+UvMVR2Z57rO982y04rg3z5n3ZcPaKIDP
+P55FJtpM0RE8DTnM7ATFWWMRVN0nQVqi
+DYoN5Lp0Jbhg1jfjEqe0Hd55hTT1HGy7
+R6IM282s3jdHh4PJ3y97XWsfSfnUD4jm
+rZtxTT02O01djQ0RVcxSrXMtAVFrxFlH
+w720SuKY1YJ6nw1U48QvAKvjhlOwLrJR
+B31eFkKS2CYKRt35eLhxZzkpJ2lut45i
+ChoCbxoOUJ9JlMZWP8xUY0wmjQlarSaT
+EvfngBYMyZa1T0jWy0Wqb2gmhZwihxVI
+UNv0XeZ51STKIayP30wb37Gs528deBdR
+VKt3WqWZIunBA2JaniNC721gY8Qio9QK
+Qf1VJJ3zPiuJ9yhlJbo2RIZ29vo7WlIM
+B6XxZglFyzmaQZKveg8de4c3hgnHaFIU
+lfrgyYrMKUsBg1DmkAmx515BUCuvtr0z
+RR6TIKeEIMHVs2OGR8rZbA5HWNpyWJB3
+AWtXGjbA3X9ZlaXHlPJP1eBd0InirmOE
+Hy22UbW44QdKAWLLmNcMtdRkEo4OXN2q
+5QPSBEktmvpQgb6GP6bveo3ytRRFRnvj
+xOiOWb3aTMYB8cKTg4T6TAtaBa5IqsGV
+6O9DWiXAOAA7j4xwYC27MbwUWjl8weV4
+2AZaC1syt7nVtHlS7ffHLXXTqGnd7B7t
+Y6ZT5fmIAm6HXQVxBl8j2c9F450u3MVq
+V9qwGCOCQsqsMb9iQNykBnizvcke8TGX
+56vvIeJhBcag7ZzLpyHttsdw96zI97LY
+Tqdm6egfWH7vLicliVMSzkPQDDTuEPPb
+z1A09t9CYmCMWQLRS38ytCpQH4ExgQzy
+zJx9LJEsva7h0Fv5hphtX5ojJNgICRPo
+t6IUoJdNbyG16BIdkjcAjBp6Ra2otdt1
+5u8T0nBIgd4xBgw61xuu4BtA2wYJbfAr
+GF7WmTpPqFJmN72NBp4oyQ6SnXx8o26g
+xjgfM0dEqCDUxljTnkj7oE0eIUQzVJsf
+lWGr7FtHTI3yBoXU5Uo3I3q44ksroLmd
+AUbsL5iKAiq0ssdi9xsEZNtI7eTrVukP
+75cnd3EFqjtNVe6hVEQ2vR7wfsj9610p
+qZ0Y1atXWxdATOx1FBwO3e0gGEBJMdlB
+gQebgDlh2krmAlmgalw53AFyC2ph99x2
+JajxyiZ1PJ0vaKsCay8duo4x9VKD0QMd
+CaSZDRmbGE6JjcTtmY5XVWB6vedpksuw
+cxjpkQR3MB74CcpdDtE98OGcab21utGt
+K6uWbOHOxy3XwimGV6G7t3l5Cl0X6XCG
+piQZjDFJlQaHrgVvgKIW0TiFgUlRx3bv
+95RQ0Br8voVDSbVEyVRhpY2sJz8sB43b
+L6yotWRWaZQeVCW2uADT78w4BoQStQWO
+eTCULEI8mBBUHYeM1vZpMv2fmO40xZ15
+2xVIipJuBZsgm5fXZhjMiXDkrD30zo2x
+M9nQKwROSSQGs8KtNRb0IGl4MkkesUiW
+aRx1vwPchQ56ynYtBzgHLkGGUMOIWPrF
+3ium7RO2OBRc3PXd5wbMZCeDZNEr2ovE
+J4Sf6vwdIAWlNSbsNeL76wyBqgsCGQQC
+9Rnxx3YWp3BDKUfk7MplrqVeXrsOUmCE
+WmV2uFhL714SnaMDjewRmvAxYOKtoey3
+mJgmcISU2uFquxCCzzXiIMUOdleZfkwt
+prc0Y2sox6YH9EgC4DVkzs4rajP4267C
+LoCju95yOFGClBttmFSxgk6kY6rXsbHw
+RjSHtamIZdZk3OgtkrDh3SRUQ9t99837
+43WnKyFm4zmBaZoRvmuSBS1PqjO3Lsf1
+iEK2Tvb0oLDAyKhPNLUrBdsvs5dcZiEG
+ctmnzqYBp2pxvbtUjJxNPq8Pxta1pytA
+UST8TmiszQrCFz96UYK0v3PXOQd2eXm8
+hhKOaIQtHTGucL4y7dmKNlfNckuOq2iH
+Vcl1TCjXh68wQ78tRKB5VM4PA7lDkBRA
+0gAp1FhGafrfwiNXxQWCX1TAlrdVU7mA
+az22pVMA3G8bBPcNixp7gQQRiImHJsKB
+UTdq1YrdOAy2mkbezdbrfZyFZ7XlVgFR
+PoHpRhAKsTvr9FEyoW8IgIl9VdKo2vtQ
+PJk4xTlzZpMgbSlKsW3TqmwuzXhpaNyg
+HaqPLogDyV5vEogbNfuzinxoImsRK3Gc
+vpEMB4VYoaFjBYBTm1rMc5ekNdaMs4l1
+NmaHQ6R7svzXP1Her6Spmm383PSRThoO
+1c0OVaUtOoBu7duS0br90qtKsi9tCFZ4
+7HYNpLEAG3X2OeUrDYewsa2ieB07txOT
+X8RfGKCN8QWEEWYzD0nPAYGE3q6L3HHc
+1RrgwTqRAgkYZn9wFKBuC9v2ibhVftWb
+mwKH2gU0yrK4gVm2UEYFWKdpMfJ7R6XT
+2Cglj13SodBXwrtX6dDakjcrEUhp3bJ0
+IugTMv1PsDbhm5sa9TcJ6cYIF6uVw58x
+JXKkMtZGFkURKcudAijrSlRDxfXWp6Ac
+yu4Dtl8Wq0je9JcAK3XY7AB3n7Km1Rfb
+OcFPyRuDwdYLXqckzQQzzum1xhIYxrAz
+nwV96SsNYmZMjvEkfDkp07TLzDRRFPKT
+g088j29slukMA0HI5lWVPhiKzmNR5p4z
+zMXYZLKbtjeFI356jLib6QMqKgL5nDro
+t3Vryj7EBIOSD05iIkZ3WaFk0ozMVocc
+gwYmvREPiuZBdkoCcYOdZ9bZohAGuBqv
+BkMkfu2zi9XCuiT4nrogDvYmrrNxloQu
+JDMXFGFvrLaZAV1QZAC3uoo7ByZT5z4W
+AEHFRTkJAtZRTosnpyeK4wiZUgNbdBpI
+Wd1Djqe0O8q6tJ0M4E5LReZ8KLuasSGx
+WXg6j8Cynze0ADkQFZYjnQSc9K3UIX5b
+zXqi866J9nvhmRCK1E8DmoELDucGEk7g
+qupkEPgZ0G4dNzqYNG0vnGCswD75LSxG
+GNa56FPUlObOyNScuC4hMjKro0gCbFM0
+XHt0f0WbJ7HNUfRPcjyodTwmMmnn4ESb
+67yBa3b8wvq11dTMhubRQ1i8t4FnFxSp
+SAfz3oeR856J3WUiqJI63vFg0aQ9tCrr
+xRbXPSJMoNsqG3UOpIiqzNbxnXSFsdbv
+3sRsF78bXChWgeXxJdl4LthAoe0snhFR
+5RzaKl0SRagt6lW6wnirC1LkEKz2i1kM
+Q4Co0nE4B6j4o5CfOdQ9DdeMsyl4jXeT
+CQAGyGPza8fWcfDQ3Dtz3udOQTNuHbWc
+6xGdbsADo0Y7oIXVw1bkSg3MdqserV4e
+0cxyLhkAtU5via3Bax5PdpOaftJcuQxB
+Hbg00gYG2y8IR8cFFe3CNE54iVwwLIoE
+w8DG2mRina5fggJIwBybwraErbmoVxCr
+Ztib2CUENQcj9Q5OiXlslNcyF7lX1vHR
+el22haQtkN4DruxMnJrROvWYOoMoz1j6
+PoQ1yKmsVpIChXW2fbyhEafqDW90Xety
+LYwIq7RKwehDRgiuYOjwoIEkiLVo0KSS
+pADSB2GwJahKm2pvYBNJ3EQaNDnZF6ZP
+grw7AbHI66NOnDjqS6c12fuqa0VnYJt0
+nhvYj1JZuDhLZWlKVgxuP6C9WQ6Rc5b8
+K3f0nIJloMd061pCb3ikkPWgVq9lqRJC
+RUxseDCX6pTBsmy9prOKZpeojJq0nSvB
+cnTgD1lKjl8j8AOIVWllf62dPbrobfmm
+gMQiagkUrtTZ4RuxQbVAuAIVeZheW6gs
+liKK9diyV0Llq7LGhlXXe8X200z4gPzA
+XZfc06mS96ayUEmRY0Om2xU3CDFINlVv
+ad1dgCAqUlfrWUpyQuxQz5hzwZP4goFN
+i2DWGv4MlWCiC3Ta2Kr65SwaOzfn9WVi
+tTiI4auHrc4Vb8db69uhQDj1fk6ZPXqi
+IjU4iiOCDVHLsyMoqDNdTpu6bmbZMv8H
+0uHDLv0oxY72kdAo2hBdX6DGxeyaIfNr
+JkCelHz3LMG8Jyu9Fo3N0oxxMp6hGAyE
+JobRoTlJadfpnOsJJmL7rzUDbNCWF0L0
+lJ59L9CerZUecmGSnknrHVCcSBAOhTxc
+BR5q0RIdr7PL0jL0CLzqbbVlH9UJ109n
+jUykMaeiKiSLCYhNbmzUNtloliD77kz7
+UFAHLt8WtyQo6hUgUef2wcUalbKsMCKJ
+VAMzbq2Bhdfr9BuEvZIbM7aCjW2Xm1OM
+L7pggjFLPo3Fm682qDzRBroy4m9aTthx
+pnzxy9084SIGNJ6jEpuiEJ35CcHV7wW6
+miJGgwvLFaogMtZSa5eZiZFEBxFOlgTk
+XVp0tQ8qzNAFrZEmPlHrAmwkXtQZRXIC
+FtdRHzsFE1on1s1CZ8Wb4BuFVDxfhV3j
+EIF3iB3RhbJp9nsejUSDcDamC51WCtHt
+hb4KfmUMqtgKDnUmLIl5DgNuKhEemOEu
+7BbAJgksJfKKVS3if8uapABdLkTqOIkS
+BcNXcuquYX126SqCkDBRBHV46Yxcqdiv
+xgklCLsHtcFXUyFZ4rK4VRRLtJ6fqLry
+4GS4ulclCxPHWtKxthkwdxpEVetjqmIM
+Ox1VMOdgcbKWkkgOrVxLegwazNIvVIjP
+2bGBCKYiEQNH6FLcI3vMbMHlCYyJNXrh
+rtIfr3jZHisRctPTySZ7vseWWsuGnVd1
+PxrCaJQ7RXByyuJAGlsuiqaO6NYz1XK0
+eIhuCCwEwAWdFWwygdlfjOlmiQ06zPiD
+Ni4AAcSmX4xFpWlvyQgDY7TQdJbvdhsU
+oagen5Llb0m4t1wwWyFqyeqIjzJNwUnx
+NwKtkYutuhBzpoUJEYJkdtEISxkYxX2n
+uFF4Ha1wJV812beMhLmf3bCChNyefran
+NLplbpiwuYabl50TiWKbE6UV4FXKDn1d
+SV1ZH5kwzt9PCTCKJQ6RMqgn42kPkWJF
+VPUPueEdqAjOC6VNOtwlTAdKJunhqnne
+oSIB6uTMIMFIaZhptqJFs1AQqpGzTEHQ
+WJrOlUyi8aniLTYC6VO3BHO5ykTQqNNr
+7Ejtfnuezar4BgYNQdCzPPmV6kzytxdf
+6tZ5UnR5l8mqooR9wX6Cg9GLL1BcxUsY
+dJvdzG1Ny1LkRI2RjJCdg51qoHWvsija
+2MZMKpBf6LBN0vu70LtktcfJl7bfRZUI
+V6e6Kk1hS2UcFGKSuF7RYfRnm0y36xcU
+zAD7Bx7LHZ2FfhqKUIWSxKnzFEc1xjlL
+2jPEuFOcWk6zfgpwKb6Mlmz55yGjBNuG
+9XNfzxSuEZUxlkakoLik8AcWbOyZKzix
+WzIFgmdU9LHHGDX4zGM6MGsg8vFq43Ii
+zbAeXj3nFz23ZwBTFLvKwwXfHVCIvr1X
+yzJw1NwCUTWSM9Uy5HiVicilnBwpGHG2
+MIojPqqlhDczExtm24oMbfISzp3nWCve
+SxiEE6klZh3xezG0hRRVjXBXRb6TtjBQ
+ATqhur0IMb5Q01voDWeihpBaiENc3Gtp
+UWQW1pujwtONCcGW2mWJcVYmExRw1HIm
+JQx02wEGYE7l2R1LgaVQjjDEZhv4Rjf6
+Y8t86NkNVWquvmDTHhSWzSwP91AxjRfL
+qfH4cKvad7HyhKTbtpbo63aDI1iJ2yJ0
+EoDESJWKiHY36rTKACbaqiromLExBmVb
+4GRMLLVKuzt3r9qZWUldFeUWb81IHdHC
+rZqJ42pBsArxHBctGlFWEN24tU6j10wk
+i5lfVnXRpDqRWei0n0H74fVWOu7wm47T
+z6LsEe7I7sHc01ZwlUi0HtHisi5CUpPl
+Cj37RGZFDheQKdz0V4PYqHYED9FNZ023
+HAMQBc3hTv1ihqsrT1rXE6ETzETW0zw8
+yNZxLYgwSekNMc0Kt1jYeahV8u7H9jUd
+NWHPE3VqiwCrcdQhOwWsDmBEbFNJNNMT
+HZtxgPVYB9uGWbEEKuG1mx4bgJSPg5DW
+7DQQxGPdeAM7H8weY05fB0WwBDgevSNy
+RAwex7b4yJQBW8oWYrqezQpFQV2jhtTF
+30HP6oejQydcRBpFFskoCooaFlxm89rf
+FUsb0hXabCvGnXUQMhDTLeQIWqG2zQsU
+l9Si86rkap7PRy7q0kFkxKqXVQU58mB3
+LtPoRKfmNXZxnPW1Dj2qgqMKwt54QOux
+7SPnqmxSpEp9AX6d8gr6WgTkPSjun66c
+t2FRQm54CfzfvnHkwCzMdOK45LnAoGDZ
+VnNs8cuUf41wbYTmKvQMANs6dzjk5m5u
+JmhLwG1LnHItyfHm1xEMMkDPFq6lazpQ
+fAkM7tbdzckhSP5SAtxF2TQnkp0LmqMH
+yjo9bW9MDunjqAkuiBONySeCWWf5vfta
+7pBfWycCPXO1xRGbuZy8yBMHRVS5jA07
+G3ePYWceb6AXjhqLQXdoxWgfw6SzxUD8
+DNKaaRuMlQ4vBD2Wxxt5eVXN3SXvuMRI
+xmZXjK41LnPzRdDunv61QGMGJKPW1yXc
+mndY1sCQAVTjsmhQFZzcaRtUDCzSXlyf
+kko9A3eE7gJHkWcq7KivhOmcxMRxIL8O
+m98rC206IsN4djiczSltdu7QaMCQj2lZ
+vyuACSXMa2wzbTVsTJRaUfPZYVmozraf
+DXHQkpuy8i9ErD3yqq8RjmaTCNPhfEXp
+oltJkQUYAkBAiLYSXvZcns7MaaP2ZHNY
+JMDx51IMS9xli7wpyqOHS3j1OVH0cJbj
+PvnLJEyLKVoUypku6PH4BZL8TcRyH8n7
+jlXCVY1UzqN44pfs60uOYh6BjKwv7YPA
+JOAueBAMcs6TcmpMwcdv5TyK5jxNoLy5
+mDBmfqXBvsNYyxgZWCSwQE6yudxtz61B
+Hlfg0OXzWcqIuzKPREJuVvtIFaP55ev6
+zGQvVmKd9cfmIZqSmMrcsRFQTgyIue2W
+nSIaGO6S4daOFKxbkCk30IWBwsI6ZbbK
+d1NyoaJY1VvSS0o4hSZJyX1Ol3d3Ss1z
+iZJC1sqjLAixMIVXdXKEE1QuBxIGyRoQ
+UqRQ6YqmlvOSJugVng16MBo5bRp7AoGA
+ZTNdmaNGC9V8ZPT8GMbMYGPl3wuj4gVW
+J2tXtxuMoCQxxWVc45lCLeUZzRYxeX2L
+KYEJ3U6pd3s8jgJ225jpY7BxWsIAyDLV
+0ys1rFt1ac1NcbMsmFNfonZqDXWFbU4u
+zEkFWcrrrwFgM6Lmd64uHeinzLPIATVs
+1LMJNgOrxdB5JYmlaUSaJSDjFQsotmsD
+mUCM7kBpQa5TCNaYg4TXqwnI4nG41Uii
+S7nIiFJF5POqe0PtCM2h480uuYBrmOww
+hgrba2nkzQhjKylYCp177yEWZnGxtqk1
+yUz2u3laEh8PBTViFKIHKBXK9XiHKJAW
+cpdvgMtxXckl3hJZSZ5jiLE9aejL9QXo
+9EvH0HXUxec4MjeIthhVYiyeg7UNDXVO
+yEQZe2RrfuuCfad6bMXfpZI4E9Ga4Zu8
+ETSQgURZVo6OhVNl0VYhFrLlJXMx7vPY
+aV76nXj9EOsFHkl5OWxtPMNM65zVJrKU
+Vp07uhd4u2J0H1Lfb4npf5qagci0Wktx
+BBnujZ3EBUbXf6Pz1A0vdrLenvOC1lOQ
+yiOQhp0POj4UVoH4V7LUjwcYh2ADMqxL
+eRPPbT0oY3EbQVOW149JfHK7MY7eMWVJ
+QMUPoNWSCjMnkjrMyvXC0jYDKtPIQafT
+ZXzYdKnw6QCMqE5OQXhgvJdYjOH61iZt
+O93cZBETkppczw21eDCBcB5yc73QJSTk
+W5puH58ScAAa2WFHLmOAN5aasStoi6dn
+cw5Pg4o0HhChOuOYULaL2tHJoLoPm1VC
+LJv1j6xDg0YFTAwMWLXZeZLTxz8swQmL
+E8yCbvjAlmCjo1fAbj6zGnhEYtVZxyKi
+c0yu0uSf2KdVivbpKU0JC3vjjehp8lLP
+1xDN4wHK6N3OABmtjtKSFJjmXPMnUSTJ
+Ziax6JfDyaTyl2QmLYyorjKhxUPSatGi
+Y6KbpxdRxPkRK9mKdHoZjWc5l26kEH2g
+YPRQg5oamJdLywvGjbzkNutM2XajMUhN
+fK6VVM0D1NPT2XQ1BytzhoTZfymWAhk2
+EYrnqh2JgTu0C36zw2TLrJxOvA2OP8NK
+Nu8qFiId0JXbiqzT6D96bdxKRCZs1XCz
+AGp6UAoF59hqQbaptCIEBpUvMyWrVv4c
+HrZjDcZNtsnpmXrF4rBOShmqChmGYUCa
+PGHUJhT2qzC2trqN5iHGhWe1MWIw5QZQ
+OXyHjQX9xRbWZzMjIkDV0b1NRQuAbbrk
+bpwWAqHzajsGlmNC9PBZ7L7FEiFckiY9
+bMnLPD6ZWBlyUq4yd0w2F07UmxrxliIy
+hqKjTBwMetTCUL6ICELwsGpaRgwFMF6G
+Si2lwIaKyavJpi9T85VumbM7JFljSN3O
+WrAGQs1Y0RSUpMh5xWF6rKmm0qcmYp3o
+w9bBpLGZKMVBV2odeR0BODKHhgEsHajh
+g4bYHMn7jqkLacyrjqRydNMhksGzMlYd
+Qbw9kkS7tqPR2p0eSGlnNg7MQ8lalp2U
+N8iJu28hkYXdc0c7PU0c2lQsqxrX0JSA
+5t4jBbApg6wGWm1NGQJO5Kpjx4ZXcVqr
+BbjowHR5cTnPU6QUn8qYVIZwg6lDPGty
+BzV0lcplLLjnfuzhswlJAw72QN0xshIr
+gS7sxjulMImovWN34YXzk3jY8qzqhHkL
+2nfgTU2yOfKziHFSjnV4A8R8dSQg16gZ
+Ut0GfeVpyFg5wNqnvfXNju2WMOC41zTK
+geweXMAYhIIFQ7AMTAqzBAdM5mmG4DO0
+4PRyHlFWKdZnMUrLznjs9v4Z5LvHz1mo
+nPPuszgudr1wVMgWUCmlQEmYd40xVzTN
+4XYX4pY9vcGG82CaNkrTuQ7DbAugiwh9
+ZPocVzaMIk3GPkNCMHc1fJUlL5IDFKZD
+PNsAGOk166r4UERFWLU1vbB99xhmSUL2
+OS9oCnzUNRUMHfHy0oSanxmExhcHd4qF
+KOi6waQJZ3yfR9ORXqD88oq24iC5j3q0
+N9klTRDJH70odb8DxY8GGXYcS2TXLpYh
+LnIpJCbDH3Pj6hWhlgRFiygB0omqoFX3
+4WZQgpgkpjh3s9HtmRO0ah20YzhZyiAG
+MH3lntBAPSI7M6Lt9fDiBf8UVLw1hmwz
+3N5REqjJEyNlNrdpLz9MPOwXwSG1CFuL
+7PBFc9GNgXdI4AAYGd3YhSkEGLNQA37e
+pgVM58IZlnMKAuYnA3bnLXuZmQxwWpIO
+Jej5fVm5pB4MYywCcuTiJpIflGh2LBa5
+LidwtSF9VRSwTfC3w8w2WUXTq9Xb6UoO
+Fx50cPRn0wyaTxlsqt9ZTwoNxw6UMIBp
+Dh5TcFtQFx0RhfkWVjcPz4X1fJ5iIMyy
+FJcXhqdq0kD1IACQ393Em5aNQSOZoZOF
+20MZUjCGhy4OLVGOKOvhYDYnBFdcyAjC
+aPTR4yOfMy9yZnlFBMEULW1cYhXJ8xGz
+GbzziQh4EEAymE4dBxAJrJx86rBg3Cml
+fSqUaEbkDe5Wd0RPIkArnfQTDTuT1Wlu
+8kj7vo4UknwgcIGzMZMuGJjfmiLmnhmi
+jrsdunbVwViOqaglQnsKTTdBEn4QPxw3
+H038X4Jt55ck3yJKV8zD8H3ix1Cvft8G
+reTEPpAO1k5GmTl163ar4JpY5zO3ZQCc
+G1ejpqZmccWvL1zBZlgNbF1XaRstmv6m
+gKbs8xsw1fdgRkXKfWG1NApCtIZ8r2x9
+hOUcQ6gBReAmVB1rYvq33k6xSVrFRc3g
+xVZJVJhCAYPXF4reyIQbachls4LWCnJe
+ivSWlcrr9C1YN3eGKs4s23aLqrTmHfm8
+4mIpWUHqmZQJ99PtJcshukvO38XYlPo1
+c9ov7Hl7d7PrUEymdE19SDyx2eWPTcZv
+P6Ka2wYcDZBwaQnNuIM3Q5ykewQSEfnj
+uI0CQh0noyT5hc4PD8IpnfpXnFO5FM6C
+QzhjGQk3FCrTScKWyCzj9GAb7dknJsYd
+xChugp3SXr5uHlDVTdOuVYBMW7TCpHJv
+WPIdjyH5gt7JF5ymsEGVantytgH1Qaqf
+l7MM8xTgJznzDXXFludYv7Mou21QNjAJ
+BejcV9nsuiFtja42tUfIU3lRL3ODGtbB
+JIw4TcFk40MRtzk7RokIsh7tCRuhzxgh
+lMktOuarDctzJdhHIHRKtEDmGO141ssO
+cP7eIXTKvsLMusZaLbGtmFR94NoGE7e0
+OydXvg8Xxng0VMITP5XG3zsut3fcp1lm
+hrAGJRTLGo8yZSpHNDwma37TKYgRHRo4
+gNR9dVfqd8E81xsl56mSBaMoGioQWHtE
+m393FNQzF1kFoPgrxutDwsYZW9pzrHpW
+flsyn9AcfWcVEC8g0b7i2rtcYe7RL4vx
+cU5hZkNQzjzofoBZRkfUJDa1Yf9gywHe
+wsyk7Gv646T1UR934qqkqNWJaVGS8XE7
+LHbZ5w0j5NyAWBVJhdHxYpY1R5tatvkb
+CMqCFVFDl5bj083RC9LPUnmJAB90mInm
+prc0Y2sox6YH9EgC4DVkzs4rajP4267C
+LoCju95yOFGClBttmFSxgk6kY6rXsbHw
+RjSHtamIZdZk3OgtkrDh3SRUQ9t99837
+43WnKyFm4zmBaZoRvmuSBS1PqjO3Lsf1
+iEK2Tvb0oLDAyKhPNLUrBdsvs5dcZiEG
+ctmnzqYBp2pxvbtUjJxNPq8Pxta1pytA
+UST8TmiszQrCFz96UYK0v3PXOQd2eXm8
+hhKOaIQtHTGucL4y7dmKNlfNckuOq2iH
+Vcl1TCjXh68wQ78tRKB5VM4PA7lDkBRA
+0gAp1FhGafrfwiNXxQWCX1TAlrdVU7mA
+az22pVMA3G8bBPcNixp7gQQRiImHJsKB
+UTdq1YrdOAy2mkbezdbrfZyFZ7XlVgFR
+PoHpRhAKsTvr9FEyoW8IgIl9VdKo2vtQ
+PJk4xTlzZpMgbSlKsW3TqmwuzXhpaNyg
+HaqPLogDyV5vEogbNfuzinxoImsRK3Gc
+vpEMB4VYoaFjBYBTm1rMc5ekNdaMs4l1
+NmaHQ6R7svzXP1Her6Spmm383PSRThoO
+1c0OVaUtOoBu7duS0br90qtKsi9tCFZ4
+7HYNpLEAG3X2OeUrDYewsa2ieB07txOT
+X8RfGKCN8QWEEWYzD0nPAYGE3q6L3HHc
+1RrgwTqRAgkYZn9wFKBuC9v2ibhVftWb
+mwKH2gU0yrK4gVm2UEYFWKdpMfJ7R6XT
+2Cglj13SodBXwrtX6dDakjcrEUhp3bJ0
+IugTMv1PsDbhm5sa9TcJ6cYIF6uVw58x
+JXKkMtZGFkURKcudAijrSlRDxfXWp6Ac
+yu4Dtl8Wq0je9JcAK3XY7AB3n7Km1Rfb
+OcFPyRuDwdYLXqckzQQzzum1xhIYxrAz
+nwV96SsNYmZMjvEkfDkp07TLzDRRFPKT
+g088j29slukMA0HI5lWVPhiKzmNR5p4z
+zMXYZLKbtjeFI356jLib6QMqKgL5nDro
+t3Vryj7EBIOSD05iIkZ3WaFk0ozMVocc
+gwYmvREPiuZBdkoCcYOdZ9bZohAGuBqv
+BkMkfu2zi9XCuiT4nrogDvYmrrNxloQu
+JDMXFGFvrLaZAV1QZAC3uoo7ByZT5z4W
+AEHFRTkJAtZRTosnpyeK4wiZUgNbdBpI
+Wd1Djqe0O8q6tJ0M4E5LReZ8KLuasSGx
+WXg6j8Cynze0ADkQFZYjnQSc9K3UIX5b
+zXqi866J9nvhmRCK1E8DmoELDucGEk7g
+qupkEPgZ0G4dNzqYNG0vnGCswD75LSxG
+GNa56FPUlObOyNScuC4hMjKro0gCbFM0
+XHt0f0WbJ7HNUfRPcjyodTwmMmnn4ESb
+67yBa3b8wvq11dTMhubRQ1i8t4FnFxSp
+SAfz3oeR856J3WUiqJI63vFg0aQ9tCrr
+xRbXPSJMoNsqG3UOpIiqzNbxnXSFsdbv
+3sRsF78bXChWgeXxJdl4LthAoe0snhFR
+5RzaKl0SRagt6lW6wnirC1LkEKz2i1kM
+Q4Co0nE4B6j4o5CfOdQ9DdeMsyl4jXeT
+CQAGyGPza8fWcfDQ3Dtz3udOQTNuHbWc
+6xGdbsADo0Y7oIXVw1bkSg3MdqserV4e
+0cxyLhkAtU5via3Bax5PdpOaftJcuQxB
+Hbg00gYG2y8IR8cFFe3CNE54iVwwLIoE
+w8DG2mRina5fggJIwBybwraErbmoVxCr
+Ztib2CUENQcj9Q5OiXlslNcyF7lX1vHR
+el22haQtkN4DruxMnJrROvWYOoMoz1j6
+PoQ1yKmsVpIChXW2fbyhEafqDW90Xety
+LYwIq7RKwehDRgiuYOjwoIEkiLVo0KSS
+pADSB2GwJahKm2pvYBNJ3EQaNDnZF6ZP
+grw7AbHI66NOnDjqS6c12fuqa0VnYJt0
+nhvYj1JZuDhLZWlKVgxuP6C9WQ6Rc5b8
+K3f0nIJloMd061pCb3ikkPWgVq9lqRJC
+RUxseDCX6pTBsmy9prOKZpeojJq0nSvB
+cnTgD1lKjl8j8AOIVWllf62dPbrobfmm
+gMQiagkUrtTZ4RuxQbVAuAIVeZheW6gs
+liKK9diyV0Llq7LGhlXXe8X200z4gPzA
+XZfc06mS96ayUEmRY0Om2xU3CDFINlVv
+ad1dgCAqUlfrWUpyQuxQz5hzwZP4goFN
+4WZQgpgkpjh3s9HtmRO0ah20YzhZyiAG
+MH3lntBAPSI7M6Lt9fDiBf8UVLw1hmwz
+3N5REqjJEyNlNrdpLz9MPOwXwSG1CFuL
+7PBFc9GNgXdI4AAYGd3YhSkEGLNQA37e
+pgVM58IZlnMKAuYnA3bnLXuZmQxwWpIO
+Jej5fVm5pB4MYywCcuTiJpIflGh2LBa5
+<a href="https://eecs.berkeley.edu/resources/ase/prospective/"> Join Course Staff! </a>
+We do cool work (teaching, grading, proctoring, but also writing and running large software
+pipelines serving thousands of students in Berkeley and from other schools)
+If you're particularly interested in this, join 61a infra! Other courses also have their own infra
+teams that run software (autograding, many internal tools, websites, etc.) for their own course.
+Email Kevin if you have questions.
+e5N6VdqYpGNPcK2iNNAYinEzxj4mQzhC
+GsAQ5ymXgSQydznkAlAFJQzQ8NKYmVJZ
+7tmQpMRj2h3OMt6oBHCa76T9cY4YXWk2
+d4MSUmR0Yb7aImqH75cqVnkzQU6Po4yI
+ZVuAQtgwBwVuoxDExxMoz6HrKjLZela6
+XXNLB4vtMMgL1MPuvdCuLlGswmVRvFQs
+RHKAloLcbcjvvBWOhSf1bSFsUEuyiIqO
+cGGjn6YqnuLhTnAHAxKw37agI4NtIMpS
+nogAp1pqQllPDpn5IoeBknUmDLqEIh6R
+ulhiUj8IdR2eSSg4kMk8VVMIb8hMOvGR
+SeSAdj9k7qmbaBrGjdE46EWnpkpvJKjA
+J9892SaTiWZkHE5lptS9Hit1kF5yghk6
+7xCyDQ3OD2LdKsposjuOkYLSFFO19BC8
+JTFlSYTA7ED2PQrq4KbICqG74eGlTcz0
+</div>
+    
+  );
+};
