@@ -42,3 +42,6 @@ jobs:
           files: coverage.xml
           # upload only coverage.xml, not pytest-coverage.txt too
           disable_search: true
+          # Codecov's file fixes read every file in the checkout and stop at
+          # node_modules; coverage only covers oh_queue/, so they aren't needed.
+          disable_file_fixes: true
