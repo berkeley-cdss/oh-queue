@@ -162,7 +162,8 @@ def test_joining_a_group_sends_its_ticket_in_full(queue):
     assert group_ticket["user"] is None
     api(queue["alice"], "delete", [queue["alice_ticket"]])
     response = queue["alice"].post("/api/join_group", json=queue["group"]).get_json()
-    sent = [update["ticket"] for event, update in response["updates"] if event == "event"]
+    sent = [update["ticket"] for event, update in response["updates"]
+            if event == "event" and update["type"] == "group_joined"]
     assert [(t["id"], t["user"]["shortName"]) for t in sent] == [(group_ticket["id"], "Bob")]
 
 

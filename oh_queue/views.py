@@ -1553,7 +1553,7 @@ def join_group(group_id):
 
     emit_group_event(group, "group_joined")
     # The group's ticket, which the new member can now see in full.
-    if group.ticket:
+    if group.ticket and group.ticket.status in active_statuses:
         add_response("event", {"type": "group_joined", "ticket": ticket_json(group.ticket)})
 
     return socket_redirect(group_id=group_id)

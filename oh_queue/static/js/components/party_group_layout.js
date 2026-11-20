@@ -9,6 +9,11 @@ function PartyGroupLayout({ state, match, loadGroup, socket }) {
   }
 
   if (!getGroup(state, groupID)) {
+    // Only staff can load a group that isn't active; students get its page
+    // only for an active group, or their own.
+    if (state.loaded && !isStaff(state)) {
+      return <NotFound />;
+    }
     loadGroup(groupID);
     return "loading...";
   }
