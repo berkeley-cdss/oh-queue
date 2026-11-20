@@ -55,10 +55,6 @@ class AdminLayout extends React.Component {
               )}
             />
             <Route
-              path={`${match.path}/slack`}
-              render={(props) => <AdminSlackManager state={state} {...props} />}
-            />
-            <Route
               path={`${match.path}/party`}
               render={(props) => <AdminPartyManager state={state} {...props} />}
             />

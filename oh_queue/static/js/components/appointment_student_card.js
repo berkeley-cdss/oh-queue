@@ -1,41 +1,17 @@
-function AppointmentStudentCard({
-  status,
-  signup,
-  assignments,
-  isStaff,
-  okpyEndpointID,
-}) {
+function AppointmentStudentCard({ status, signup, assignments, isStaff }) {
   const assignmentName = signup.assignment_id
     ? assignments[signup.assignment_id].name
     : "";
   const questionName = signup.question ? " Question " + signup.question : "";
 
-  const okPyURL =
-    "https://okpy.org/admin/course/" +
-    okpyEndpointID +
-    "/" +
-    encodeURIComponent(signup.user.email);
-  const okPyLink = isStaff && okpyEndpointID && (
-    <button
-      className="btn btn-sm btn-default pull-right"
-      onClick={() => window.open(okPyURL, "_blank")}
-    >
-      View Backups
-    </button>
-  );
-
   const question =
     assignmentName + questionName ? (
       <Slot>
-        <div className="slot-question-row">
-          {assignmentName + questionName}
-          {okPyLink}
-        </div>
+        <div className="slot-question-row">{assignmentName + questionName}</div>
       </Slot>
     ) : (
       <Slot className="slot-question-row slot-disabled">
         <i>No question specified</i>
-        {okPyLink}
       </Slot>
     );
 

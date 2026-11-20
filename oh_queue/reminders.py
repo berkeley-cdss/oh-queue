@@ -1,12 +1,11 @@
-from base64 import b64encode
 from inspect import cleandoc
 
+from flask import url_for
 from ics import Calendar, Event
 from zoneinfo import ZoneInfo
 
-from common.course_config import get_domain
-from common.rpc.mail import send_email
-from common.course_config import format_coursecode, get_course
+from oh_queue.course import format_coursecode, get_course
+from oh_queue.mail import send_email
 from oh_queue.models import AppointmentSignup
 
 
@@ -37,7 +36,6 @@ def send_student_appointment_absent_email(signup: AppointmentSignup):
     message = cleandoc(message)
 
     send_email(
-        sender="OH Queue <cs61a@berkeley.edu>",
         target=user.email,
         subject=f"{format_coursecode(course)} OH Appointment Absence",
         body=message,
@@ -83,18 +81,17 @@ def send_appointment_reminder(signup: AppointmentSignup, is_staff: bool):
         It is at {appointment.start_time.strftime('%A %B %-d, %I:%M%p')} Pacific Time, at location {appointment.location.name}.
         {additional_msg}
 
-        To edit or cancel this appointment, go to https://{get_domain()}.
+        To edit or cancel this appointment, go to {url_for("index", _external=True)}.
 
         Best,
         The 61A Software Team
         """.strip()
 
     send_email(
-        sender="OH Queue <cs61a@berkeley.edu>",
         target=recipient.email,
         subject=f"{format_coursecode(get_course())} Appointment Scheduled",
         body=cleandoc(message),
-        attachments={"invite.ics": b64encode(str(c).encode("utf-8")).decode("ascii")},
+        attachments={"invite.ics": str(c).encode("utf-8")},
     )
 
 
@@ -123,7 +120,6 @@ def send_cancellation_reminder(signup: AppointmentSignup, is_staff: bool):
         message = f"This is a reminder that you have cancelled your appointment with {helper.short_name if helper else 'staff'} at {appointment_time} for {pretty_course_name}."
 
     send_email(
-        sender="OH Queue <cs61a@berkeley.edu>",
         target=recipient.email,
         subject=f"{pretty_course_name} Appointment Cancelled",
         body=(
