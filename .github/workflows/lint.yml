@@ -1,0 +1,24 @@
+name: Lint
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  lint-with-flake8:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Bootstrap
+        uses: ./.github/actions/bootstrap
+        with:
+          node: "false"
+      - name: Lint with flake8
+        # fails CI on any problem, using the rules in .flake8
+        run: |
+          flake8 . --count --show-source --statistics

@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
 import datetime
 import functools
 import os
@@ -13,31 +8,32 @@ import sys
 
 import alembic
 import alembic.command
-import names
-
 from alembic.config import Config
+from dotenv import load_dotenv
 from flask import render_template
-from flask_debugtoolbar import DebugToolbarExtension
 from flask_migrate import Migrate
+from werkzeug.serving import run_simple
 
+# Before importing the app: config.py reads the environment when it's imported.
+load_dotenv()
 
-from oh_queue.course import get_course
-from oh_queue import app
-from oh_queue.models import (
-    db,
+from oh_queue import app  # noqa: E402
+from oh_queue.course import get_course  # noqa: E402
+from oh_queue.models import (  # noqa: E402
     Assignment,
     Location,
     Ticket,
     TicketStatus,
     User,
+    db,
+    utcnow,
 )
-
-from werkzeug.serving import run_simple
 
 os.environ["FLASK_APP"] = "manage.py"
 
 migrate = Migrate(app, db)
 alembic_cfg = Config("migrations/alembic.ini")
+
 
 def not_in_production(f):
     @functools.wraps(f)
@@ -53,6 +49,8 @@ def not_in_production(f):
 @app.cli.command("seed_data")
 @not_in_production
 def seed_data():
+    import names  # from requirements-dev.txt
+
     print("Seeding...")
 
     assignments = [
@@ -91,7 +89,7 @@ def seed_data():
         ticket = Ticket(
             user=student,
             status=TicketStatus.pending,
-            created=datetime.datetime.utcnow() - delta,
+            created=utcnow() - delta,
             assignment=random.choice(assignments),
             location=random.choice(locations),
             question=random.choice(questions),
@@ -107,16 +105,21 @@ def seed_data():
 @not_in_production
 def resetdb():
     print("Dropping tables...")
-    db.drop_all(app=app)
-    initdb()
+    db.drop_all()
+    create_tables()
 
 
 @app.cli.command("initdb")
 def initdb():
+    create_tables()
+
+
+def create_tables():
     print("Creating tables...")
-    db.create_all(app=app)
+    db.create_all()
     print("Stamping DB revision...")
     alembic.command.stamp(alembic_cfg, "head")
+
 
 @app.cli.command("build")
 @not_in_production
@@ -124,16 +127,20 @@ def build():
     with app.test_request_context():
         render_template("index.html", course_name="test")
 
+
 @app.cli.command("run_server")
 @not_in_production
-def run_server(): 
+def run_server():
+    from flask_debugtoolbar import DebugToolbarExtension  # from requirements-dev.txt
+
     DebugToolbarExtension(app)
-    
+
     host = app.config.get("HOST") or os.environ.get("HOST", "0.0.0.0")
     port = int(app.config.get("PORT") or os.environ.get("PORT", 3000))
-    
+
     print(f"Starting development server on {host}:{port}...")
     run_simple(host, port, app, use_reloader=True, use_debugger=True)
+
 
 if __name__ == "__main__":
     from flask.cli import main

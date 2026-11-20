@@ -3,7 +3,7 @@
 import pytest
 
 from oh_queue.course import format_coursecode, get_canvas_course_id, get_course
-from oh_queue.models import Assignment, ChatMessage, ConfigEntry, Location, User, db
+from oh_queue.models import Assignment, ChatMessage, ConfigEntry, Location, Ticket, User, db
 from tests.conftest import log_in
 
 REMOVED_CONFIG_KEYS = {
@@ -161,3 +161,32 @@ def test_user_history_has_tickets_only(client):
         user_id = User.query.one().id
     response = client.post("/api/get_user", json=user_id)
     assert set(response.get_json()["action"]) == {"user", "tickets"}
+
+
+def test_queue_state_includes_tickets_without_a_group(client):
+    client.get("/")
+    log_in(client, "student@example.edu", is_staff=False)
+    assignment_id, location_id = make_ticket(client)
+    client.post("/api/create", json={
+        "assignment_id": assignment_id, "location_id": location_id, "question": "1", "description": "",
+    })
+    log_in(client)
+    # The query outer-joins each ticket's group, which gives NULL for the
+    # group's status when there's none.
+    tickets = connect(client)["tickets"]
+    assert [(t["status"], t["group_id"]) for t in tickets] == [("pending", None)]
+
+
+def test_only_juggled_tickets_can_be_rerequested(client):
+    client.get("/")
+    log_in(client, "student@example.edu", is_staff=False)
+    assignment_id, location_id = make_ticket(client)
+    response = client.post("/api/create", json={
+        "assignment_id": assignment_id, "location_id": location_id, "question": "1", "description": "",
+    })
+    ticket_id = int(response.get_json()["action"]["redirect"].strip("/").split("/")[-1])
+    response = client.post("/api/rerequest", json={"ticket_ids": [ticket_id]})
+    assert response.status_code == 200
+    assert "permission" in response.get_json()["action"]["messages"][0]["text"]
+    with client.application.app_context():
+        assert Ticket.query.one().status.name == "pending"

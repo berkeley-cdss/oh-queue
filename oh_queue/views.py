@@ -23,6 +23,7 @@ from oh_queue.models import (
     TicketStatus,
     User,
     active_statuses,
+    utcnow,
 )
 from sqlalchemy import desc
 from sqlalchemy.orm import joinedload
@@ -126,14 +127,14 @@ LLM_TIPS_INFLUENCE_OPTIONS = {
 
 def ensure_config_entry(key, value, public):
     entry = ConfigEntry.query.filter_by(key=key, course=get_course()).one_or_none()
-    
+
     if entry is None:
         try:
             new_entry = ConfigEntry(key=key, value=value, public=public, course=get_course())
             db.session.add(new_entry)
-            db.session.commit() # Commit IMMEDIATELY
+            db.session.commit()  # Commit IMMEDIATELY
         except Exception:
-            db.session.rollback() # roll back and ignore the error
+            db.session.rollback()  # roll back and ignore the error
 
 
 def build_llm_tips_payload(ticket):
@@ -350,16 +351,16 @@ def emit_state(attrs, entity=None):
         out = dict(
             students=User.query.filter(
                 User.heartbeat_time
-                > datetime.datetime.utcnow() - datetime.timedelta(seconds=30),
+                > utcnow() - datetime.timedelta(seconds=30),
                 User.course == get_course(),
-                User.is_staff == False,
+                User.is_staff == False,  # noqa: E712 (SQL, not Python)
             ).count()
         )
         active_staff = {
             (t.helper.email, t.helper.name)
             for t in Ticket.query.filter(
                 Ticket.status.in_(active_statuses),
-                Ticket.helper != None,
+                Ticket.helper_id.isnot(None),
                 Ticket.course == get_course(),
             ).all()
         }
@@ -367,9 +368,9 @@ def emit_state(attrs, entity=None):
             (user.email, user.name)
             for user in User.query.filter(
                 User.heartbeat_time
-                > datetime.datetime.utcnow() - datetime.timedelta(seconds=30),
+                > utcnow() - datetime.timedelta(seconds=30),
                 User.course == get_course(),
-                User.is_staff == True,
+                User.is_staff == True,  # noqa: E712 (SQL, not Python)
             ).all()
         }
         out["staff"] = len(active_staff)
@@ -626,7 +627,7 @@ def connect(data=None):
     if not current_user.is_authenticated:
         pass
 
-    current_user.heartbeat_time = datetime.datetime.utcnow()
+    current_user.heartbeat_time = utcnow()
 
     entity_type = None
 
@@ -830,9 +831,10 @@ def get_tickets(ticket_ids, lock=False):
         Ticket.id.in_(ticket_ids), Ticket.course == get_course()
     )
     if lock:
-        query = query.with_for_update()
+        # Only the tickets: Postgres can't lock the chat messages that are
+        # outer-joined onto them.
+        query = query.with_for_update(of=Ticket)
     return query.all()
-
 
 
 def get_next_ticket(location=None):
@@ -858,7 +860,7 @@ def get_next_ticket(location=None):
     if not ticket:
         ticket = Ticket.query.filter(
             Ticket.status == TicketStatus.rerequested,
-            Ticket.helper_id == None,
+            Ticket.helper_id.is_(None),
             Ticket.course == get_course(),
         ).order_by(Ticket.sort_key)
         ticket = ticket.first()
@@ -1005,7 +1007,7 @@ def juggle(data):
     location = None
     for ticket in tickets:
         ticket.status = TicketStatus.juggled
-        ticket.hold_time = datetime.datetime.utcnow()
+        ticket.hold_time = utcnow()
         ticket.rerequest_threshold = ticket.hold_time + datetime.timedelta(
             minutes=int(
                 ConfigEntry.query.filter_by(course=get_course(), key="juggling_delay")
@@ -1027,7 +1029,14 @@ def assign(ticket_ids):
     for ticket in tickets:
 
         if ticket.status == TicketStatus.assigned and ticket.helper_id != current_user.id:
-            return {"messages": [{"category": "warning", "text": "This ticket has already been assigned to another staff member.", "ttl": 3000}], "redirect": "/"}
+            return {
+                "messages": [{
+                    "category": "warning",
+                    "text": "This ticket has already been assigned to another staff member.",
+                    "ttl": 3000,
+                }],
+                "redirect": "/",
+            }
 
         ticket.status = TicketStatus.assigned
         ticket.helper_id = current_user.id
@@ -1057,11 +1066,12 @@ def rerequest(data):
         if not ticket.user.id == current_user.id:
             return socket_unauthorized()
 
-        if ticket.rerequest_threshold > datetime.datetime.utcnow():
+        # Only juggled tickets have a threshold, and only after it passes.
+        if ticket.rerequest_threshold is None or ticket.rerequest_threshold > utcnow():
             return socket_unauthorized()
 
         ticket.status = TicketStatus.rerequested
-        ticket.rerequest_time = datetime.datetime.utcnow()
+        ticket.rerequest_time = utcnow()
 
         emit_event(ticket, TicketEventType.rerequest)
 
