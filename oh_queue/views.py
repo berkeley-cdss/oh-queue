@@ -44,6 +44,16 @@ def user_json(user):
     }
 
 
+def public_user_json(user):
+    """Who someone is, for people who can't see their details."""
+    return {
+        "id": user.id,
+        "name": user.name,
+        "shortName": user.short_name,
+        "isStaff": user.is_staff,
+    }
+
+
 def student_json(user):
     """Only send student information to staff."""
     can_see_details = current_user.is_authenticated and (
@@ -63,6 +73,8 @@ def message_json(message: ChatMessage):
 
 
 def ticket_json(ticket):
+    if not has_ticket_access(ticket):
+        return public_ticket_json(ticket)
     group = ticket.group
     return {
         "id": ticket.id,
@@ -91,6 +103,27 @@ def ticket_json(ticket):
         "staff_help_type": ticket.staff_help_type,
         "staff_help_other": ticket.staff_help_other,
         "llm_tips_influence": ticket.llm_tips_influence,
+    }
+
+
+def public_ticket_json(ticket):
+    """Someone else's ticket, as the queue lists it: no student, description,
+    chat, links or LLM tips."""
+    return {
+        "id": ticket.id,
+        "status": ticket.status.name,
+        "user": None,
+        "created": ticket.created.isoformat(),
+        "sort_key": ticket.sort_key.isoformat(),
+        "hold_time": ticket.hold_time and ticket.hold_time.isoformat(),
+        "rerequest_time": ticket.rerequest_time and ticket.rerequest_time.isoformat(),
+        "updated": ticket.updated and ticket.updated.isoformat(),
+        "location_id": ticket.location_id,
+        "assignment_id": ticket.assignment_id,
+        "question": ticket.question,
+        "helper": ticket.helper and public_user_json(ticket.helper),
+        "group_id": ticket.group.id if ticket.group else None,
+        "messages": [],
     }
 
 
@@ -262,6 +295,8 @@ def config_json():
 
 
 def group_json(group: Group):
+    if not has_group_access(group):
+        return public_group_json(group)
     return {
         "id": group.id,
         "created": group.created.isoformat(),
@@ -279,6 +314,32 @@ def group_json(group: Group):
         "call_url": group.call_url,
         "doc_url": group.doc_url,
         "messages": [message_json(message) for message in group.messages],
+    }
+
+
+def public_group_json(group: Group):
+    """A group other students can join, as its card shows it: no members'
+    details, links or chat."""
+    return {
+        "id": group.id,
+        "created": group.created.isoformat(),
+        "attendees": [
+            {
+                "id": attendance.id,
+                "group_id": attendance.group_id,
+                "group_attendance_status": attendance.group_attendance_status.name,
+                "user": {"id": attendance.user.id, "shortName": attendance.user.short_name},
+            }
+            for attendance in group.attendees
+            if attendance.group_attendance_status == GroupAttendanceStatus.present
+        ],
+        "location_id": group.location_id,
+        "ticket_id": group.ticket_id,
+        "assignment_id": group.assignment_id,
+        "question": group.question,
+        "description": group.description,
+        "group_status": group.group_status.name,
+        "messages": [],
     }
 
 
@@ -374,7 +435,9 @@ def emit_state(attrs, entity=None):
             ).all()
         }
         out["staff"] = len(active_staff)
-        out["staff_list"] = list(active_staff)
+        # Only staff see who's online.
+        if current_user.is_authenticated and current_user.is_staff:
+            out["staff_list"] = list(active_staff)
         state["presence"] = out
 
     add_response("state", state)
@@ -598,7 +661,7 @@ def requires_ticket_access(f):
 
 def has_group_access(group: Group):
     if not current_user.is_authenticated:
-        return socket_unauthorized()
+        return False
     if not group:
         return False
     if not (current_user.is_staff or is_member_of(group)):
@@ -765,7 +828,7 @@ def create(form):
         return socket_error(
             "You are already on the queue",
             category="warning",
-            ticket_id=my_ticket.ticket_id,
+            ticket_id=my_ticket.id,
         )
     assignment_id = form.get("assignment_id")
     location_id = form.get("location_id")

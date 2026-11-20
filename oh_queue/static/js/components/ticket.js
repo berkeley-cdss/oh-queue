@@ -12,13 +12,15 @@ let Ticket = ({ state, ticket, independent }) => {
       ? "you"
       : ticket.helper.name
     : "someone";
+  // Only staff, and the ticket's own student or group, get the student's
+  // details; everyone else sees "a student".
   const studentName = ticket.user
     ? ticketIsMine(state, ticket)
       ? "you"
       : staff
       ? ticket.user.name
       : "a student"
-    : "someone";
+    : "a student";
 
   const capitalize = (x) => x[0].toUpperCase() + x.slice(1);
   const possessive = (x) => (x === "you" ? "your" : x + "'s");

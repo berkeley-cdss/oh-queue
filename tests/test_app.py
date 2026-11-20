@@ -108,10 +108,10 @@ def test_clear_inactive_groups_job_runs(client):
     assert client.post("/jobs/clear_inactive_groups").status_code == 200
 
 
-def test_course_comes_from_config(app, monkeypatch):
+def test_course_comes_from_config(app_context, monkeypatch):
     assert (get_course(), get_canvas_course_id()) == ("cs61a", 101)
-    monkeypatch.setitem(app.config, "COURSE_KEY", "data8")
-    monkeypatch.setitem(app.config, "CANVAS_COURSE_ID", 5)
+    monkeypatch.setitem(app_context.config, "COURSE_KEY", "data8")
+    monkeypatch.setitem(app_context.config, "CANVAS_COURSE_ID", 5)
     assert (get_course(), get_canvas_course_id()) == ("data8", 5)
 
 
@@ -190,3 +190,14 @@ def test_only_juggled_tickets_can_be_rerequested(client):
     assert "permission" in response.get_json()["action"]["messages"][0]["text"]
     with client.application.app_context():
         assert Ticket.query.one().status.name == "pending"
+
+
+def test_asking_twice_points_to_the_ticket_already_on_the_queue(client):
+    client.get("/")
+    log_in(client, "student@example.edu", is_staff=False)
+    assignment_id, location_id = make_ticket(client)
+    form = {"assignment_id": assignment_id, "location_id": location_id, "question": "1", "description": ""}
+    first = client.post("/api/create", json=form).get_json()["action"]["redirect"]
+    second = client.post("/api/create", json=form).get_json()["action"]
+    assert second["messages"][0]["text"] == "You are already on the queue"
+    assert second["redirect"] == first
