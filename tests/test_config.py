@@ -12,8 +12,6 @@ PRODUCTION = {
     "ENV": "prod",
     "SECRET_KEY": "secret",
     "DATABASE_URL": "postgresql://db.example.edu/oh",
-    "COURSE_KEY": "data8",
-    "CANVAS_COURSE_ID": "5",
 }
 
 
@@ -45,18 +43,23 @@ def test_env_is_case_insensitive():
 
 
 def test_development_defaults():
-    code, values = load_config({"ENV": "dev"}, "COURSE_KEY", "CANVAS_COURSE_ID", "DEBUG", "SECRET_KEY")
+    code, values = load_config({"ENV": "dev"}, "DEBUG", "SECRET_KEY")
     assert code == 0
-    assert values == "['cs61a', 157, True, 'DEV']"
+    assert values == "[True, 'DEV']"
 
 
 def test_production_starts_with_everything_set():
-    code, values = load_config(PRODUCTION, "COURSE_KEY", "CANVAS_COURSE_ID", "DEBUG", "SESSION_COOKIE_SECURE")
+    code, values = load_config(PRODUCTION, "DEBUG", "SESSION_COOKIE_SECURE")
     assert code == 0
-    assert values == "['data8', 5, False, True]"
+    assert values == "[False, True]"
 
 
-@pytest.mark.parametrize("missing", ["SECRET_KEY", "DATABASE_URL", "COURSE_KEY", "CANVAS_COURSE_ID"])
+def test_courses_come_from_offerings_not_settings():
+    code, values = load_config(PRODUCTION, "COURSE_KEY")
+    assert code != 0 and "has no attribute 'COURSE_KEY'" in values
+
+
+@pytest.mark.parametrize("missing", ["SECRET_KEY", "DATABASE_URL"])
 def test_production_requires(missing):
     env = {k: v for k, v in PRODUCTION.items() if k != missing}
     code, error = load_config(env)

@@ -79,7 +79,7 @@ class Socket {
       callback = params;
       params = {};
     }
-    return post(`/api/${event}`, params)
+    return post(`${window.basePath}/api/${event}`, params)
       .then(({ action, updates }) => {
         this.trigger("connect");
         for (const [event, payload] of updates) {

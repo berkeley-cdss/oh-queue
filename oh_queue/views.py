@@ -5,7 +5,7 @@ import time
 from operator import or_
 from urllib.parse import urljoin, urlparse
 
-from flask import g, jsonify, render_template, request, url_for
+from flask import Blueprint, g, jsonify, render_template, request
 from flask_login import current_user
 from oh_queue import app, db
 from oh_queue.models import (
@@ -29,7 +29,21 @@ from sqlalchemy import desc
 from sqlalchemy.orm import joinedload, selectinload
 import requests
 
-from oh_queue.course import format_coursecode, get_course
+from oh_queue.offering import OFFERING_URL_PREFIX, get_canvas_course_id, get_course, get_course_name, load_offering
+
+# Each course's queue page and API live under /offerings/<canvas course id>/.
+bp = Blueprint("offering", __name__, url_prefix=OFFERING_URL_PREFIX)
+
+
+@bp.url_value_preprocessor
+def pull_offering(endpoint, values):
+    load_offering(values.pop("canvas_course_id"))
+
+
+@bp.url_defaults
+def add_offering(endpoint, values):
+    if "offering" in g:
+        values.setdefault("canvas_course_id", g.offering.canvas_id)
 
 
 def public_user_json(user):
@@ -531,12 +545,9 @@ def init_config():
     db.session.commit()
 
 
-# We run a React app, so serve index.html on all routes.
-@app.route("/")
-@app.route("/<path:path>")
-@app.route("/tickets/<int:ticket_id>/")
-@app.route("/groups/<int:group_id>/")
-@app.route("/error", endpoint="error")
+# We run a React app, so serve index.html on all of a course's pages.
+@bp.route("/")
+@bp.route("/<path:path>")
 def index(*args, **kwargs):
     check = db.session.query(ConfigEntry).filter_by(course=get_course()).first()
     if not check:
@@ -544,7 +555,12 @@ def index(*args, **kwargs):
     ensure_config_entry("enable_llm_features", "false", True)
     db.session.commit()
 
-    return render_template("index.html", course_name=format_coursecode(get_course()))
+    return render_template(
+        "index.html",
+        course_name=get_course_name(),
+        # Where the course's pages and API are, for the React app.
+        base_path=f"/offerings/{get_canvas_course_id()}",
+    )
 
 
 @app.before_request
@@ -560,7 +576,7 @@ def api(endpoint):
             resp = f() if args == {} else f(args)
             return jsonify({"action": resp, "updates": g.response_buffer})
 
-        app.add_url_rule(
+        bp.add_url_rule(
             "/api/{}".format(endpoint), f.__name__, handler, methods=["POST"]
         )
 
@@ -569,16 +585,25 @@ def api(endpoint):
     return decorator
 
 
-def socket_error(message, category="danger", ticket_id=None):
-    redirect = url_for("index")
+def page_path(ticket_id=None, group_id=None):
+    """A page of the course, as the React app's router names it: relative to
+    the course's /offerings/<canvas course id>."""
     if ticket_id is not None:
-        redirect = url_for("index", ticket_id=ticket_id)
-    return {"messages": [{"category": category, "text": message}], "redirect": redirect}
+        return f"/tickets/{ticket_id}/"
+    if group_id is not None:
+        return f"/groups/{group_id}/"
+    return "/"
+
+
+def socket_error(message, category="danger", ticket_id=None):
+    return {
+        "messages": [{"category": category, "text": message}],
+        "redirect": page_path(ticket_id=ticket_id),
+    }
 
 
 def socket_redirect(**kwargs):
-    redirect = url_for("index", **kwargs)
-    return {"redirect": redirect}
+    return {"redirect": page_path(**kwargs)}
 
 
 def socket_unauthorized():
@@ -681,14 +706,14 @@ def connect(data=None):
     entity_type = None
 
     if data:
+        # The page's URL, such as /offerings/<canvas course id>/tickets/<id>/.
         url = data["url"]
         path = urlparse(url).path
         path = path.strip("/")
         parts = path.split("/")
-        if len(parts) == 2:
-            if parts[1].isdigit():
-                entity_type = parts[0]
-                entity_id = int(parts[1])
+        if len(parts) >= 2 and parts[-1].isdigit():
+            entity_type = parts[-2]
+            entity_id = int(parts[-1])
 
     if entity_type == "tickets":
         entity = Ticket.query.filter_by(course=get_course(), id=entity_id).one_or_none()
@@ -1666,19 +1691,5 @@ def delete_group_worker(group, *, emit):
             emit_event(group.ticket, TicketEventType.delete)
 
 
-@app.route("/debug")
-def debug():
-    try:
-        emit_state(
-            [
-                "tickets",
-                "assignments",
-                "groups",
-                "locations",
-                "current_user",
-                "config",
-            ]
-        )
-    except AttributeError:
-        pass
-    return "<body></body>"
+# After every route above is added to it.
+app.register_blueprint(bp)

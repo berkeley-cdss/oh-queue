@@ -38,7 +38,98 @@ class EnumType(db.TypeDecorator):
         return self.enum_class
 
 
+# offerings.canvas_id is a 32-bit integer. Canvas gives a course on another
+# shard a global ID (shard * 10**13 + local ID), which doesn't fit, so those
+# courses are skipped, as in sections. Postgres refuses a query comparing the
+# column with a bigger number.
+MAX_OFFERING_CANVAS_ID = 2**31 - 1
+
+
+def can_be_offering(canvas_id) -> bool:
+    """Whether a Canvas course ID fits in offerings.canvas_id."""
+    return int(canvas_id) <= MAX_OFFERING_CANVAS_ID
+
+
+class Offering(db.Model):
+    """One semester's bCourses course that has been set up in this app, as in
+    seating and sections."""
+
+    __tablename__ = "offerings"
+    id = db.Column(db.Integer, primary_key=True)
+    canvas_id = db.Column(db.Integer, unique=True, index=True, nullable=False)
+    # The value of the `course` column on every other table. Offerings set up in
+    # this app use str(canvas_id); offerings moved from the old per-course sites
+    # keep their old key (e.g. "cs61a") so their existing rows don't need rewriting.
+    key = db.Column(db.String(255), unique=True, nullable=False)
+    # Canvas course name (e.g. "COMPSCI 61A - LEC 001") and code (e.g. "COMPSCI 61A").
+    name = db.Column(db.String(255), nullable=False)
+    code = db.Column(db.String(255), nullable=True)
+    # ISO 8601 start of the course's term, as in seating.
+    start_at = db.Column(db.String(255), nullable=True)
+
+    @property
+    def display_name(self) -> str:
+        return self.code or self.name
+
+    @property
+    def start_month(self) -> str:
+        return (self.start_at or "")[:7]
+
+    def __repr__(self):
+        return f"<Offering {self.name}>"
+
+
+class Account(db.Model, UserMixin):
+    """Someone signed in with Canvas, across all of their courses, as in sections.
+
+    Flask-Login keeps the account's id in the session. Inside an offering, the
+    login manager resolves it to that course's User row (see login.py), which
+    holds what is per course: staff status, call and doc links, tickets.
+    """
+
+    __tablename__ = "account"
+    id = db.Column(db.Integer, primary_key=True)
+    canvas_id = db.Column(db.String(255), unique=True, index=True, nullable=False)
+    email = db.Column(db.String(255), index=True, nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    # Staff in every course (member of ADMIN_OVERRIDE_CANVAS_COURSE_ID).
+    is_global_admin = db.Column(db.Boolean, nullable=False, default=False)
+    # Active Canvas courses at last sign-in, keyed by str(canvas course id):
+    # {"name", "code", "start_at", "is_staff", "is_admin", "is_student"}.
+    canvas_courses = db.Column(db.JSON, nullable=False, default=dict)
+
+    # Session ids are prefixed so cookies from the per-course sites, which hold
+    # a User id, can't be mistaken for an account id.
+    SESSION_ID_PREFIX = "account-"
+
+    def get_id(self):
+        return f"{self.SESSION_ID_PREFIX}{self.id}"
+
+    @classmethod
+    def parse_session_id(cls, session_id: str):
+        prefix, _, account_id = session_id.partition(cls.SESSION_ID_PREFIX)
+        return int(account_id) if not prefix and account_id.isdigit() else None
+
+    def course_info(self, canvas_course_id: int):
+        """The account's Canvas role details in a course, or None if not enrolled."""
+        info = self.canvas_courses.get(str(canvas_course_id))
+        if info is None or not (info["is_staff"] or info["is_student"]):
+            return None
+        return info
+
+    def is_staff_in(self, canvas_course_id: int) -> bool:
+        info = self.course_info(canvas_course_id)
+        return self.is_global_admin or bool(info and info["is_staff"])
+
+    def is_admin_in(self, canvas_course_id: int) -> bool:
+        """Teachers and Lead TAs, who can take an offering off the site."""
+        info = self.course_info(canvas_course_id)
+        return self.is_global_admin or bool(info and info["is_admin"])
+
+
 class User(db.Model, UserMixin):
+    """Someone in one course: each course has its own row for a person."""
+
     __tablename__ = "user"
     id = db.Column(db.Integer, primary_key=True)
     created = db.Column(db.DateTime, default=db.func.now())
@@ -164,7 +255,7 @@ class Ticket(db.Model):
     @classmethod
     def for_user(cls, user):
         if user and user.is_authenticated:
-            from oh_queue.course import get_course
+            from oh_queue.offering import get_course
 
             return cls.query.filter(
                 cls.user_id == user.id,

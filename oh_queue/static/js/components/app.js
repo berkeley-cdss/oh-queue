@@ -193,7 +193,10 @@ class App extends React.Component {
     const Root = isPartyRoot(state) ? Party : Home;
 
     return (
-      <BrowserRouter ref={(router) => (this.router = router)}>
+      <BrowserRouter
+        basename={window.basePath}
+        ref={(router) => (this.router = router)}
+      >
         <div>
           <Switch>
             <Route

@@ -6,9 +6,9 @@ Provides a web-based interface for requesting help during office hours.
 
 Students request help on an assignment and question number from a location.
 
-Students and staff sign in with bCourses, and a person's staff role comes from their bCourses enrollment.
+Students and staff sign in with bCourses, and a person's staff role in each course comes from their bCourses enrollment.
 
-For now each deployment serves one course, set by `COURSE_KEY` and `CANVAS_COURSE_ID` (see `.env.example`).
+One site serves every course, with seating's and sections' routes: after signing in, `/offerings` lists your courses, and each course's queue is at `/offerings/<bCourses course id>/`. Course staff set up a queue for one of their bCourses courses with **Import courses from Canvas**. A course moved from one of the old per-course sites keeps its data under its old key (such as `cs61a`): a maintainer links it to its bCourses course with `flask link-offering <bCourses course id> <key> "<name>"`.
 
 ## Installation
 
@@ -25,7 +25,7 @@ python manage.py seed_data
 python manage.py run_server
 ```
 
-Then open http://localhost:3000 and sign in at `/testing-login/`. The database is SQLite (`app.db`) unless `.env` sets `DATABASE_URL`. To sign in with bCourses instead, set `CANVAS_CLIENT_ID` and `CANVAS_CLIENT_SECRET` in `.env` to the UC Berkeley sandbox's developer key.
+Then open http://localhost:3000/offerings/157/ (the course `seed_data` sets up) and sign in. Without `CANVAS_CLIENT_ID`, signing in goes to a development login, where you can be anyone, as a TA or a student in every course. The database is SQLite (`app.db`) unless `.env` sets `DATABASE_URL`. To sign in with bCourses instead, set `CANVAS_CLIENT_ID` and `CANVAS_CLIENT_SECRET` in `.env` to the UC Berkeley sandbox's developer key.
 
 `seed_data` adds sample assignments, locations, students and tickets. `python manage.py resetdb` starts the database over.
 

@@ -36,7 +36,9 @@
     <title>{{ course_name }} Queue</title>
 
     <script>
-      window.courseName = "{{ course_name }}";
+      window.courseName = {{ course_name|tojson }};
+      // The course's pages and API are under this path: /offerings/<canvas course id>.
+      window.basePath = {{ base_path|tojson }};
     </script>
   </head>
   <body>

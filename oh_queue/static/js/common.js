@@ -43,6 +43,12 @@ function initializeTooltip(elem, options) {
   $(elem).tooltip(options);
 }
 
+// Signs in, then comes back to this page.
+function loginPath() {
+  const here = window.location.pathname + window.location.search;
+  return "/login/?next=" + encodeURIComponent(here);
+}
+
 function isPartyRoot(state) {
   return (
     state.config.party_enabled &&

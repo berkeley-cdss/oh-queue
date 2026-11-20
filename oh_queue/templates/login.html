@@ -1,23 +1,23 @@
-{% extends "default.html" %} {% block header %}{% endblock %} {% block body %}
-<h1>Log In</h1>
-<form class="form-inline" action="{{ callback }}" method="POST">
-  <div class="form-group">
-    <input class="form-control" type="text" name="name" value="Student McGee" />
-  </div>
-  <div class="form-group">
-    <input
-      class="form-control"
-      type="email"
-      name="email"
-      value="student@cs61a.org"
-    />
-  </div>
-  <div class="checkbox">
-    <label>
-      <input type="checkbox" name="is_staff" label="Staff" />
-      Staff Member
-    </label>
-  </div>
-  <button class="btn btn-primary" type="submit" value="Submit">Submit</button>
-</form>
+{% extends "pages/base.html" %}
+
+{% block body %}
+<div class="landing">
+  <h2 class="my-4">Development login</h2>
+  <p>Sign in as anyone. Staff are TAs, and students are students, in every offering.</p>
+  <form action="{{ callback }}" method="POST">
+    <div class="mb-3">
+      <label class="form-label" for="name">Name</label>
+      <input class="form-control" id="name" type="text" name="name" value="Student McGee" />
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="email">Email</label>
+      <input class="form-control" id="email" type="email" name="email" value="student@cs61a.org" />
+    </div>
+    <div class="form-check mb-3">
+      <input class="form-check-input" id="is_staff" type="checkbox" name="is_staff" />
+      <label class="form-check-label" for="is_staff">Staff member</label>
+    </div>
+    <button class="btn btn-primary" type="submit">Sign in</button>
+  </form>
+</div>
 {% endblock %}

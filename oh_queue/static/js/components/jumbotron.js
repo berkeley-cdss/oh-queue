@@ -5,7 +5,7 @@ let Jumbotron = ({ state }) => {
     var titleText = "Hi! Please sign in";
     var subtitleText = "Sign in with your bCourse account to request help";
     var contents = (
-      <a className="btn btn-block btn-jumbo btn-outline" href="/oauth/canvas_login">
+      <a className="btn btn-block btn-jumbo btn-outline" href={loginPath()}>
         Sign in with bCourses
       </a>
     );
