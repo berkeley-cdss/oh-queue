@@ -12,28 +12,28 @@ For now each deployment serves one course, set by `COURSE_KEY` and `CANVAS_COURS
 
 ## Installation
 
-We supply a `Dockerfile.dev` which mimics the production environment.
+Requires Python 3.14 and Node 24 (`mise install` picks both up from `mise.toml`). On Windows, use [WSL](https://learn.microsoft.com/en-us/windows/wsl/install). From the repository root:
 
-1. Copy `.env.example` to `.env`. To sign in with bCourses locally, set `CANVAS_CLIENT_ID` and `CANVAS_CLIENT_SECRET` to the UC Berkeley sandbox's developer key. Otherwise, sign in at `/testing-login/`.
-2. From the repository root, run
-   ```
-   docker build --no-cache -f Dockerfile.dev -t oh:dev .
-   docker run --rm -p 3000:3000 -v "${PWD}:/app" --env-file .env --name oh-dev oh:dev
-   ```
-3. In another terminal, set up the database:
-   ```
-   docker exec -it oh-dev python manage.py initdb
-   docker exec -it oh-dev python manage.py seed_data
-   ```
-4. The server is now running on http://localhost:3000.
+```
+cp .env.example .env
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt -r requirements-dev.txt
+yarn install
+python manage.py initdb
+python manage.py seed_data
+python manage.py run_server
+```
+
+Then open http://localhost:3000 and sign in at `/testing-login/`. The database is SQLite (`app.db`) unless `.env` sets `DATABASE_URL`. To sign in with bCourses instead, set `CANVAS_CLIENT_ID` and `CANVAS_CLIENT_SECRET` in `.env` to the UC Berkeley sandbox's developer key.
+
+`seed_data` adds sample assignments, locations, students and tickets. `python manage.py resetdb` starts the database over.
 
 ## Running tests
 
-On Python 3.14:
+With the packages installed as above:
 
 ```
-pip install -r requirements.txt -r requirements-dev.txt
-yarn install
 pytest
 flake8
 ```
