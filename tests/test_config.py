@@ -64,12 +64,6 @@ def test_production_requires(missing):
     assert f"Set {missing}." in error
 
 
-def test_email_server_needs_a_sender():
-    code, error = load_config({"ENV": "dev", "EMAIL_SERVER": "smtp.example.edu"})
-    assert code != 0
-    assert "Set EMAIL_SENDER" in error
-
-
 def test_admin_override_course_is_optional():
     assert load_config({"ENV": "dev"}, "ADMIN_OVERRIDE_CANVAS_COURSE_ID") == (0, "[None]")
     assert load_config(

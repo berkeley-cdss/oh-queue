@@ -1,9 +1,6 @@
 function RequestForm(props) {
   let state = props.state;
   const forceTicket = props.forceTicket;
-  const appointments =
-    JSON.parse(state.config.appointments_open) &&
-    state.config.recommend_appointments;
   let party_enabled = state.config.party_enabled && !forceTicket;
   const is_queue_open =
     JSON.parse(state.config.is_queue_open) &&
@@ -53,13 +50,7 @@ function RequestForm(props) {
 
   const history = ReactRouterDOM.useHistory();
 
-  const openAlternative = () => {
-    if (is_queue_open && party_enabled) {
-      history.push("/queue");
-    } else {
-      history.push("/appointments");
-    }
-  };
+  const openAlternative = () => history.push("/queue");
 
   let { assignments, locations } = state;
 
@@ -123,108 +114,102 @@ function RequestForm(props) {
     <div>
       <form id="request-form">
         {magicWordInput}
-        {(!disabled || !appointments) && (
+        <div className="form-group form-group-lg">
+          <div className="input-group">
+            <SelectPicker
+              options={filteredAssignments}
+              className="selectpicker form-control form-left"
+              data-live-search="true"
+              data-size="8"
+              data-width="60%"
+              data-style="btn-lg btn-default"
+              id="assignment_id"
+              name="assignment_id"
+              title="Assignment"
+              required
+              disabled={disabled}
+            />
+            <input
+              className="form-control form-right"
+              type="text"
+              id="question"
+              name="question"
+              title="Question"
+              placeholder="Question"
+              required
+              disabled={disabled}
+            />
+          </div>
+        </div>
+        {showOnlineInput && (
           <React.Fragment>
-            <div className="form-group form-group-lg">
-              <div className="input-group">
-                <SelectPicker
-                  options={filteredAssignments}
-                  className="selectpicker form-control form-left"
-                  data-live-search="true"
-                  data-size="8"
-                  data-width="60%"
-                  data-style="btn-lg btn-default"
-                  id="assignment_id"
-                  name="assignment_id"
-                  title="Assignment"
-                  required
-                  disabled={disabled && !appointments}
-                />
+            {(party_enabled ||
+              state.locations[locationID].name !== "Online" ||
+              JSON.parse(state.config.students_set_online_link)) && (
+              <div className="form-group form-group-lg">
+                <label htmlFor="call-link">
+                  {linkKnown ? "Breakout Room (optional)" : "Video Call Link"}
+                </label>
                 <input
-                  className="form-control form-right"
+                  className="form-control"
                   type="text"
-                  id="question"
-                  name="question"
-                  title="Question"
-                  placeholder="Question"
-                  required
-                  disabled={disabled && !appointments}
-                />
-              </div>
-            </div>
-            {showOnlineInput && (
-              <React.Fragment>
-                {(party_enabled ||
-                  state.locations[locationID].name !== "Online" ||
-                  JSON.parse(state.config.students_set_online_link)) && (
-                  <div className="form-group form-group-lg">
-                    <label htmlFor="call-link">
-                      {linkKnown
-                        ? "Breakout Room (optional)"
-                        : "Video Call Link"}
-                    </label>
-                    <input
-                      className="form-control"
-                      type="text"
-                      id="call-link"
-                      name="call-link"
-                      title="Video Call Link"
-                      placeholder={
-                        linkKnown ? "Breakout Room 6" : "meet.google.com/xyz"
-                      }
-                      required={!linkKnown}
-                      disabled={disabled && !appointments}
-                    />
-                  </div>
-                )}
-                {(party_enabled ||
-                  JSON.parse(state.config.students_set_online_doc)) && (
-                  <div className="form-group form-group-lg">
-                    <label htmlFor="doc-link">
-                      Shared Document Link (optional)
-                    </label>
-                    <input
-                      className="form-control"
-                      type="text"
-                      id="doc-link"
-                      name="doc-link"
-                      title="Shared Doc Link"
-                      placeholder="docs.google.com/xyz"
-                      disabled={disabled && !appointments}
-                    />
-                  </div>
-                )}
-              </React.Fragment>
-            )}
-            <div className="form-group form-group-lg">
-              <div className="input-group">
-                <SelectPicker
-                  options={filteredLocations}
-                  className="selectpicker form-control form-left"
-                  data-live-search="true"
-                  data-size="8"
-                  data-width="60%"
-                  data-style="btn-lg btn-default"
-                  id="location_id"
-                  name="location_id"
-                  title="Location"
-                  required
-                  onChange={handleLocationChange}
+                  id="call-link"
+                  name="call-link"
+                  title="Video Call Link"
+                  placeholder={
+                    linkKnown ? "Breakout Room 6" : "meet.google.com/xyz"
+                  }
+                  required={!linkKnown}
                   disabled={disabled}
                 />
-                <div className="input-group-btn form-right pull-left">
-                  <button
-                    className="btn btn-lg btn-default"
-                    onClick={show}
-                    disabled={disabled}
-                  >
-                    {party_enabled ? "Create" : "Request"}
-                  </button>
-                </div>
               </div>
-            </div>
+            )}
+            {(party_enabled ||
+              JSON.parse(state.config.students_set_online_doc)) && (
+              <div className="form-group form-group-lg">
+                <label htmlFor="doc-link">
+                  Shared Document Link (optional)
+                </label>
+                <input
+                  className="form-control"
+                  type="text"
+                  id="doc-link"
+                  name="doc-link"
+                  title="Shared Doc Link"
+                  placeholder="docs.google.com/xyz"
+                  disabled={disabled}
+                />
+              </div>
+            )}
           </React.Fragment>
         )}
+        <div className="form-group form-group-lg">
+          <div className="input-group">
+            <SelectPicker
+              options={filteredLocations}
+              className="selectpicker form-control form-left"
+              data-live-search="true"
+              data-size="8"
+              data-width="60%"
+              data-style="btn-lg btn-default"
+              id="location_id"
+              name="location_id"
+              title="Location"
+              required
+              onChange={handleLocationChange}
+              disabled={disabled}
+            />
+            <div className="input-group-btn form-right pull-left">
+              <button
+                className="btn btn-lg btn-default"
+                onClick={show}
+                disabled={disabled}
+              >
+                {party_enabled ? "Create" : "Request"}
+              </button>
+            </div>
+          </div>
+        </div>
         {llmTipsEnabled && (
           <div className="form-group llm-toggle-group">
             <div className="llm-toggle-title">
@@ -256,18 +241,13 @@ function RequestForm(props) {
             />
           </div>
         )}
-        {((party_enabled && (appointments || is_queue_open)) ||
-          (appointments && (!forceTicket || is_queue_open))) && (
+        {party_enabled && is_queue_open && (
           <div className="form-group form-group-lg">
             <button
               className="btn btn-lg btn-default"
               onClick={openAlternative}
             >
-              {party_enabled && is_queue_open
-                ? "Or ask staff privately"
-                : disabled
-                ? "Schedule Appointment"
-                : "Or make an appointment"}
+              Or ask staff privately
             </button>
           </div>
         )}

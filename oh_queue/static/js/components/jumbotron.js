@@ -1,8 +1,5 @@
 let Jumbotron = ({ state }) => {
   var isQueueOpen = state.config && JSON.parse(state.config.is_queue_open);
-  const appointments =
-    JSON.parse(state.config.appointments_open) &&
-    state.config.recommend_appointments;
   const party_enabled = state.config.party_enabled;
   if (!state.currentUser) {
     var titleText = "Hi! Please sign in";
@@ -24,8 +21,6 @@ let Jumbotron = ({ state }) => {
 
   if (state.currentUser && party_enabled) {
     subtitleText = "Join an existing group, or create a new one!";
-  } else if (state.currentUser && appointments && !isQueueOpen) {
-    subtitleText = " Click the button to make an appointment for a future OH!";
   }
 
   return (

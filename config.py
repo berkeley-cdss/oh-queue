@@ -54,15 +54,6 @@ CANVAS_CLIENT_SECRET = os.getenv("CANVAS_CLIENT_SECRET")
 ADMIN_OVERRIDE_CANVAS_COURSE_ID = os.getenv("ADMIN_OVERRIDE_CANVAS_COURSE_ID")
 ADMIN_OVERRIDE_CANVAS_COURSE_ID = int(ADMIN_OVERRIDE_CANVAS_COURSE_ID) if ADMIN_OVERRIDE_CANVAS_COURSE_ID else None
 
-# Appointment emails. Without EMAIL_SERVER they're logged instead of sent.
-EMAIL_SERVER = os.getenv("EMAIL_SERVER")
-EMAIL_PORT = int(os.getenv("EMAIL_PORT") or 587)
-EMAIL_USERNAME = os.getenv("EMAIL_USERNAME")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
-EMAIL_SENDER = os.getenv("EMAIL_SENDER")
-if EMAIL_SERVER and not EMAIL_SENDER:
-    raise RuntimeError("Set EMAIL_SENDER, the address appointment emails come from.")
-
 HOST = os.getenv("HOST", "127.0.0.1")
 PORT = int(os.getenv("PORT", "3000"))
 

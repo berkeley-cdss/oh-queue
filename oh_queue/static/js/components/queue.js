@@ -57,7 +57,6 @@ let Queue = ({ state }) => {
           state={state}
           hideWaitTime={!state.config.show_presence}
         />
-        <MyAppointments state={state} />
         <MyAssignedTickets state={state} tickets={myAssignedTickets} />
         {!!myAssignedTickets.length && <hr />}
         {staff && <FilterControls state={state} filter={state.filter} />}

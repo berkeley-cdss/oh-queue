@@ -8,17 +8,10 @@ from oh_queue.login import create_login_client
 from datetime import datetime, timedelta
 
 from flask import Flask
-from oh_queue.models import (
-    Appointment,
-    AppointmentStatus,
-    ConfigEntry,
-    get_current_time,
-)
 from flask_compress import Compress
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from oh_queue import assets
-from oh_queue.course import get_course
 from oh_queue.jobs import job
 from oh_queue.models import (
     Group,
@@ -77,58 +70,6 @@ def clear_inactive_groups():
         else:
             oh_queue.views.delete_group_worker(group, emit=False)
     db.session.commit()
-
-
-@job(app, "auto_activate_appointments")
-def auto_activate_appointments():
-    auto_activate = (
-        ConfigEntry.query.filter_by(
-            course=get_course(), key="auto_activate_appointments"
-        )
-        .one()
-        .value
-        == "true"
-    )
-    if not auto_activate:
-        return
-    load_frequency = int(
-        ConfigEntry.query.filter_by(
-            course=get_course(), key="auto_activate_appointments_frequency"
-        )
-        .one()
-        .value
-    )
-    load_range = int(
-        ConfigEntry.query.filter_by(
-            course=get_course(), key="auto_activate_appointments_range"
-        )
-        .one()
-        .value
-    )
-    current_time = round_hour(get_current_time())
-    diff = current_time - datetime(2000, 1, 1)
-    hours = diff.days * 24 + diff.seconds // 3600
-    # check if right hour to activate appointments
-    if hours % load_frequency != 0:
-        return
-    # load in the next set of appointments
-    appointments = Appointment.query.filter(
-        Appointment.course == get_course(),
-        Appointment.helper_id != None,
-        Appointment.status == AppointmentStatus.hidden,
-        Appointment.start_time >= current_time,
-        Appointment.start_time < current_time + timedelta(hours=load_range),
-    )
-    appointments.update(
-        {Appointment.status: AppointmentStatus.pending}, synchronize_session=False
-    )
-    db.session.commit()
-
-
-def round_hour(t):
-    # Rounds to nearest hour by adding a timedelta hour if minute >= 30
-    round_up = timedelta(hours=t.minute // 30)
-    return t.replace(second=0, microsecond=0, minute=0, hour=t.hour) + round_up
 
 
 # Caching

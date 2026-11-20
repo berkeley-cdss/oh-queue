@@ -793,19 +793,6 @@ h6.truncate {
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
 }
 
-.slot-add-button.slot-add-button {
-  color: #337ab7;
-}
-
-.slot-disabled {
-  color: gray;
-}
-
-.slots-form .form-right {
-  width: 40%;
-  border-left: none;
-}
-
 .panel-heading {
   position: relative;
 }
@@ -836,25 +823,6 @@ h6.truncate {
   top: 10px;
 }
 
-.appointment-header {
-  margin-top: 0;
-}
-
-.confirmed-appointment-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  grid-gap: 10px;
-  justify-content: space-between;
-}
-
-.confirmed-appointment-container .panel {
-  height: 100%;
-}
-
-.confirmed-appointment-container .list-group {
-  height: 100%;
-}
-
 .panel {
   display: flex;
   flex-direction: column;
@@ -864,35 +832,12 @@ h6.truncate {
   flex-grow: 1;
 }
 
-.confirmed-appointment-container .list-group a {
-  height: 100%;
-  overflow-y: hidden;
-}
-
-.attendance-buttons .btn {
-  margin-right: 10px;
-}
-
-.badge-danger {
-  color: #fff;
-  background-color: #dc3545;
-}
-
-.badge-primary {
-  color: #fff;
-  background-color: #337ab7;
-}
-
 .panel-heading .badge {
   float: right;
 }
 
 h4.list-group-item-heading.list-group-item-heading {
   color: #337ab7;
-}
-
-h4.appointment-card-heading.appointment-card-heading-success {
-  color: #009688;
 }
 
 h3.panel-title::before {
@@ -919,18 +864,6 @@ h4.list-group-item-heading::before {
 
 .appointment-input {
   display: flex;
-}
-
-#url-selector {
-  flex-basis: 400px;
-  flex-grow: 1;
-  flex-shrink: 1;
-}
-
-#sheet-selector {
-  flex-basis: 100px;
-  flex-grow: 1;
-  flex-shrink: 1;
 }
 
 .appointment-input .input-group-btn {
@@ -985,32 +918,6 @@ h4.list-group-item-heading::before {
   border-radius: 2em;
 }
 
-.appointment-card-heading {
-  margin-bottom: 0;
-}
-
-.appointment-card-subheading {
-  font-weight: bold;
-  margin-bottom: 5px;
-}
-
-.appointment-buttons {
-  margin-bottom: 10px;
-}
-
-.appointment-buttons > .btn {
-  margin-top: 10px;
-  margin-right: 10px;
-}
-
-@media screen and (max-width: 991px) {
-  .appointment-buttons > .btn {
-    width: 100%;
-    display: block;
-    margin: 10px 0;
-  }
-}
-
 .swal2-popup {
   font-size: 16px !important;
 }
@@ -1027,11 +934,6 @@ h4.list-group-item-heading::before {
   margin-right: 10px;
 }
 
-.slot-question-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
 .llm-toggle-group {
   margin-top: 15px;
   border: 1px solid #e1e7ef;

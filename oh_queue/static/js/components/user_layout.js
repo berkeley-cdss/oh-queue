@@ -26,38 +26,7 @@ function UserLayout({ state, match }) {
     />,
   ]);
 
-  const appointmentRows = userData.appointments.map((appointment) => {
-    const { id, location_id, signups, start_time } = appointment;
-
-    const students = signups.map(({ user: { name } }) => name);
-
-    let studentNameList;
-    if (students.length === 0) {
-      studentNameList = "nobody";
-    } else if (students.length === 1) {
-      studentNameList = students[0];
-    } else {
-      studentNameList =
-        students.slice(0, students.length - 1).join(", ") +
-        " and " +
-        students[students.length - 1];
-    }
-
-    const title = "Section with " + studentNameList;
-
-    return [
-      getAppointmentStartTime(appointment),
-      <Row
-        title={title}
-        link={`/appointments/${id}`}
-        prop1={moment().to(getAppointmentStartTime({ start_time }))}
-        prop2={state.locations[location_id].name}
-      />,
-    ];
-  });
-
-  const rows = []
-    .concat(ticketRows, appointmentRows)
+  const rows = ticketRows
     .sort((a, b) => -timeComparator(a[0], b[0]))
     .map((x) => x[1]);
 

@@ -28,7 +28,6 @@ let Party = ({ match, state, children }) => {
         </div>
         <div className="row">
           <div className="col-xs-12">
-            <MyAppointments state={state} />
             <div className="card-holder">
               {state.groups
                 .filter((group: Group) => group.group_status === "active")
