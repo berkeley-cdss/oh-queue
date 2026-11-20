@@ -25,12 +25,12 @@ class EnumType(db.TypeDecorator):
         super(EnumType, self).__init__(self)
         self.enum_class = enum_class
 
-    # None passes through: an outer join with no match (such as a ticket's
-    # group when it has none) gives NULL for every column, even NOT NULL ones.
     def process_bind_param(self, enum_value, dialect):
-        return None if enum_value is None else enum_value.name
+        return enum_value.name
 
     def process_result_value(self, name, dialect):
+        # An outer join with no match (such as a ticket's group when it has
+        # none) gives NULL for every column, even NOT NULL ones.
         return None if name is None else self.enum_class[name]
 
     @property

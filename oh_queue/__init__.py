@@ -40,7 +40,7 @@ db.init_app(app)
 # Initialize Canvas login
 create_login_client(app)
 
-# Configure server-side sessions (matching the sections app)
+# Configure server-side sessions
 app.config['SESSION_TYPE'] = 'sqlalchemy'
 app.config['SESSION_SQLALCHEMY'] = db
 app.config['SESSION_SQLALCHEMY_TABLE'] = 'flask_sessions'

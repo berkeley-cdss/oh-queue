@@ -353,7 +353,7 @@ def emit_state(attrs, entity=None):
                 User.heartbeat_time
                 > utcnow() - datetime.timedelta(seconds=30),
                 User.course == get_course(),
-                User.is_staff.is_(False),
+                User.is_staff == False,  # noqa: E712 (SQL, not Python)
             ).count()
         )
         active_staff = {
@@ -370,7 +370,7 @@ def emit_state(attrs, entity=None):
                 User.heartbeat_time
                 > utcnow() - datetime.timedelta(seconds=30),
                 User.course == get_course(),
-                User.is_staff.is_(True),
+                User.is_staff == True,  # noqa: E712 (SQL, not Python)
             ).all()
         }
         out["staff"] = len(active_staff)
@@ -1066,7 +1066,8 @@ def rerequest(data):
         if not ticket.user.id == current_user.id:
             return socket_unauthorized()
 
-        if ticket.rerequest_threshold > utcnow():
+        # Only juggled tickets have a threshold, and only after it passes.
+        if ticket.rerequest_threshold is None or ticket.rerequest_threshold > utcnow():
             return socket_unauthorized()
 
         ticket.status = TicketStatus.rerequested
