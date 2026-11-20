@@ -71,26 +71,6 @@ type Message = {
   visible: boolean,
 };
 
-type Appointment = {
-  id: number,
-  start_time: string, // datetime string
-  duration: number, // seconds
-  signups: Array<Signup>,
-  capacity: number,
-  location_id: number,
-  helper: ?User,
-  status: "pending" | "active" | "resolved",
-};
-
-type Signup = {
-  id: number,
-  assignment_id: number,
-  user: ?User,
-  question: ?string,
-  description: ?string,
-  attendance_status: "unknown" | "present" | "excused" | "absent",
-};
-
 type Group = {
   id: number,
   attendees: Array<GroupAttendance>,
@@ -120,7 +100,6 @@ type State = {
   offline: boolean,
   /* Ticket assignments */
   assignments: Map<number, TicketAssignment>,
-  appointments: Array<Appointment>,
   groups: Array<Group>,
   /* Ticket locations */
   locations: Map<number, TicketLocation>,
@@ -140,9 +119,6 @@ type State = {
   /* Flashed messages. */
   messages: Array<Message>,
   nextMessageID: number,
-  /* Names of students signed up for appointments with this staff member.
-   * May be null if user is not signed in or is not a staff member. */
-  apptStudents: ?Array<string>,
 };
 
 let initialState: State = {
@@ -152,7 +128,6 @@ let initialState: State = {
   assignments: {},
   locations: {},
   config: {},
-  appointments: [],
   groups: [],
   tickets: new Map(),
   loadingTickets: new Set(),
@@ -165,9 +140,6 @@ let initialState: State = {
   messages: [],
   nextMessageID: 1,
 };
-
-const referenceTimeZone = "America/Los_Angeles";
-const currTimeZone = moment.tz.guess();
 
 function ticketDisplayTime(ticket: Ticket): string {
   return moment.utc(ticket.created).local().format("h:mm A");
@@ -398,193 +370,6 @@ function clearMessage(state: State, id: number): void {
 }
 
 const timeComparator = (a, b) => (a.isAfter(b) ? 1 : -1);
-
-const appointmentTimeComparator = (a, b) =>
-  moment(a.start_time).isSame(moment(b.start_time))
-    ? b.id - a.id
-    : moment(a.start_time).isAfter(moment(b.start_time))
-    ? 1
-    : -1;
-
-function getMySignups(state: State) {
-  if (!state.currentUser) {
-    return [];
-  }
-  const mySignups = [];
-  for (const appointment of state.appointments) {
-    for (const signup of appointment.signups) {
-      if (signup.user && signup.user.id === state.currentUser.id) {
-        mySignups.push({ appointment, signup });
-      }
-    }
-  }
-  return mySignups;
-}
-
-function isSoon(appointment) {
-  return getAppointmentStartTime(appointment).isBefore(
-    moment().add(2, "hours")
-  );
-}
-
-function getMyAppointmentsStaff(state: State) {
-  if (!state.currentUser) {
-    return [];
-  }
-  const myAppointments = [];
-  for (const appointment of state.appointments) {
-    if (
-      (!appointment.helper && appointment.status === "pending") ||
-      (appointment.helper && appointment.helper.id === state.currentUser.id)
-    ) {
-      myAppointments.push(appointment);
-    }
-  }
-
-  /***************Handling notifications***************/
-  if (state.currentUser.isStaff) {
-    if (!state.apptStudents) {
-      state.apptStudents = [];
-    }
-
-    // compare state list to the new student signup
-    const currStudentSignups = state.apptStudents;
-
-    const newStudentSignups = [].concat
-      .apply(
-        [],
-        myAppointments
-          .filter((appointment) => appointment.signups.length > 0)
-          .map((appointment) => appointment.signups)
-      )
-      .map((signups) => signups.user.name);
-
-    // if there are differences, send them as a notification
-    const differences = newStudentSignups.filter(
-      (student) => !currStudentSignups.includes(student)
-    );
-    if (differences.length != 0) {
-      notifyUser(
-        "You have new appointment signups!",
-        differences.join(", "),
-        null
-      );
-    }
-
-    state.apptStudents = newStudentSignups;
-  }
-  return myAppointments;
-}
-
-function getAppointment(state: State, appointment_id: number): Appointment {
-  return state.appointments.find(({ id }) => id === appointment_id);
-}
-
-function setAppointment(
-  state: State,
-  appointment: Appointment,
-  redirect,
-  lookup: ?Array<Appointment>
-): void {
-  if (!appointment.id) {
-    return;
-  }
-  const oldAppointment = lookup
-    ? lookup[appointment.id]
-    : getAppointment(state, appointment.id);
-  if (appointmentIncludesMe(state, appointment)) {
-    if (oldAppointment) {
-      if (
-        oldAppointment.status === "pending" &&
-        appointment.status === "active"
-      ) {
-        notifyUser(
-          "Your appointment has started",
-          appointment.helper.name +
-            " is waiting for you in " +
-            state.locations[appointment.location_id].name,
-          appointment.id + ".appointment.assign"
-        );
-        redirect();
-      } else if (
-        oldAppointment.status === "active" &&
-        appointment.status !== "active"
-      ) {
-        cancelNotification(appointment.id + ".appointment.assign");
-      }
-    }
-  }
-  if (!lookup) {
-    if (oldAppointment) {
-      state.appointments.splice(state.appointments.indexOf(oldAppointment), 1);
-    }
-    state.appointments.push(appointment);
-    state.appointments.sort(appointmentTimeComparator);
-  }
-}
-
-function appointmentIncludesMe(state: State, appointment: Appointment) {
-  if (!appointment.signups) {
-    return false;
-  }
-  for (const signup of appointment.signups) {
-    if (
-      signup.user &&
-      state.currentUser &&
-      signup.user.id === state.currentUser.id
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function getAppointmentStartTime(appointment) {
-  return moment.tz(appointment.start_time, referenceTimeZone).tz(currTimeZone);
-}
-
-function getAppointmentEndTime(appointment) {
-  return getAppointmentStartTime(appointment).add(
-    appointment.duration,
-    "seconds"
-  );
-}
-
-function formatAppointmentDate(appointment) {
-  return getAppointmentStartTime(appointment).format("dddd, MMMM D");
-}
-
-function formatAppointmentDuration(appointment) {
-  if (currTimeZone === referenceTimeZone) {
-    return `${getAppointmentStartTime(appointment).format(
-      "h:mma"
-    )}‐${getAppointmentEndTime(appointment).format("h:mma")}`;
-  } else {
-    return `${getAppointmentStartTime(appointment).format(
-      "h:mma"
-    )}‐${getAppointmentEndTime(appointment).format(
-      "h:mma z"
-    )} (UTC${getAppointmentEndTime(appointment).format("Z")})`;
-  }
-}
-
-function formatAppointmentDurationWithDate(appointment) {
-  if (currTimeZone === referenceTimeZone) {
-    return `${getAppointmentStartTime(appointment).format(
-      "dddd, MMMM D"
-    )} at ${getAppointmentStartTime(appointment).format(
-      "h:mma"
-    )}‐${getAppointmentEndTime(appointment).format("h:mma")}`;
-  } else {
-    return `${getAppointmentStartTime(appointment).format(
-      "dddd, MMMM D"
-    )} at ${getAppointmentStartTime(appointment).format(
-      "h:mma"
-    )}‐${getAppointmentEndTime(appointment).format(
-      "h:mma z"
-    )} (UTC${getAppointmentEndTime(appointment).format("Z")})`;
-  }
-}
 
 function getGroup(state: State, group_id: number): Group {
   return state.groups.find(({ id }) => id === group_id);

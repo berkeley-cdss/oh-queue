@@ -7,7 +7,6 @@ function AdminTabs({ currentTab, partyAlias }) {
     "general",
     "tickets",
     "party",
-    "appointments",
     "assignments",
     "locations",
     "online",

@@ -22,7 +22,7 @@ TEST_ENV = {
 }
 os.environ.update(TEST_ENV)
 # Settings a developer's shell might have that the tests mustn't use.
-for name in ("EMAIL_SERVER", "LLM_TIPS_ENDPOINT", "LLM_TIPS_AUTH_TOKEN"):
+for name in ("LLM_TIPS_ENDPOINT", "LLM_TIPS_AUTH_TOKEN"):
     os.environ.pop(name, None)
 
 import pytest  # noqa: E402

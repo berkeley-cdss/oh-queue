@@ -45,8 +45,6 @@ OBJECTS = [
     models.Location,
     models.Ticket,
     models.TicketEvent,
-    models.Appointment,
-    models.AppointmentSignup,
     models.Group,
     models.GroupAttendance,
     models.ChatMessage,

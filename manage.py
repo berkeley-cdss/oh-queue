@@ -30,9 +30,6 @@ from oh_queue.models import (
     Ticket,
     TicketStatus,
     User,
-    Appointment,
-    AppointmentSignup,
-    AppointmentStatus,
 )
 
 from werkzeug.serving import run_simple
@@ -69,29 +66,12 @@ def seed_data():
     questions = list(range(1, 16)) + ["Other", "EC", "Checkoff"]
     descriptions = ["", "I'm in the hallway", "SyntaxError on Line 5"]
 
-    appointments = [
-        Appointment(
-            start_time=datetime.datetime.now()
-            + datetime.timedelta(hours=random.randrange(-8, 50)),
-            duration=datetime.timedelta(minutes=random.randrange(30, 120, 30)),
-            location=random.choice(locations),
-            capacity=5,
-            status=AppointmentStatus.pending,
-            course=get_course(),
-        )
-        for _ in range(70)
-    ]
-
     for assignment in assignments:
         db.session.add(assignment)
     for location in locations:
         db.session.add(location)
-    for appointment in appointments:
-        db.session.add(appointment)
 
     db.session.commit()
-
-    students = []
 
     for i in range(50):
         real_name = names.get_full_name()
@@ -104,7 +84,6 @@ def seed_data():
         student = User.query.filter_by(email=email).one_or_none()
         if not student:
             student = User(name=real_name, email=email, course=get_course())
-            students.append(student)
             db.session.add(student)
             db.session.commit()
 
@@ -120,21 +99,6 @@ def seed_data():
             course=get_course(),
         )
         db.session.add(ticket)
-
-    signups = [
-        AppointmentSignup(
-            appointment=random.choice(appointments),
-            user=random.choice(students),
-            assignment=random.choice(assignments),
-            question=random.choice(questions),
-            description=random.choice(descriptions),
-            course=get_course(),
-        )
-        for _ in range(120)
-    ]
-
-    for signup in signups:
-        db.session.add(signup)
 
     db.session.commit()
 

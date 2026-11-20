@@ -32,7 +32,7 @@ function ActivityLogLayout({ state }) {
           <p>View the activity of any user of the queue.</p>
           <div className="form-group">
             <form>
-              <div className="input-group appointment-input">
+              <div className="input-group activity-search">
                 <input
                   className="form-control"
                   required="required"

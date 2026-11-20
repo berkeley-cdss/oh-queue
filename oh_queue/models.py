@@ -1,6 +1,4 @@
-import datetime
 import enum
-from zoneinfo import ZoneInfo
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 
@@ -195,64 +193,6 @@ class TicketEvent(db.Model):
     user = db.relationship(User)
 
 
-AppointmentStatus = enum.Enum("AppointmentStatus", "pending active resolved hidden")
-
-
-class Appointment(db.Model):
-    """Represents an appointment block."""
-
-    __tablename__ = "appointment"
-    id = db.Column(db.Integer, primary_key=True)
-    start_time = db.Column(db.DateTime, index=True, nullable=False)
-    duration = db.Column(db.Interval, nullable=False)
-    capacity = db.Column(db.Integer, nullable=False)
-
-    num_reminders_sent = db.Column(db.Integer, nullable=False, default=0)
-    private_pinged = db.Column(db.Boolean, nullable=False, default=False)
-
-    description = db.Column(db.String(255), nullable=False, default="")
-
-    location_id = db.Column(db.ForeignKey("location.id"), nullable=False, index=True)
-    location = db.relationship(Location, foreign_keys=[location_id])
-
-    helper_id = db.Column(db.ForeignKey("user.id"), index=True)
-    helper = db.relationship(User, foreign_keys=[helper_id])
-
-    signups = db.relationship("AppointmentSignup", back_populates="appointment")
-
-    status = db.Column(EnumType(AppointmentStatus), nullable=False, index=True)
-
-    course = db.Column(db.String(255), nullable=False, index=True)
-
-
-AttendanceStatus = enum.Enum("AttendanceStatus", "unknown present excused absent")
-
-
-class AppointmentSignup(db.Model):
-    __tablename__ = "appointment_signup"
-    id = db.Column(db.Integer, primary_key=True)
-
-    appointment_id = db.Column(
-        db.ForeignKey("appointment.id"), nullable=False, index=True
-    )
-    appointment = db.relationship("Appointment", back_populates="signups")
-
-    user_id = db.Column(db.ForeignKey("user.id"), nullable=False, index=True)
-    user = db.relationship(User, foreign_keys=[user_id])
-
-    assignment_id = db.Column(db.ForeignKey("assignment.id"), index=True)
-    assignment = db.relationship(Assignment, foreign_keys=[assignment_id])
-
-    question = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.Text)
-
-    attendance_status = db.Column(
-        EnumType(AttendanceStatus), nullable=False, default=AttendanceStatus.unknown
-    )
-
-    course = db.Column(db.String(255), nullable=False, index=True)
-
-
 GroupStatus = enum.Enum("GroupStatus", "active resolved")
 
 
@@ -323,22 +263,8 @@ class ChatMessage(db.Model):
     ticket_id = db.Column(db.ForeignKey("ticket.id"), nullable=True, index=True)
     ticket = db.relationship("Ticket", backref=db.backref("messages", lazy="joined"))
 
-    appointment_id = db.Column(
-        db.ForeignKey("appointment.id"), nullable=True, index=True
-    )
-    appointment = db.relationship(
-        "Appointment", backref=db.backref("messages", lazy="joined")
-    )
-
     group_id = db.Column(db.ForeignKey("group.id"), nullable=True, index=True)
     group = db.relationship("Group", backref=db.backref("messages", lazy="joined"))
 
     course = db.Column(db.String(255), nullable=False, index=True)
 
-
-def get_current_time():
-    return (
-        datetime.datetime.now(ZoneInfo("UTC"))
-        .astimezone(ZoneInfo("America/Los_Angeles"))
-        .replace(tzinfo=None)
-    )

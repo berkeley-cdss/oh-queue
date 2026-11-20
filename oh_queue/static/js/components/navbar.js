@@ -12,8 +12,6 @@ let Navbar = ({ state, mode }) => {
 
   if (words.length === 1 && words[0] === "party") {
     words[0] = state.config.party_name;
-  } else if (mode === "appointments") {
-    words[0] = state.config.appointment_mode_title;
   }
 
   const title = words
@@ -70,14 +68,6 @@ let Navbar = ({ state, mode }) => {
             {currentUser && (
               <li>
                 <Link to={partyAsRoot ? "/queue" : "/"}>Queue</Link>
-              </li>
-            )}
-
-            {currentUser && JSON.parse(state.config.appointments_open) && (
-              <li>
-                <Link to="/appointments">
-                  {state.config.appointment_mode_title}
-                </Link>
               </li>
             )}
 
