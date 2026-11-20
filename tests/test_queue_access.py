@@ -116,9 +116,8 @@ def test_group_members_see_their_group_in_full(queue):
     assert group["attendees"][0]["user"]["email"] == "bob@example.edu"
 
 
-@pytest.mark.parametrize("viewer", ["alice", "visitor"])
-def test_others_see_only_what_a_group_card_and_page_show(queue, viewer):
-    group = state(queue[viewer])["groups"][0]
+def test_other_students_see_only_what_a_group_card_and_page_show(queue):
+    group = state(queue["alice"])["groups"][0]
     assert (group["description"], group["question"]) == ("study group", "3")
     assert group["messages"] == []
     assert "call_url" not in group and "doc_url" not in group
@@ -127,6 +126,11 @@ def test_others_see_only_what_a_group_card_and_page_show(queue, viewer):
     assert {k: member[k] for k in ("name", "shortName", "isStaff")} == {
         "name": "Bob Student", "shortName": "Bob", "isStaff": False}
     assert set(member) == {"id", "name", "shortName", "isStaff"}
+
+
+def test_signed_out_visitors_see_no_groups(queue):
+    # They can't join one, so they don't see who's in one.
+    assert state(queue["visitor"])["groups"] == []
 
 
 def test_signed_out_visitors_cant_change_a_group(queue, app):
@@ -140,10 +144,26 @@ def test_signed_out_visitors_cant_change_a_group(queue, app):
         assert group.ticket_id is None
 
 
-def test_signed_out_visitors_cant_open_a_group_by_its_address(queue):
-    response = queue["visitor"].post("/api/connect", json={"url": f"http://localhost/groups/{queue['group']}/"})
+@pytest.mark.parametrize("viewer", ["alice", "visitor"])
+def test_others_cant_open_a_closed_group_by_its_address(queue, viewer):
+    # A closed group isn't in the active list, so only its address could add it.
+    api(queue["staff"], "delete_group", queue["group"])
+    response = queue[viewer].post("/api/connect", json={"url": f"http://localhost/groups/{queue['group']}/"})
     groups = [g for _, s in response.get_json()["updates"] for g in s.get("groups", [])]
-    assert all("call_url" not in g for g in groups)
+    assert groups == []
+    staff_view = queue["staff"].post("/api/connect", json={"url": f"http://localhost/groups/{queue['group']}/"})
+    assert [g["id"] for _, s in staff_view.get_json()["updates"] for g in s.get("groups", [])] == [queue["group"]]
+
+
+def test_joining_a_group_sends_its_ticket_in_full(queue):
+    api(queue["bob"], "delete", [queue["bob_ticket"]])
+    api(queue["bob"], "create_group_ticket", {"id": queue["group"]})
+    group_ticket = [t for t in state(queue["alice"])["tickets"] if t["group_id"] == queue["group"]][0]
+    assert group_ticket["user"] is None
+    api(queue["alice"], "delete", [queue["alice_ticket"]])
+    response = queue["alice"].post("/api/join_group", json=queue["group"]).get_json()
+    sent = [t for _, s in response["updates"] for t in s.get("tickets", []) if t["id"] == group_ticket["id"]]
+    assert sent and sent[-1]["user"]["shortName"] == "Bob"
 
 
 def test_students_keep_seeing_their_group_ticket_after_leaving(queue):
@@ -154,7 +174,10 @@ def test_students_keep_seeing_their_group_ticket_after_leaving(queue):
     bob_id = state(queue["bob"])["current_user"]["id"]
     history = {t["id"]: t for t in api(queue["bob"], "get_user", bob_id)["tickets"]}
     assert history[group_ticket]["user"]["email"] == "bob@example.edu"
-    assert history[group_ticket]["description"] == "This ticket is associated with a group."
+    # Its page, too: the ticket's address adds it, in full.
+    response = queue["bob"].post("/api/connect", json={"url": f"http://localhost/tickets/{group_ticket}/"})
+    page = [t for _, s in response.get_json()["updates"] for t in s.get("tickets", []) if t["id"] == group_ticket]
+    assert page and page[0]["description"] == "This ticket is associated with a group."
 
 
 def test_a_missing_ticket_is_refused_not_an_error(queue):

@@ -22,7 +22,11 @@ function PartyGroupLayout({ state, match, loadGroup, socket }) {
   const handleLeaveGroup = () => {
     const leave = () => app.makeRequest("leave_group", group.id, true);
 
-    if (ticketActive && ticket.user.id === state.currentUser.id) {
+    if (
+      ticketActive &&
+      ticket.user &&
+      ticket.user.id === state.currentUser.id
+    ) {
       Swal.fire({
         title: "Are you sure?",
         text:
@@ -51,7 +55,9 @@ function PartyGroupLayout({ state, match, loadGroup, socket }) {
         onClick={() => app.makeRequest("create_group_ticket", { id: group.id })}
       >
         {ticketActive
-          ? `${ticket.user.shortName} has asked for help`
+          ? `${
+              ticket.user ? ticket.user.shortName : "Someone"
+            } has asked for help`
           : JSON.parse(state.config.is_queue_open)
           ? "Ask for Help (as a group)"
           : "Queue is currently closed"}

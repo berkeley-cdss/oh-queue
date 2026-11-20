@@ -26,7 +26,7 @@ from oh_queue.models import (
     utcnow,
 )
 from sqlalchemy import desc
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 import requests
 
 from oh_queue.course import format_coursecode, get_course
@@ -54,16 +54,6 @@ def public_user_json(user):
     }
 
 
-def student_json(user):
-    """Only send student information to staff."""
-    can_see_details = current_user.is_authenticated and (
-        current_user.is_staff or user.id == current_user.id
-    )
-    if not can_see_details:
-        return None
-    return user_json(user)
-
-
 def message_json(message: ChatMessage):
     return {
         "user": user_json(message.user),
@@ -73,9 +63,7 @@ def message_json(message: ChatMessage):
 
 
 def ticket_json(ticket):
-    # Its student keeps seeing a group ticket after leaving the group.
-    is_own = current_user.is_authenticated and ticket.user_id == current_user.id
-    if not (is_own or has_ticket_access(ticket)):
+    if not has_ticket_access(ticket):
         return public_ticket_json(ticket)
     group = ticket.group
     return {
@@ -403,15 +391,25 @@ def emit_state(attrs, entity=None):
     if "config" in attrs:
         state["config"] = config_json()
     if "groups" in attrs:
-        groups = Group.query.filter(
-            Group.group_status == GroupStatus.active, Group.course == get_course()
-        ).all()
+        # Signed-out visitors can't join a group, so they don't see who's in one.
+        groups = []
+        if current_user.is_authenticated:
+            groups = (
+                Group.query.filter(
+                    Group.group_status == GroupStatus.active,
+                    Group.course == get_course(),
+                )
+                .options(selectinload(Group.attendees))
+                .all()
+            )
         if entity not in groups and isinstance(entity, Group):
             if has_group_access(entity):
                 groups.append(entity)
         state["groups"] = [group_json(group) for group in groups]
     if "current_user" in attrs:
-        state["current_user"] = student_json(current_user)
+        state["current_user"] = (
+            user_json(current_user) if current_user.is_authenticated else None
+        )
     if "presence" in attrs:
         out = dict(
             students=User.query.filter(
@@ -638,6 +636,9 @@ def is_staff(f):
 def has_ticket_access(ticket: Ticket):
     if not current_user.is_authenticated or not ticket:
         return False
+    # Including a group ticket after its student leaves the group.
+    if ticket.user_id == current_user.id:
+        return True
     group = ticket.group
     if group:
         if not (current_user.is_staff or is_member_of(group)):
@@ -952,7 +953,7 @@ def next_ticket(ticket_ids):
 
 def is_member_of(group):
     return any(
-        attendance.user.id == current_user.id
+        attendance.user_id == current_user.id
         for attendance in group.attendees
         if attendance.group_attendance_status == GroupAttendanceStatus.present
     )
@@ -1570,6 +1571,8 @@ def join_group(group_id):
     db.session.commit()
 
     emit_group_event(group, "group_joined")
+    # The group's ticket, which the new member can now see in full.
+    emit_state(["tickets"])
 
     return socket_redirect(group_id=group_id)
 
