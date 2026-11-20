@@ -61,6 +61,7 @@ class App extends React.Component {
       }
     }
     if (Array.isArray(data.tickets)) {
+      this.state.ticketCounts = data.ticket_counts || null;
       const ticketIDs = new Set();
       for (var ticket of data.tickets) {
         setTicket(this.state, ticket);

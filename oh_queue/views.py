@@ -352,7 +352,17 @@ def emit_group_event(group, event_type):
 
 def emit_state(attrs, entity=None):
     state = {}
-    if "tickets" in attrs:
+    if "tickets" in attrs and not current_user.is_authenticated:
+        # Signed-out visitors see how long the queue is, not what's on it.
+        counts = dict(
+            db.session.query(Ticket.status, db.func.count(Ticket.id))
+            .filter(Ticket.status.in_(active_statuses), Ticket.course == get_course())
+            .group_by(Ticket.status)
+            .all()
+        )
+        state["tickets"] = []
+        state["ticket_counts"] = {status.name: counts.get(status, 0) for status in active_statuses}
+    elif "tickets" in attrs:
         tickets = (
             Ticket.query.filter(
                 Ticket.status.in_(active_statuses), Ticket.course == get_course()

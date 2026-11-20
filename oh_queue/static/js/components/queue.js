@@ -33,6 +33,23 @@ let Queue = ({ state }) => {
     assignedTickets.push(...heldTickets);
   }
   let shouldHighlightAssigned = staff && getHelpingTicket(state);
+  // Signed-out visitors get counts, not tickets: they see how long the queue is.
+  let signedOut = !state.currentUser;
+  let pendingCount = signedOut
+    ? ticketCount(state, "pending")
+    : pendingTickets.length;
+  let assignedCount = signedOut
+    ? ticketCount(state, "assigned")
+    : assignedTickets.length;
+  let signInToSee = (
+    <div className="queue">
+      <div className="no-results">
+        <h4>
+          <a href={loginPath()}>Sign in</a> to see the queue
+        </h4>
+      </div>
+    </div>
+  );
   let selectTab = (index) => {
     state.queueTabIndex = index;
     app.refresh();
@@ -62,12 +79,16 @@ let Queue = ({ state }) => {
         {staff && <FilterControls state={state} filter={state.filter} />}
         {staff && <hr />}
         <Tabs selectedIndex={state.queueTabIndex} onSelect={selectTab}>
-          <Tab label={`Waiting (${pendingTickets.length})`}>
-            <TicketList
-              tickets={pendingTickets}
-              status="pending"
-              state={state}
-            />
+          <Tab label={`Waiting (${pendingCount})`}>
+            {signedOut ? (
+              signInToSee
+            ) : (
+              <TicketList
+                tickets={pendingTickets}
+                status="pending"
+                state={state}
+              />
+            )}
           </Tab>
           {staff && (
             <Tab label={`On Hold (${heldTickets.length})`}>
@@ -75,14 +96,18 @@ let Queue = ({ state }) => {
             </Tab>
           )}
           <Tab
-            label={`Assigned (${assignedTickets.length})`}
+            label={`Assigned (${assignedCount})`}
             shouldHighlight={shouldHighlightAssigned}
           >
-            <TicketList
-              tickets={assignedTickets}
-              status="assigned"
-              state={state}
-            />
+            {signedOut ? (
+              signInToSee
+            ) : (
+              <TicketList
+                tickets={assignedTickets}
+                status="assigned"
+                state={state}
+              />
+            )}
           </Tab>
         </Tabs>
       </div>

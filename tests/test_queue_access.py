@@ -1,6 +1,6 @@
 """What the queue sends each viewer: staff see everything; a student sees their
 own tickets and groups in full, and only what the queue lists about anyone
-else's; signed-out visitors see only that."""
+else's; signed-out visitors see only how many tickets there are."""
 
 import pytest
 
@@ -94,11 +94,18 @@ def test_students_see_only_what_the_queue_lists_about_other_tickets(queue):
     assert (theirs["status"], theirs["question"], theirs["helper"]["name"]) == ("assigned", "1", "TA Person")
 
 
-def test_signed_out_visitors_see_only_what_the_queue_lists(queue):
-    seen = tickets(queue["visitor"])
-    assert set(seen) == {queue["alice_ticket"], queue["bob_ticket"]}
-    for ticket in seen.values():
-        assert_public(ticket)
+def test_signed_out_visitors_see_how_long_the_queue_is_but_no_tickets(queue):
+    seen = state(queue["visitor"])
+    assert seen["tickets"] == []
+    assert seen["ticket_counts"] == {"pending": 1, "assigned": 1, "juggled": 0, "rerequested": 0}
+    # Not even through a ticket's address.
+    response = queue["visitor"].post(
+        COURSE + "/api/connect", json={"url": f"http://localhost{COURSE}/tickets/{queue['alice_ticket']}/"})
+    assert [t for _, s in response.get_json()["updates"] for t in s.get("tickets", [])] == []
+
+
+def test_signed_in_people_get_tickets_not_counts(queue):
+    assert "ticket_counts" not in state(queue["bob"])
 
 
 def test_only_staff_see_who_is_online(queue):
