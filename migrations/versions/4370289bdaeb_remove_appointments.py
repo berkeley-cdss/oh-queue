@@ -41,25 +41,31 @@ chat_message = sa.table("chat_message", sa.column("appointment_id", sa.Integer))
 
 
 def upgrade():
-    op.execute(
-        config_entries.delete().where(config_entries.c.key.in_(REMOVED_CONFIG_ENTRIES))
-    )
+    # MySQL commits each schema change as it runs, so if one fails, the steps
+    # before it stay done. The settings, which older code reads, go last.
 
-    # Messages sent in appointments go with them.
-    op.execute(chat_message.delete().where(chat_message.c.appointment_id.isnot(None)))
-    op.drop_index(op.f("ix_chat_message_appointment_id"), table_name="chat_message")
     # The foreign key was created without a name, so look up the one the
-    # database gave it. MySQL won't drop the column while it exists; SQLite
+    # database gave it. It goes before the index, which MySQL uses for it, and
+    # before the column, which MySQL won't drop while the key exists. SQLite
     # doesn't name it, and batch mode drops it when it copies the table.
     foreign_keys = sa.inspect(op.get_bind()).get_foreign_keys("chat_message")
     with op.batch_alter_table("chat_message") as batch_op:
         for foreign_key in foreign_keys:
             if foreign_key["referred_table"] == "appointment" and foreign_key["name"]:
                 batch_op.drop_constraint(foreign_key["name"], type_="foreignkey")
+        batch_op.drop_index(op.f("ix_chat_message_appointment_id"))
+
+    # Messages sent in appointments go with them.
+    op.execute(chat_message.delete().where(chat_message.c.appointment_id.isnot(None)))
+    with op.batch_alter_table("chat_message") as batch_op:
         batch_op.drop_column("appointment_id")
 
     op.drop_table("appointment_signup")
     op.drop_table("appointment")
+
+    op.execute(
+        config_entries.delete().where(config_entries.c.key.in_(REMOVED_CONFIG_ENTRIES))
+    )
 
 
 def downgrade():
@@ -104,14 +110,15 @@ def downgrade():
             op.f(f"ix_appointment_signup_{column}"), "appointment_signup", [column]
         )
 
+    # The index goes first, so MySQL uses it for the foreign key, as in upgrade.
     with op.batch_alter_table("chat_message") as batch_op:
         batch_op.add_column(sa.Column("appointment_id", sa.Integer(), nullable=True))
+        batch_op.create_index(
+            op.f("ix_chat_message_appointment_id"), ["appointment_id"]
+        )
         batch_op.create_foreign_key(
             "fk_chat_message_appointment_id", "appointment", ["appointment_id"], ["id"]
         )
-    op.create_index(
-        op.f("ix_chat_message_appointment_id"), "chat_message", ["appointment_id"]
-    )
 
     courses = [
         course

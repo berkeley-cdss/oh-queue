@@ -244,6 +244,7 @@ function RequestForm(props) {
         {party_enabled && is_queue_open && (
           <div className="form-group form-group-lg">
             <button
+              type="button"
               className="btn btn-lg btn-default"
               onClick={openAlternative}
             >

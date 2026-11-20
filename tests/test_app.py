@@ -83,12 +83,19 @@ def test_students_cant_change_settings(client):
     "/oauth/login",
     "/oauth/authorized",
     "/api/user",
+    "/api/assign_staff_appointment",
+    "/api/unassign_staff_appointment",
     "/api/assign_appointment",
     "/api/unassign_appointment",
     "/api/load_appointment",
+    "/api/set_appointment_status",
+    "/api/mark_attendance",
+    "/api/toggle_visibility",
+    "/api/delete_appointment",
     "/api/upload_appointments",
     "/api/bulk_appointment_action",
     "/api/update_appointment",
+    "/api/update_appointments",
     "/jobs/auto_activate_appointments",
 ])
 def test_removed_endpoints(client, path):
@@ -139,8 +146,9 @@ def test_chat_messages_go_on_tickets_but_not_appointments(client):
     ticket_id = response.get_json()["action"]["redirect"].strip("/").split("/")[-1]
 
     client.post("/api/send_chat_message", json={"mode": "ticket", "id": int(ticket_id), "content": "hi"})
-    response = client.post("/api/send_chat_message", json={"mode": "appointment", "id": 1, "content": "hi"})
-    assert "ticket or group" in response.get_json()["action"]["messages"][0]["text"]
+    for request in ({"mode": "appointment", "id": 1, "content": "hi"}, {"mode": "appointment", "content": "hi"}):
+        response = client.post("/api/send_chat_message", json=request)
+        assert "ticket or group" in response.get_json()["action"]["messages"][0]["text"]
 
     with client.application.app_context():
         assert [(m.body, m.ticket_id) for m in ChatMessage.query.all()] == [("hi", int(ticket_id))]

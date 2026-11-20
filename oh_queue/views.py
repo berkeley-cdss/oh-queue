@@ -1296,6 +1296,8 @@ def update_staff_online_setup(data):
 @logged_in
 def send_chat_message(data):
     mode = data.get("mode")
+    if mode not in ("ticket", "group"):
+        return socket_error("Messages can only be sent on a ticket or group")
     event_id = data["id"]
 
     message = ChatMessage(user=current_user, course=get_course(), body=data["content"])
@@ -1311,9 +1313,6 @@ def send_chat_message(data):
         if not current_user.is_staff and not is_member_of(group):
             return socket_unauthorized()
         message.group = group
-
-    else:
-        return socket_error("Messages can only be sent on a ticket or group")
 
     db.session.add(message)
     db.session.commit()
