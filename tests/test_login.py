@@ -40,7 +40,8 @@ def sign_in(app, email, *enrollment_types, override=False):
         assert current_user.email == email
         # Nothing after sign-in uses the Canvas token, so it isn't kept.
         assert "token" not in [v for v in session.values() if isinstance(v, str)]
-    return User.query.filter_by(email=email).one(), get_course
+    with app.app_context():
+        return User.query.filter_by(email=email).one(), get_course
 
 
 @pytest.mark.parametrize("enrollment", ["TaEnrollment", "TeacherEnrollment"])
@@ -63,7 +64,8 @@ def test_role_is_updated_at_each_sign_in(app):
     sign_in(app, "ta@example.edu", "TaEnrollment")
     user, _ = sign_in(app, "ta@example.edu", "StudentEnrollment")
     assert not user.is_staff
-    assert User.query.filter_by(email="ta@example.edu").count() == 1
+    with app.app_context():
+        assert User.query.filter_by(email="ta@example.edu").count() == 1
 
 
 def test_admin_override_members_are_staff_without_reading_the_course(app):
@@ -77,7 +79,7 @@ class Course:
         self.id = id
 
 
-def test_admin_override_course_is_the_configured_one(app):
+def test_admin_override_course_is_the_configured_one(app_context):
     with patch.object(canvas_service, "_client") as client:
         courses = client.return_value.get_user.return_value.get_courses
         courses.return_value = [Course(1), Course(999)]
@@ -86,8 +88,8 @@ def test_admin_override_course_is_the_configured_one(app):
         assert not canvas_service.in_admin_override_course(42, "token")
 
 
-def test_no_admin_override_course_skips_canvas(app, monkeypatch):
-    monkeypatch.setitem(app.config, "ADMIN_OVERRIDE_CANVAS_COURSE_ID", None)
+def test_no_admin_override_course_skips_canvas(app_context, monkeypatch):
+    monkeypatch.setitem(app_context.config, "ADMIN_OVERRIDE_CANVAS_COURSE_ID", None)
     with patch.object(canvas_service, "_client") as client:
         assert not canvas_service.in_admin_override_course(42, "token")
     client.assert_not_called()

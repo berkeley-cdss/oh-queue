@@ -31,7 +31,7 @@ def tables():
     return set(sa.inspect(db.engine).get_table_names())
 
 
-def test_removes_slack_and_okpy(app):
+def test_removes_slack_and_okpy(app_context):
     try:
         check_upgrade_and_downgrade()
     finally:
@@ -68,10 +68,10 @@ def check_upgrade_and_downgrade():
     assert "notification_state" not in tables()
 
 
-def test_it_is_the_only_head(app):
+def test_it_is_the_only_head(app_context):
     from alembic.script import ScriptDirectory
 
-    config = app.extensions["migrate"].migrate.get_config()
+    config = app_context.extensions["migrate"].migrate.get_config()
     assert ScriptDirectory.from_config(config).get_heads() == ["4370289bdaeb"]
 
 
@@ -94,7 +94,7 @@ def columns(table):
     return {c["name"] for c in sa.inspect(db.engine).get_columns(table)}
 
 
-def test_removes_appointments(app):
+def test_removes_appointments(app_context):
     try:
         check_appointments_upgrade_and_downgrade()
     finally:

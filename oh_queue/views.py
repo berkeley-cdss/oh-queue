@@ -26,32 +26,29 @@ from oh_queue.models import (
     utcnow,
 )
 from sqlalchemy import desc
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 import requests
 
 from oh_queue.course import format_coursecode, get_course
 
 
-def user_json(user):
+def public_user_json(user):
+    """Who someone is, for people who can't see their details."""
     return {
         "id": user.id,
-        "email": user.email,
         "name": user.name,
         "shortName": user.short_name,
         "isStaff": user.is_staff,
-        "call_url": user.call_url,
-        "doc_url": user.doc_url,
     }
 
 
-def student_json(user):
-    """Only send student information to staff."""
-    can_see_details = current_user.is_authenticated and (
-        current_user.is_staff or user.id == current_user.id
-    )
-    if not can_see_details:
-        return None
-    return user_json(user)
+def user_json(user):
+    return {
+        **public_user_json(user),
+        "email": user.email,
+        "call_url": user.call_url,
+        "doc_url": user.doc_url,
+    }
 
 
 def message_json(message: ChatMessage):
@@ -62,27 +59,39 @@ def message_json(message: ChatMessage):
     }
 
 
-def ticket_json(ticket):
-    group = ticket.group
+def public_ticket_json(ticket):
+    """Someone else's ticket, as the queue lists it: no student, description,
+    chat, links or LLM tips. A field added here goes to everyone."""
     return {
         "id": ticket.id,
         "status": ticket.status.name,
-        "user": user_json(ticket.user) if group else student_json(ticket.user),
+        "user": None,
         "created": ticket.created.isoformat(),
         "sort_key": ticket.sort_key.isoformat(),
-        "rerequest_threshold": ticket.rerequest_threshold
-        and ticket.rerequest_threshold.isoformat(),
         "hold_time": ticket.hold_time and ticket.hold_time.isoformat(),
         "rerequest_time": ticket.rerequest_time and ticket.rerequest_time.isoformat(),
         "updated": ticket.updated and ticket.updated.isoformat(),
         "location_id": ticket.location_id,
         "assignment_id": ticket.assignment_id,
-        "description": ticket.description,
         "question": ticket.question,
+        "helper": ticket.helper and public_user_json(ticket.helper),
+        "group_id": ticket.group.id if ticket.group else None,
+        "messages": [],
+    }
+
+
+def ticket_json(ticket):
+    if not can_view_ticket(ticket):
+        return public_ticket_json(ticket)
+    return {
+        **public_ticket_json(ticket),
+        "user": user_json(ticket.user),
+        "rerequest_threshold": ticket.rerequest_threshold
+        and ticket.rerequest_threshold.isoformat(),
+        "description": ticket.description,
         "helper": ticket.helper and user_json(ticket.helper),
         "call_url": ticket.call_url,
         "doc_url": ticket.doc_url,
-        "group_id": group.id if group else None,
         "messages": [message_json(message) for message in ticket.messages],
         "llm_tips": ticket.llm_tips,
         "use_llm": ticket.use_llm,
@@ -261,12 +270,17 @@ def config_json():
     return config
 
 
-def group_json(group: Group):
+def public_group_json(group: Group):
+    """A group other students can join, as its card and page show it: no
+    members' emails or links, and no group links or chat. A field added here
+    goes to every signed-in student."""
     return {
         "id": group.id,
         "created": group.created.isoformat(),
+        # The group's page lists its members for students deciding whether
+        # to join.
         "attendees": [
-            group_attendance_json(attendance)
+            group_attendance_json(attendance, public_user_json)
             for attendance in group.attendees
             if attendance.group_attendance_status == GroupAttendanceStatus.present
         ],
@@ -276,18 +290,32 @@ def group_json(group: Group):
         "question": group.question,
         "description": group.description,
         "group_status": group.group_status.name,
+        "messages": [],
+    }
+
+
+def group_json(group: Group):
+    if not has_group_access(group):
+        return public_group_json(group)
+    return {
+        **public_group_json(group),
+        "attendees": [
+            group_attendance_json(attendance, user_json)
+            for attendance in group.attendees
+            if attendance.group_attendance_status == GroupAttendanceStatus.present
+        ],
         "call_url": group.call_url,
         "doc_url": group.doc_url,
         "messages": [message_json(message) for message in group.messages],
     }
 
 
-def group_attendance_json(attendance: GroupAttendance):
+def group_attendance_json(attendance: GroupAttendance, serialize_user=user_json):
     return {
         "id": attendance.id,
         "group_id": attendance.group_id,
         "group_attendance_status": attendance.group_attendance_status.name,
-        "user": user_json(attendance.user),
+        "user": serialize_user(attendance.user),
     }
 
 
@@ -317,11 +345,12 @@ def emit_state(attrs, entity=None):
             )
             .options(joinedload(Ticket.user, innerjoin=True))
             .options(joinedload(Ticket.helper))
-            .options(joinedload(Ticket.group))
+            # members too, for checking who can see each group ticket
+            .options(joinedload(Ticket.group).selectinload(Group.attendees))
             .all()
         )
         if entity not in tickets and isinstance(entity, Ticket):
-            if has_ticket_access(entity):
+            if can_view_ticket(entity):
                 tickets.append(entity)
         state["tickets"] = [ticket_json(ticket) for ticket in tickets]
     if "assignments" in attrs:
@@ -338,15 +367,25 @@ def emit_state(attrs, entity=None):
     if "config" in attrs:
         state["config"] = config_json()
     if "groups" in attrs:
-        groups = Group.query.filter(
-            Group.group_status == GroupStatus.active, Group.course == get_course()
-        ).all()
+        # Signed-out visitors can't join a group, so they don't see who's in one.
+        groups = []
+        if current_user.is_authenticated:
+            groups = (
+                Group.query.filter(
+                    Group.group_status == GroupStatus.active,
+                    Group.course == get_course(),
+                )
+                .options(selectinload(Group.attendees))
+                .all()
+            )
         if entity not in groups and isinstance(entity, Group):
             if has_group_access(entity):
                 groups.append(entity)
         state["groups"] = [group_json(group) for group in groups]
     if "current_user" in attrs:
-        state["current_user"] = student_json(current_user)
+        state["current_user"] = (
+            user_json(current_user) if current_user.is_authenticated else None
+        )
     if "presence" in attrs:
         out = dict(
             students=User.query.filter(
@@ -374,7 +413,9 @@ def emit_state(attrs, entity=None):
             ).all()
         }
         out["staff"] = len(active_staff)
-        out["staff_list"] = list(active_staff)
+        # Only staff see who's online.
+        if current_user.is_authenticated and current_user.is_staff:
+            out["staff_list"] = list(active_staff)
         state["presence"] = out
 
     add_response("state", state)
@@ -568,8 +609,16 @@ def is_staff(f):
     return wrapper
 
 
+def can_view_ticket(ticket: Ticket):
+    """Whether to send the ticket in full: anyone who can change it, and its
+    own student even after they leave its group."""
+    return has_ticket_access(ticket) or (
+        current_user.is_authenticated and ticket.user_id == current_user.id
+    )
+
+
 def has_ticket_access(ticket: Ticket):
-    if not current_user.is_authenticated:
+    if not current_user.is_authenticated or not ticket:
         return False
     group = ticket.group
     if group:
@@ -598,7 +647,7 @@ def requires_ticket_access(f):
 
 def has_group_access(group: Group):
     if not current_user.is_authenticated:
-        return socket_unauthorized()
+        return False
     if not group:
         return False
     if not (current_user.is_staff or is_member_of(group)):
@@ -765,7 +814,7 @@ def create(form):
         return socket_error(
             "You are already on the queue",
             category="warning",
-            ticket_id=my_ticket.ticket_id,
+            ticket_id=my_ticket.id,
         )
     assignment_id = form.get("assignment_id")
     location_id = form.get("location_id")
@@ -885,7 +934,7 @@ def next_ticket(ticket_ids):
 
 def is_member_of(group):
     return any(
-        attendance.user.id == current_user.id
+        attendance.user_id == current_user.id
         for attendance in group.attendees
         if attendance.group_attendance_status == GroupAttendanceStatus.present
     )
@@ -1503,6 +1552,9 @@ def join_group(group_id):
     db.session.commit()
 
     emit_group_event(group, "group_joined")
+    # The group's ticket, which the new member can now see in full.
+    if group.ticket and group.ticket.status in active_statuses:
+        add_response("event", {"type": "group_joined", "ticket": ticket_json(group.ticket)})
 
     return socket_redirect(group_id=group_id)
 

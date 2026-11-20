@@ -3,7 +3,17 @@ const { Link } = ReactRouterDOM;
 function PartyGroupLayout({ state, match, loadGroup, socket }) {
   const groupID = +match.params.id;
 
+  // Signed-out visitors get no groups; the home page asks them to sign in.
+  if (state.loaded && !state.currentUser) {
+    return <ReactRouterDOM.Redirect to="/" />;
+  }
+
   if (!getGroup(state, groupID)) {
+    // Only staff can load a group that isn't active; students get its page
+    // only for an active group, or their own.
+    if (state.loaded && !isStaff(state)) {
+      return <NotFound />;
+    }
     loadGroup(groupID);
     return "loading...";
   }
@@ -22,7 +32,11 @@ function PartyGroupLayout({ state, match, loadGroup, socket }) {
   const handleLeaveGroup = () => {
     const leave = () => app.makeRequest("leave_group", group.id, true);
 
-    if (ticketActive && ticket.user.id === state.currentUser.id) {
+    if (
+      ticketActive &&
+      ticket.user &&
+      ticket.user.id === state.currentUser.id
+    ) {
       Swal.fire({
         title: "Are you sure?",
         text:
@@ -51,7 +65,9 @@ function PartyGroupLayout({ state, match, loadGroup, socket }) {
         onClick={() => app.makeRequest("create_group_ticket", { id: group.id })}
       >
         {ticketActive
-          ? `${ticket.user.shortName} has asked for help`
+          ? `${
+              ticket.user ? ticket.user.shortName : "Someone"
+            } has asked for help`
           : JSON.parse(state.config.is_queue_open)
           ? "Ask for Help (as a group)"
           : "Queue is currently closed"}

@@ -38,12 +38,23 @@ if "migrate" not in flask_app.extensions:
 
 @pytest.fixture()
 def app():
+    # The app context isn't kept open during the test: requests would share it,
+    # and with it Flask-Login's signed-in user in g. Tests that need one open
+    # their own.
     with flask_app.app_context():
         sqlalchemy_db.drop_all()
         sqlalchemy_db.create_all()
-        yield flask_app
+    yield flask_app
+    with flask_app.app_context():
         sqlalchemy_db.session.remove()
         sqlalchemy_db.drop_all()
+
+
+@pytest.fixture()
+def app_context(app):
+    """For tests that call the app's code directly, not through requests."""
+    with app.app_context():
+        yield app
 
 
 @pytest.fixture()
