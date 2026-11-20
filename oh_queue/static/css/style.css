@@ -789,38 +789,8 @@ h6.truncate {
   justify-content: space-between;
 }
 
-.compact-card-holder {
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-}
-
 .panel-heading {
   position: relative;
-}
-
-.panel-warning {
-  border-color: orange;
-}
-
-.panel-warning > .panel-heading {
-  color: white;
-  background-color: orange;
-  border-color: orange;
-}
-
-.panel-success {
-  border-color: #4cae4c;
-}
-
-.panel-success > .panel-heading {
-  color: #fff;
-  background-color: #5cb85c;
-  border-color: #4cae4c;
-}
-
-.btn-take-over {
-  position: absolute;
-  right: 10px;
-  top: 10px;
 }
 
 .panel {
@@ -862,11 +832,11 @@ h4.list-group-item-heading::before {
   margin-top: 5px;
 }
 
-.appointment-input {
+.activity-search {
   display: flex;
 }
 
-.appointment-input .input-group-btn {
+.activity-search .input-group-btn {
   width: unset;
 }
 
