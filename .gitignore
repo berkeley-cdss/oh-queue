@@ -3,7 +3,8 @@
 venv/
 **/.DS_Store
 **/__pycache__
-*.db.coverage
+*.db
+.coverage
 coverage.xml
 pytest-coverage.txt
 .pytest_cache/
