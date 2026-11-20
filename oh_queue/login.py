@@ -55,7 +55,6 @@ def complete_login(token: dict):
 def create_login_client(app: flask.Flask):
     login_manager = LoginManager()
     login_manager.init_app(app)
-    dev = app.config["ENV"] == "dev"
 
     oauth = OAuth(app)
     canvas_server_url = app.config["CANVAS_SERVER_URL"]
@@ -100,13 +99,13 @@ def create_login_client(app: flask.Flask):
 
     @app.route("/testing-login/", strict_slashes=False)
     def testing_login():
-        if not dev:
+        if app.config["ENV"] != "dev":
             abort(404)
         return render_template("login.html", callback=url_for("testing_authorized"))
 
     @app.route("/testing-login/authorized", methods=["POST"], strict_slashes=False)
     def testing_authorized():
-        if not dev:
+        if app.config["ENV"] != "dev":
             abort(404)
         form = request.form
         is_staff = form.get("is_staff") == "on"

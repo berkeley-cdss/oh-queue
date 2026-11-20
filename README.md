@@ -27,4 +27,14 @@ We supply a `Dockerfile.dev` which mimics the production environment.
    ```
 4. The server is now running on http://localhost:3000.
 
+## Running tests
+
+```
+pip install -r requirements.txt -r requirements-dev.txt
+yarn install
+pytest
+```
+
+The tests set their own settings and database, so they don't need a `.env`. Rendering the page compiles the frontend, which is why they need the Node packages. CI runs them on every pull request, with coverage (`.github/workflows/test.yml`).
+
 If you ever receive a `FileNotFoundError: ... .webassets-cache/...` error, the static file cache is corrupted, so delete the `.webassets-cache` folder in `oh_queue/static`. Then rebuild and run.
