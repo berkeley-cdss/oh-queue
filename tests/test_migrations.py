@@ -2,6 +2,8 @@
 
 The migrations before them were written for MySQL and don't run on SQLite, so
 the tests start from the current tables, as `manage.py initdb` makes them.
+Indexes the migrations drop are renamed first, as copying the production
+database from MySQL to Postgres renamed them (idx_<number>_<name>).
 """
 
 import sqlalchemy as sa
@@ -41,7 +43,7 @@ def test_removes_slack_and_okpy(app):
 def check_upgrade_and_downgrade():
     sql("""CREATE TABLE notification_state (id INTEGER PRIMARY KEY, last_queue_ping DATETIME NOT NULL,
            last_appointment_notif DATETIME NOT NULL, domain VARCHAR(255) NOT NULL, course VARCHAR(255) NOT NULL)""")
-    sql("CREATE INDEX ix_notification_state_course ON notification_state (course)")
+    sql("CREATE INDEX idx_18236_ix_notification_state_course ON notification_state (course)")
     sql("INSERT INTO notification_state VALUES (1, '2026-01-01', '2026-01-01', 'oh.example.edu', 'cs61a')")
     for course in ("cs61a", "data8"):
         for key in REMOVED_KEYS + ["is_queue_open"]:
@@ -112,6 +114,8 @@ def check_appointments_upgrade_and_downgrade():
 
     assert {"appointment", "appointment_signup"} <= tables()
     assert "appointment_id" in columns("chat_message")
+    sql("DROP INDEX ix_chat_message_appointment_id")
+    sql("CREATE INDEX idx_18176_ix_chat_message_appointment_id ON chat_message (appointment_id)")
     assert sorted(sql("SELECT course, key, value FROM config_entries WHERE key = 'appointment_mode_title'")) == [
         ("cs61a", "appointment_mode_title", "Appointments"),
         ("data8", "appointment_mode_title", "Appointments")]

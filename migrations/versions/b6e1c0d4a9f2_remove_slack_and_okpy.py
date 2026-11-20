@@ -27,7 +27,7 @@ REMOVED_CONFIG_KEYS = [
 def upgrade():
     config_entry = sa.table("config_entries", sa.column("key", sa.String))
     op.execute(config_entry.delete().where(config_entry.c.key.in_(REMOVED_CONFIG_KEYS)))
-    op.drop_index(op.f("ix_notification_state_course"), table_name="notification_state")
+    # Dropping the table drops its index, whatever the database copy named it.
     op.drop_table("notification_state")
 
 

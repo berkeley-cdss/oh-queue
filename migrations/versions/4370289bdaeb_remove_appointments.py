@@ -41,19 +41,19 @@ chat_message = sa.table("chat_message", sa.column("appointment_id", sa.Integer))
 
 
 def upgrade():
-    # MySQL commits each schema change as it runs, so if one fails, the steps
-    # before it stay done. The settings, which older code reads, go last.
-
-    # The foreign key was created without a name, so look up the one the
-    # database gave it. It goes before the index, which MySQL uses for it, and
-    # before the column, which MySQL won't drop while the key exists. SQLite
-    # doesn't name it, and batch mode drops it when it copies the table.
-    foreign_keys = sa.inspect(op.get_bind()).get_foreign_keys("chat_message")
+    # The foreign key and index on chat_message.appointment_id are looked up,
+    # not named: copying the database from MySQL renamed them (for example
+    # chat_message_ibfk_1 and idx_18176_ix_chat_message_appointment_id). SQLite
+    # doesn't name the foreign key, and batch mode drops it when it copies the
+    # table.
+    inspector = sa.inspect(op.get_bind())
     with op.batch_alter_table("chat_message") as batch_op:
-        for foreign_key in foreign_keys:
+        for foreign_key in inspector.get_foreign_keys("chat_message"):
             if foreign_key["referred_table"] == "appointment" and foreign_key["name"]:
                 batch_op.drop_constraint(foreign_key["name"], type_="foreignkey")
-        batch_op.drop_index(op.f("ix_chat_message_appointment_id"))
+        for index in inspector.get_indexes("chat_message"):
+            if index["column_names"] == ["appointment_id"]:
+                batch_op.drop_index(index["name"])
 
     # Messages sent in appointments go with them.
     op.execute(chat_message.delete().where(chat_message.c.appointment_id.isnot(None)))
