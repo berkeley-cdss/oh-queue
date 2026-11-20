@@ -10,7 +10,7 @@ SQLAlchemy==2.0.52
 alembic==1.20.0
 gunicorn==27.0.1
 MarkupSafe==3.0.3
-psycopg2-binary==2.9.12
+psycopg2-binary==2.9.13
 python-dotenv==1.2.4
 requests==2.34.2
 webassets==3.0.0
