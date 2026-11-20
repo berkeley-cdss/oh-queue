@@ -32,18 +32,6 @@ import requests
 from oh_queue.course import format_coursecode, get_course
 
 
-def user_json(user):
-    return {
-        "id": user.id,
-        "email": user.email,
-        "name": user.name,
-        "shortName": user.short_name,
-        "isStaff": user.is_staff,
-        "call_url": user.call_url,
-        "doc_url": user.doc_url,
-    }
-
-
 def public_user_json(user):
     """Who someone is, for people who can't see their details."""
     return {
@@ -51,6 +39,15 @@ def public_user_json(user):
         "name": user.name,
         "shortName": user.short_name,
         "isStaff": user.is_staff,
+    }
+
+
+def user_json(user):
+    return {
+        **public_user_json(user),
+        "email": user.email,
+        "call_url": user.call_url,
+        "doc_url": user.doc_url,
     }
 
 
@@ -62,43 +59,9 @@ def message_json(message: ChatMessage):
     }
 
 
-def ticket_json(ticket):
-    if not has_ticket_access(ticket):
-        return public_ticket_json(ticket)
-    group = ticket.group
-    return {
-        "id": ticket.id,
-        "status": ticket.status.name,
-        "user": user_json(ticket.user),
-        "created": ticket.created.isoformat(),
-        "sort_key": ticket.sort_key.isoformat(),
-        "rerequest_threshold": ticket.rerequest_threshold
-        and ticket.rerequest_threshold.isoformat(),
-        "hold_time": ticket.hold_time and ticket.hold_time.isoformat(),
-        "rerequest_time": ticket.rerequest_time and ticket.rerequest_time.isoformat(),
-        "updated": ticket.updated and ticket.updated.isoformat(),
-        "location_id": ticket.location_id,
-        "assignment_id": ticket.assignment_id,
-        "description": ticket.description,
-        "question": ticket.question,
-        "helper": ticket.helper and user_json(ticket.helper),
-        "call_url": ticket.call_url,
-        "doc_url": ticket.doc_url,
-        "group_id": group.id if group else None,
-        "messages": [message_json(message) for message in ticket.messages],
-        "llm_tips": ticket.llm_tips,
-        "use_llm": ticket.use_llm,
-        "student_help_type": ticket.student_help_type,
-        "student_help_other": ticket.student_help_other,
-        "staff_help_type": ticket.staff_help_type,
-        "staff_help_other": ticket.staff_help_other,
-        "llm_tips_influence": ticket.llm_tips_influence,
-    }
-
-
 def public_ticket_json(ticket):
     """Someone else's ticket, as the queue lists it: no student, description,
-    chat, links or LLM tips."""
+    chat, links or LLM tips. A field added here goes to everyone."""
     return {
         "id": ticket.id,
         "status": ticket.status.name,
@@ -114,6 +77,29 @@ def public_ticket_json(ticket):
         "helper": ticket.helper and public_user_json(ticket.helper),
         "group_id": ticket.group.id if ticket.group else None,
         "messages": [],
+    }
+
+
+def ticket_json(ticket):
+    if not can_view_ticket(ticket):
+        return public_ticket_json(ticket)
+    return {
+        **public_ticket_json(ticket),
+        "user": user_json(ticket.user),
+        "rerequest_threshold": ticket.rerequest_threshold
+        and ticket.rerequest_threshold.isoformat(),
+        "description": ticket.description,
+        "helper": ticket.helper and user_json(ticket.helper),
+        "call_url": ticket.call_url,
+        "doc_url": ticket.doc_url,
+        "messages": [message_json(message) for message in ticket.messages],
+        "llm_tips": ticket.llm_tips,
+        "use_llm": ticket.use_llm,
+        "student_help_type": ticket.student_help_type,
+        "student_help_other": ticket.student_help_other,
+        "staff_help_type": ticket.staff_help_type,
+        "staff_help_other": ticket.staff_help_other,
+        "llm_tips_influence": ticket.llm_tips_influence,
     }
 
 
@@ -284,44 +270,17 @@ def config_json():
     return config
 
 
-def group_json(group: Group):
-    if not has_group_access(group):
-        return public_group_json(group)
-    return {
-        "id": group.id,
-        "created": group.created.isoformat(),
-        "attendees": [
-            group_attendance_json(attendance)
-            for attendance in group.attendees
-            if attendance.group_attendance_status == GroupAttendanceStatus.present
-        ],
-        "location_id": group.location_id,
-        "ticket_id": group.ticket_id,
-        "assignment_id": group.assignment_id,
-        "question": group.question,
-        "description": group.description,
-        "group_status": group.group_status.name,
-        "call_url": group.call_url,
-        "doc_url": group.doc_url,
-        "messages": [message_json(message) for message in group.messages],
-    }
-
-
 def public_group_json(group: Group):
     """A group other students can join, as its card and page show it: no
-    members' emails or links, and no group links or chat."""
+    members' emails or links, and no group links or chat. A field added here
+    goes to every signed-in student."""
     return {
         "id": group.id,
         "created": group.created.isoformat(),
+        # The group's page lists its members for students deciding whether
+        # to join.
         "attendees": [
-            {
-                "id": attendance.id,
-                "group_id": attendance.group_id,
-                "group_attendance_status": attendance.group_attendance_status.name,
-                # The group's page lists its members for students deciding
-                # whether to join.
-                "user": public_user_json(attendance.user),
-            }
+            group_attendance_json(attendance, public_user_json)
             for attendance in group.attendees
             if attendance.group_attendance_status == GroupAttendanceStatus.present
         ],
@@ -335,12 +294,28 @@ def public_group_json(group: Group):
     }
 
 
-def group_attendance_json(attendance: GroupAttendance):
+def group_json(group: Group):
+    if not has_group_access(group):
+        return public_group_json(group)
+    return {
+        **public_group_json(group),
+        "attendees": [
+            group_attendance_json(attendance, user_json)
+            for attendance in group.attendees
+            if attendance.group_attendance_status == GroupAttendanceStatus.present
+        ],
+        "call_url": group.call_url,
+        "doc_url": group.doc_url,
+        "messages": [message_json(message) for message in group.messages],
+    }
+
+
+def group_attendance_json(attendance: GroupAttendance, serialize_user=user_json):
     return {
         "id": attendance.id,
         "group_id": attendance.group_id,
         "group_attendance_status": attendance.group_attendance_status.name,
-        "user": user_json(attendance.user),
+        "user": serialize_user(attendance.user),
     }
 
 
@@ -370,11 +345,12 @@ def emit_state(attrs, entity=None):
             )
             .options(joinedload(Ticket.user, innerjoin=True))
             .options(joinedload(Ticket.helper))
-            .options(joinedload(Ticket.group))
+            # members too, for checking who can see each group ticket
+            .options(joinedload(Ticket.group).selectinload(Group.attendees))
             .all()
         )
         if entity not in tickets and isinstance(entity, Ticket):
-            if has_ticket_access(entity):
+            if can_view_ticket(entity):
                 tickets.append(entity)
         state["tickets"] = [ticket_json(ticket) for ticket in tickets]
     if "assignments" in attrs:
@@ -633,12 +609,17 @@ def is_staff(f):
     return wrapper
 
 
+def can_view_ticket(ticket: Ticket):
+    """Whether to send the ticket in full: anyone who can change it, and its
+    own student even after they leave its group."""
+    return has_ticket_access(ticket) or (
+        current_user.is_authenticated and ticket.user_id == current_user.id
+    )
+
+
 def has_ticket_access(ticket: Ticket):
     if not current_user.is_authenticated or not ticket:
         return False
-    # Including a group ticket after its student leaves the group.
-    if ticket.user_id == current_user.id:
-        return True
     group = ticket.group
     if group:
         if not (current_user.is_staff or is_member_of(group)):
@@ -1572,7 +1553,8 @@ def join_group(group_id):
 
     emit_group_event(group, "group_joined")
     # The group's ticket, which the new member can now see in full.
-    emit_state(["tickets"])
+    if group.ticket:
+        add_response("event", {"type": "group_joined", "ticket": ticket_json(group.ticket)})
 
     return socket_redirect(group_id=group_id)
 

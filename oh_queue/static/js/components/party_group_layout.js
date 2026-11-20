@@ -3,6 +3,11 @@ const { Link } = ReactRouterDOM;
 function PartyGroupLayout({ state, match, loadGroup, socket }) {
   const groupID = +match.params.id;
 
+  // Signed-out visitors get no groups; the home page asks them to sign in.
+  if (state.loaded && !state.currentUser) {
+    return <ReactRouterDOM.Redirect to="/" />;
+  }
+
   if (!getGroup(state, groupID)) {
     loadGroup(groupID);
     return "loading...";

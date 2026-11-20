@@ -162,8 +162,8 @@ def test_joining_a_group_sends_its_ticket_in_full(queue):
     assert group_ticket["user"] is None
     api(queue["alice"], "delete", [queue["alice_ticket"]])
     response = queue["alice"].post("/api/join_group", json=queue["group"]).get_json()
-    sent = [t for _, s in response["updates"] for t in s.get("tickets", []) if t["id"] == group_ticket["id"]]
-    assert sent and sent[-1]["user"]["shortName"] == "Bob"
+    sent = [update["ticket"] for event, update in response["updates"] if event == "event"]
+    assert [(t["id"], t["user"]["shortName"]) for t in sent] == [(group_ticket["id"], "Bob")]
 
 
 def test_students_keep_seeing_their_group_ticket_after_leaving(queue):
@@ -178,6 +178,9 @@ def test_students_keep_seeing_their_group_ticket_after_leaving(queue):
     response = queue["bob"].post("/api/connect", json={"url": f"http://localhost/tickets/{group_ticket}/"})
     page = [t for _, s in response.get_json()["updates"] for t in s.get("tickets", []) if t["id"] == group_ticket]
     assert page and page[0]["description"] == "This ticket is associated with a group."
+    # Seeing it isn't changing it: that still takes being in the group.
+    response = api(queue["bob"], "update_ticket", {"id": group_ticket, "description": "changed"})
+    assert "permission" in response["messages"][0]["text"]
 
 
 def test_a_missing_ticket_is_refused_not_an_error(queue):
