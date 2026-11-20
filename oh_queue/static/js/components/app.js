@@ -78,7 +78,6 @@ class App extends React.Component {
       for (const key of [
         "party_enabled",
         "allow_private_party_tickets",
-        "only_registered_students",
         "show_presence",
         "enable_shuffle",
         "send_ticket_notifications",

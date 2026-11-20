@@ -9,7 +9,7 @@ from authlib.integrations.base_client import OAuthError
 
 from oh_queue import canvas_service
 from oh_queue.login import _safe_next
-from oh_queue.models import MAX_OFFERING_CANVAS_ID, Account, ConfigEntry, User, db
+from oh_queue.models import MAX_OFFERING_CANVAS_ID, Account, User, db
 from tests.conftest import AUTHORIZE, COURSE, canvas_sign_in, log_in, role
 
 
@@ -66,23 +66,18 @@ def test_signing_in_keeps_each_course_s_existing_users(client):
         assert (user.name, user.is_staff, user.call_url) == ("Ta", True, "meet.google.com/ta")
 
 
-def test_people_off_the_roster_are_students_unless_the_course_refuses_them(client):
-    canvas_sign_in(client, "visitor@example.edu", {})
-    # The first visit sets up the course's settings.
-    assert client.get(COURSE + "/").status_code == 200
-    user = current_user(client)
-    assert user is not None and not user["isStaff"]
-
-    with client.application.app_context():
-        entry = ConfigEntry.query.filter_by(key="only_registered_students", course="cs61a").one()
-        entry.value = "true"
-        db.session.commit()
+def test_only_people_enrolled_in_the_course_can_open_it(client):
+    canvas_sign_in(client, "visitor@example.edu", {"202": role(is_student=True), "101": role()})
     response = client.get(COURSE + "/")
     assert response.status_code == 403
-    assert b"roster" in response.data
+    assert b"enrolled" in response.data
+    response = client.post(COURSE + "/api/connect", json={"url": "http://localhost/"})
+    assert response.status_code == 403
 
     canvas_sign_in(client, "visitor@example.edu", {"101": role(is_student=True)})
     assert client.get(COURSE + "/").status_code == 200
+    with client.application.app_context():
+        assert User.query.filter_by(email="visitor@example.edu").count() == 1
 
 
 def test_cookies_from_the_per_course_sites_are_ignored(client):

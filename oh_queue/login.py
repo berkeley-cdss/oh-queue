@@ -6,7 +6,7 @@ from flask_login import LoginManager, login_user, logout_user
 from markupsafe import escape
 
 from oh_queue import canvas_service
-from oh_queue.models import Account, ConfigEntry, Offering, User, db
+from oh_queue.models import Account, Offering, User, db
 from oh_queue.offering import current_offering, get_course, in_offering
 
 AFTER_LOGIN_KEY = "after_login"
@@ -51,21 +51,16 @@ def complete_login(token: dict):
     login_user(account, remember=True)
 
 
-def _only_registered_students() -> bool:
-    entry = ConfigEntry.query.filter_by(key="only_registered_students", course=get_course()).one_or_none()
-    return entry is not None and entry.value == "true"
-
-
 def course_user(account: Account):
     """The account's User row in the current course, created on first visit.
 
     Staff status follows the account's Canvas roles from its last sign-in.
-    Returns None if the course only lets in people on its roster and the
-    account isn't on it.
+    Returns None if the account isn't enrolled in the course as staff or a
+    student (members of the admin override course are staff everywhere).
     """
     canvas_id = current_offering().canvas_id
     is_staff = account.is_staff_in(canvas_id)
-    if not is_staff and account.course_info(canvas_id) is None and _only_registered_students():
+    if not is_staff and account.course_info(canvas_id) is None:
         return None
     course = get_course()
     user = User.query.filter_by(email=account.email, course=course).one_or_none()
@@ -107,8 +102,8 @@ def create_login_client(app: flask.Flask):
             return account
         user = course_user(account)
         if user is None:
-            abort(403, "This course's queue is only open to people on its bCourses roster. If you were "
-                       "just added, accept the invitation in bCourses, then log out and sign in again.")
+            abort(403, "You aren't enrolled in this course on bCourses. If you were just added, "
+                       "accept the invitation in bCourses, then log out and sign in again.")
         return user
 
     @login_manager.unauthorized_handler

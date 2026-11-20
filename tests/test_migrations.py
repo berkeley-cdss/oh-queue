@@ -70,12 +70,17 @@ def check_upgrade_and_downgrade():
 
 def test_adds_offerings_and_accounts(app_context):
     try:
+        sql("INSERT INTO config_entries (key, value, public, course) VALUES ('is_queue_open', 'true', 1, 'cs61a')")
         stamp(revision="d3a7e5f1c0b2")
         downgrade(revision="4370289bdaeb")
         assert not {"offerings", "account"} & tables()
+        assert sorted(sql("SELECT key, value FROM config_entries")) == [
+            ("is_queue_open", "true"), ("only_registered_students", "false")]
 
         upgrade(revision="d3a7e5f1c0b2")
         assert {"offerings", "account"} <= tables()
+        # Courses are only open to people enrolled in them, so the setting goes.
+        assert sql("SELECT key FROM config_entries") == [("is_queue_open",)]
         indexes = {i["name"]: i["unique"] for t in ("offerings", "account")
                    for i in sa.inspect(db.engine).get_indexes(t)}
         assert indexes == {"ix_offerings_canvas_id": 1, "ix_account_canvas_id": 1, "ix_account_email": 0}

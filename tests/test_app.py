@@ -23,6 +23,8 @@ REMOVED_CONFIG_KEYS = {
     "recommend_appointments",
     "appointment_mode_title",
     "appointment_prompt",
+    # Courses are only open to people enrolled in them.
+    "only_registered_students",
 }
 
 

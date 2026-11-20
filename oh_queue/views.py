@@ -503,14 +503,6 @@ def init_config():
         )
     )
     db.session.add(
-        ConfigEntry(
-            key="only_registered_students",
-            value="false",
-            public=True,
-            course=get_course(),
-        )
-    )
-    db.session.add(
         ConfigEntry(key="party_name", value="Party", public=True, course=get_course())
     )
     db.session.add(
