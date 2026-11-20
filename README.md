@@ -29,12 +29,15 @@ We supply a `Dockerfile.dev` which mimics the production environment.
 
 ## Running tests
 
+On Python 3.14:
+
 ```
 pip install -r requirements.txt -r requirements-dev.txt
 yarn install
 pytest
+flake8
 ```
 
-The tests set their own settings and database, so they don't need a `.env`. Rendering the page compiles the frontend, which is why they need the Node packages. CI runs them on every pull request, with coverage (`.github/workflows/test.yml`).
+The tests set their own settings and database, so they don't need a `.env`. Rendering the page compiles the frontend, which is why they need the Node packages. CI runs them on every pull request, with coverage (`.github/workflows/test.yml`), along with flake8, a dependency audit, and CodeQL.
 
 If you ever receive a `FileNotFoundError: ... .webassets-cache/...` error, the static file cache is corrupted, so delete the `.webassets-cache` folder in `oh_queue/static`. Then rebuild and run.

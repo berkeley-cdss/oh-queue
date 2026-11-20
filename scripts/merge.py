@@ -9,8 +9,8 @@ sys.path.append(os.path.abspath("../oh_queue"))
 sys.path.append(os.path.abspath(".."))
 os.chdir("..")
 
-import models
-from oh_queue import app
+import models  # noqa: E402  (found through the sys.path change above)
+from oh_queue import app  # noqa: E402
 
 app.config["SQLALCHEMY_DATABASE_URL"] = os.getenv("DATABASE_URL")
 

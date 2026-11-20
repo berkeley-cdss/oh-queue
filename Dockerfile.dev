@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.14-slim
 
 ENV APP_HOME=/app
 WORKDIR $APP_HOME
@@ -12,8 +12,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     npm \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt requirements.txt
-RUN pip install -r requirements.txt
+# requirements-dev.txt too: run_server and seed_data use it
+COPY requirements.txt requirements-dev.txt ./
+RUN pip install -r requirements.txt -r requirements-dev.txt
 
 # Set node_modules as volume so that local mount doesn't overwrite it
 COPY package.json package.json

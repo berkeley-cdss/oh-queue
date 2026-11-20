@@ -123,7 +123,7 @@ def downgrade():
     courses = [
         course
         for (course,) in op.get_bind().execute(
-            sa.select([config_entries.c.course]).distinct()
+            sa.select(config_entries.c.course).distinct()
         )
     ]
     op.bulk_insert(

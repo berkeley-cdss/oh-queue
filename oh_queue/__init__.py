@@ -5,7 +5,6 @@ from datetime import timedelta
 from oh_queue.login import create_login_client
 
 # Flask-related stuff
-from datetime import datetime, timedelta
 
 from flask import Flask
 from flask_compress import Compress
@@ -20,6 +19,7 @@ from oh_queue.models import (
     GroupStatus,
     db,
     TicketStatus,
+    utcnow,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -51,8 +51,8 @@ app.config['SESSION_COOKIE_SECURE'] = not app.debug
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 Session(app)
 
-# Import views
-import oh_queue.views
+# Import views, which need the app set up first
+import oh_queue.views  # noqa: E402
 
 
 @job(app, "clear_inactive_groups")
@@ -64,7 +64,7 @@ def clear_inactive_groups():
                 attendance.group_attendance_status == GroupAttendanceStatus.present
                 and attendance.user.heartbeat_time
                 and attendance.user.heartbeat_time
-                > datetime.utcnow() - timedelta(minutes=3)
+                > utcnow() - timedelta(minutes=3)
             ):
                 break
         else:

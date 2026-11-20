@@ -1,12 +1,21 @@
+import datetime
 import enum
+
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
 
+def utcnow():
+    """The current time in UTC, without a time zone, as the database stores it."""
+    return datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+
+
 class EnumType(db.TypeDecorator):
     impl = db.String(255)
+    # The enum class is the only state, so queries using this type can be cached.
+    cache_ok = True
 
     def __repr__(self):
         """Make alembic detect the right type"""
@@ -16,11 +25,13 @@ class EnumType(db.TypeDecorator):
         super(EnumType, self).__init__(self)
         self.enum_class = enum_class
 
+    # None passes through: an outer join with no match (such as a ticket's
+    # group when it has none) gives NULL for every column, even NOT NULL ones.
     def process_bind_param(self, enum_value, dialect):
-        return enum_value.name
+        return None if enum_value is None else enum_value.name
 
     def process_result_value(self, name, dialect):
-        return self.enum_class[name]
+        return None if name is None else self.enum_class[name]
 
     @property
     def python_type(self):
@@ -267,4 +278,3 @@ class ChatMessage(db.Model):
     group = db.relationship("Group", backref=db.backref("messages", lazy="joined"))
 
     course = db.Column(db.String(255), nullable=False, index=True)
-
