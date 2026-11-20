@@ -15,10 +15,11 @@ from oh_queue.models import (
     get_current_time,
 )
 from flask_compress import Compress
+from werkzeug.middleware.proxy_fix import ProxyFix
 
-from common.jobs import job
-from common.course_config import get_course
 from oh_queue import assets
+from oh_queue.course import get_course
+from oh_queue.jobs import job
 from oh_queue.models import (
     Group,
     GroupAttendance,
@@ -27,7 +28,6 @@ from oh_queue.models import (
     db,
     TicketStatus,
 )
-from oh_queue.slack import worker
 
 logging.basicConfig(level=logging.INFO)
 
@@ -35,6 +35,8 @@ logging.basicConfig(level=logging.INFO)
 app = Flask(__name__)
 app.config.from_object("config")
 app.url_map.strict_slashes = False
+# Behind Cloud Run's proxy, so external URLs (like the Canvas login callback) are https.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1)
 
 app.jinja_env.globals.update(
     {"TicketStatus": TicketStatus, "assets_env": assets.assets_env}
@@ -58,11 +60,6 @@ Session(app)
 
 # Import views
 import oh_queue.views
-
-
-@job(app, "slack_notify")
-def slack_poll():
-    worker(app)
 
 
 @job(app, "clear_inactive_groups")

@@ -155,7 +155,7 @@ class Ticket(db.Model):
     @classmethod
     def for_user(cls, user):
         if user and user.is_authenticated:
-            from common.course_config import get_course
+            from oh_queue.course import get_course
 
             return cls.query.filter(
                 cls.user_id == user.id,
@@ -333,15 +333,6 @@ class ChatMessage(db.Model):
     group_id = db.Column(db.ForeignKey("group.id"), nullable=True, index=True)
     group = db.relationship("Group", backref=db.backref("messages", lazy="joined"))
 
-    course = db.Column(db.String(255), nullable=False, index=True)
-
-
-class CourseNotificationState(db.Model):
-    __tablename__ = "notification_state"
-    id = db.Column(db.Integer, primary_key=True)
-    last_queue_ping = db.Column(db.DateTime, nullable=False)
-    last_appointment_notif = db.Column(db.DateTime, nullable=False)
-    domain = db.Column(db.String(255), nullable=False)
     course = db.Column(db.String(255), nullable=False, index=True)
 
 

@@ -407,19 +407,6 @@ class TicketButtons extends React.Component {
       );
     }
 
-    function makeLink(text, style, href) {
-      return (
-        <a
-          key={text}
-          href={href}
-          target="_blank"
-          className={`btn btn-${style} btn-lg btn-block`}
-        >
-          {text}
-        </a>
-      );
-    }
-
     let onlineButtons = [];
     let topButtons = [];
     let bottomButtons = [];
@@ -488,22 +475,6 @@ class TicketButtons extends React.Component {
       (ticket.status === "resolved" || ticket.status === "deleted")
     ) {
       topButtons.push(makeButton("Next Ticket", "default", this.next));
-    }
-    if (
-      staff &&
-      ticket.status === "assigned" &&
-      state.config.show_okpy_backups
-    ) {
-      topButtons.push(
-        makeLink(
-          "View Backups",
-          "default",
-          "https://okpy.org/admin/course/" +
-            state.config.okpy_endpoint_id +
-            "/" +
-            encodeURIComponent(ticket.user.email)
-        )
-      );
     }
     if (ticket.status === "juggled") {
       const isWaiting = moment.utc(ticket.rerequest_threshold).isAfter();

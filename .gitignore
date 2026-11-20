@@ -1,7 +1,10 @@
 .python-version
-common
 .env
 venv/
 **/.DS_Store
 **/__pycache__
 *.db
+.coverage
+coverage.xml
+pytest-coverage.txt
+.pytest_cache/

@@ -31,17 +31,6 @@ function AdminConfigManager({ state: { config } }) {
               </td>
             </tr>
             <tr>
-              <td>Should staff members see a link to recent OKPy backups?</td>
-              <td className="col-md-1">
-                <ConfigLinkedToggle
-                  config={config}
-                  configKey="show_okpy_backups"
-                  offText="No"
-                  onText="Yes"
-                />
-              </td>
-            </tr>
-            <tr>
               <td>
                 Should the queue show the estimated wait time and online staff
                 members?

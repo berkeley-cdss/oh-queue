@@ -5,8 +5,8 @@ import time
 from operator import or_
 from urllib.parse import urljoin, urlparse
 
-from flask import abort, g, jsonify, render_template, request
-from flask_login import current_user, login_user
+from flask import g, jsonify, render_template, request, url_for
+from flask_login import current_user
 from oh_queue import app, db
 from oh_queue.models import (
     Appointment,
@@ -16,7 +16,6 @@ from oh_queue.models import (
     AttendanceStatus,
     ChatMessage,
     ConfigEntry,
-    CourseNotificationState,
     Group,
     GroupAttendance,
     GroupAttendanceStatus,
@@ -30,7 +29,6 @@ from oh_queue.models import (
     active_statuses,
     get_current_time,
 )
-from oh_queue.slack import send_appointment_summary
 from oh_queue.reminders import send_appointment_reminders
 from oh_queue.reminders import send_cancellation_reminders
 from oh_queue.reminders import send_student_appointment_absent_email
@@ -38,14 +36,8 @@ from sqlalchemy import desc, func
 from sqlalchemy.orm import joinedload
 import requests
 
-from common.course_config import (
-    format_coursecode,
-    get_course,
-    get_course_id,
-    get_domain,
-)
-from common.rpc.auth import post_slack_message, read_spreadsheet, validate_secret
-from common.url_for import url_for
+from oh_queue.course import format_coursecode, get_course
+from oh_queue.google_sheets import read_spreadsheet
 
 
 def user_json(user):
@@ -274,7 +266,6 @@ def config_json():
     for config_entry in ConfigEntry.query.filter_by(course=get_course()).all():
         if config_entry.public:
             config[config_entry.key] = config_entry.value
-    config["okpy_endpoint_id"] = get_course_id()
     return config
 
 
@@ -563,43 +554,6 @@ def init_config():
     )
     db.session.add(
         ConfigEntry(
-            key="show_okpy_backups", value="false", public=True, course=get_course()
-        )
-    )
-    db.session.add(
-        ConfigEntry(
-            key="slack_notif_long_queue",
-            value="false",
-            public=True,
-            course=get_course(),
-        )
-    )
-    db.session.add(
-        ConfigEntry(
-            key="slack_notif_appt_summary",
-            value="false",
-            public=True,
-            course=get_course(),
-        )
-    )
-    db.session.add(
-        ConfigEntry(
-            key="slack_notif_missed_appt",
-            value="false",
-            public=True,
-            course=get_course(),
-        )
-    )
-    db.session.add(
-        ConfigEntry(
-            key="slack_notif_missed_appt_private",
-            value="false",
-            public=True,
-            course=get_course(),
-        )
-    )
-    db.session.add(
-        ConfigEntry(
             key="party_enabled", value="false", public=True, course=get_course()
         )
     )
@@ -683,17 +637,6 @@ def index(*args, **kwargs):
     if not check:
         init_config()
     ensure_config_entry("enable_llm_features", "false", True)
-    notif_state = CourseNotificationState.query.filter_by(
-        course=get_course()
-    ).one_or_none()
-    if not notif_state:
-        notif_state = CourseNotificationState(
-            course=get_course(),
-            domain=get_domain(),
-            last_queue_ping=datetime.datetime.now(),
-            last_appointment_notif=get_current_time(),
-        )
-        db.session.add(notif_state)
     db.session.commit()
 
     return render_template("index.html", course_name=format_coursecode(get_course()))
@@ -712,29 +655,8 @@ def api(endpoint):
             resp = f() if args == {} else f(args)
             return jsonify({"action": resp, "updates": g.response_buffer})
 
-        def sudo_handler():
-            data = request.json
-            secret = data["secret"]
-            email = data["email"]
-            course = data.get("course", None)
-            args = data.get("args", None)
-            course = validate_secret(secret=secret, course=course)
-            if course != get_course():
-                abort(401)
-            user = User.query.filter_by(course=course, email=email).one()
-            login_user(user)
-            resp = f() if args is None else f(args)
-            return jsonify({"action": resp, "updates": g.response_buffer})
-
         app.add_url_rule(
             "/api/{}".format(endpoint), f.__name__, handler, methods=["POST"]
-        )
-
-        app.add_url_rule(
-            "/api/sudo/{}".format(endpoint),
-            "sudo_" + f.__name__,
-            sudo_handler,
-            methods=["POST"],
         )
 
         return f
@@ -750,8 +672,6 @@ def socket_error(message, category="danger", ticket_id=None):
 
 
 def socket_redirect(**kwargs):
-    from flask import url_for
-
     redirect = url_for("index", **kwargs)
     return {"redirect": redirect}
 
@@ -1490,13 +1410,6 @@ def update_config(data):
         entry.value = value
     db.session.commit()
 
-    if get_course() == "cs61a" and data["key"] == "show_presence":
-        post_slack_message(
-            course="cs61a",
-            message=f"{current_user.email} just set the 61A presence mode to: {data['value']}",
-            purpose="oh-queue-snitch",
-        )
-
     emit_state(["config", "locations"])
 
     return config_json()
@@ -1766,7 +1679,7 @@ def upload_appointments(data):
     sheet_name = data["sheetName"]
 
     try:
-        data = read_spreadsheet(course="cs61a", url=sheet_url, sheet_name=sheet_name)
+        data = read_spreadsheet(url=sheet_url, sheet_name=sheet_name)
 
         locations = {}
 
@@ -2051,27 +1964,6 @@ def update_appointments(arr):
         apply_appointment_update(data, appointment_dict[data["id"]])
     db.session.commit()
     return emit_state(["appointments"])
-
-
-@api("test_slack")
-@is_staff
-def test_slack():
-    notif_config: CourseNotificationState = CourseNotificationState.query.filter_by(
-        course=get_course()
-    ).one()
-    post_slack_message(
-        message="This is a test message from the OH queue! Your default queue domain is {}. This channel will "
-        "be used for all future notifications. To change the channel, visit auth.cs61a.org and "
-        "update the channel associated with `oh-queue`.".format(notif_config.domain),
-        purpose="oh-queue",
-        course=get_course(),
-    )
-
-
-@api("appointment_summary")
-@is_staff
-def appointment_summary():
-    send_appointment_summary(get_course())
 
 
 def leave_current_groups():

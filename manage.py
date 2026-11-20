@@ -21,7 +21,7 @@ from flask_debugtoolbar import DebugToolbarExtension
 from flask_migrate import Migrate
 
 
-from common.course_config import get_course
+from oh_queue.course import get_course
 from oh_queue import app
 from oh_queue.models import (
     db,

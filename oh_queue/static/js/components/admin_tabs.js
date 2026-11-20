@@ -11,7 +11,6 @@ function AdminTabs({ currentTab, partyAlias }) {
     "assignments",
     "locations",
     "online",
-    "slack",
   ];
 
   const body = links.map((link, index) => (
