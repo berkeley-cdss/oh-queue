@@ -189,3 +189,18 @@ def test_link_offering_command(app):
     for args in (["202", "other", "x"], ["303", "data8", "x"], [str(MAX_OFFERING_CANVAS_ID + 1), "big", "x"]):
         result = runner.invoke(args=["link-offering", *args])
         assert result.exit_code != 0
+
+
+def test_importing_a_course_someone_else_just_imported_is_not_an_error(client):
+    canvas_sign_in(client, "ta@example.edu", {"202": role(is_staff=True, name="DATA C8 - LEC 001", code="DATA C8")})
+    # Imported between this page loading and the form being sent: here, as a
+    # different course whose key is taken, since the page lists only new ones.
+    with client.application.app_context():
+        db.session.add(Offering(canvas_id=303, key="202", name="Taken"))
+        db.session.commit()
+    response = client.post("/offerings/new", data={"offerings": ["202"]})
+    assert response.status_code == 302
+    page = offerings_page(client)
+    assert "Someone else just imported" in page
+    with client.application.app_context():
+        assert Offering.query.filter_by(canvas_id=202).count() == 0

@@ -7,17 +7,13 @@ Offering row for the rest of the request.
 
 from flask import abort, g
 
-from oh_queue.models import Offering, can_be_offering
+from oh_queue.models import Offering
 
 OFFERING_URL_PREFIX = "/offerings/<int:canvas_course_id>"
 
 
 def load_offering(canvas_course_id: int):
-    offering = (
-        Offering.query.filter_by(canvas_id=canvas_course_id).one_or_none()
-        if can_be_offering(canvas_course_id)
-        else None
-    )
+    offering = Offering.for_canvas_id(canvas_course_id)
     if offering is None:
         abort(404, "The queue isn't set up for this course yet. If this is unexpected, ask your course staff.")
     g.offering = offering

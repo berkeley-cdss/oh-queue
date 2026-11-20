@@ -4,6 +4,7 @@ import click
 import flask
 from flask import abort, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from sqlalchemy.exc import IntegrityError
 
 from oh_queue.models import Offering, can_be_offering, db
 
@@ -78,7 +79,13 @@ def create_offering_pages(app: flask.Flask):
                          code=candidates[i]["code"], start_at=candidates[i]["start_at"])
                 for i in chosen
             )
-            db.session.commit()
+            try:
+                db.session.commit()
+            except IntegrityError:
+                # Someone else imported one of them since the page loaded.
+                db.session.rollback()
+                flash("Someone else just imported one of those courses. Check the list, then try again.", "info")
+                return redirect(url_for("offerings"))
             flash(f"Imported {len(chosen)} course offerings.", "success")
             return redirect(url_for("offerings"))
         rows = sorted(candidates.items(), key=lambda item: (item[1]["start_at"] or "", item[1]["name"]), reverse=True)
@@ -90,9 +97,9 @@ def create_offering_pages(app: flask.Flask):
         """Take an offering off the site, as in sections, but keep its tickets
         and settings: they're stored under its key, not linked to the Offering
         row, so importing the course again brings them back."""
-        if not can_be_offering(canvas_id):
+        offering = Offering.for_canvas_id(canvas_id)
+        if offering is None:
             abort(404)
-        offering = Offering.query.filter_by(canvas_id=canvas_id).first_or_404()
         if not current_user.is_admin_in(canvas_id):
             abort(403, "Only course admins (instructors and Lead TAs) can remove an offering.")
         # Read before the delete expires them.
@@ -114,6 +121,10 @@ def create_offering_pages(app: flask.Flask):
                 current_user.email, canvas_id, key, canvas_id, key, name)
         return redirect(url_for("offerings"))
 
+    create_link_offering_command(app)
+
+
+def create_link_offering_command(app: flask.Flask):
     @app.cli.command("link-offering")
     @click.argument("canvas_id", type=int)
     @click.argument("key")
@@ -126,7 +137,7 @@ def create_offering_pages(app: flask.Flask):
         """
         if not can_be_offering(canvas_id):
             raise click.ClickException(f"Canvas course {canvas_id}'s ID is too big.")
-        if Offering.query.filter((Offering.canvas_id == canvas_id) | (Offering.key == key)).first():
+        if Offering.for_canvas_id(canvas_id) or Offering.query.filter_by(key=key).first():
             raise click.ClickException(f"Canvas course {canvas_id} or key '{key}' is already linked.")
         db.session.add(Offering(canvas_id=canvas_id, key=key, name=name))
         db.session.commit()

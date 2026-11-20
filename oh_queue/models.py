@@ -67,6 +67,12 @@ class Offering(db.Model):
     # ISO 8601 start of the course's term, as in seating.
     start_at = db.Column(db.String(255), nullable=True)
 
+    @classmethod
+    def for_canvas_id(cls, canvas_id):
+        """The offering for a Canvas course, or None. IDs too big for the
+        column can't be one, and Postgres refuses to compare them with it."""
+        return cls.query.filter_by(canvas_id=canvas_id).one_or_none() if can_be_offering(canvas_id) else None
+
     @property
     def display_name(self) -> str:
         return self.code or self.name

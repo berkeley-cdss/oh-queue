@@ -201,3 +201,14 @@ def test_logout(client):
     response = client.post("/logout/")
     assert response.status_code == 302
     assert current_user(client) is None
+
+
+def test_a_profile_without_an_email_is_refused_clearly(client):
+    with patch(AUTHORIZE, return_value={"user": {"id": 42}, "access_token": "token"}), \
+         patch.object(canvas_service, "get_profile", return_value={"name": "No Email"}), \
+         patch.object(canvas_service, "get_user_courses", return_value={}):
+        response = client.get("/authorized/?code=abc&state=xyz")
+    assert response.status_code == 403
+    assert b"no email address" in response.data
+    with client.application.app_context():
+        assert Account.query.count() == 0

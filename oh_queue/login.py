@@ -30,25 +30,33 @@ def _after_login():
     return redirect(session.pop(AFTER_LOGIN_KEY, None) or url_for("offerings"))
 
 
+def sign_in_account(canvas_id: str, email: str, name: str, courses: dict, is_global_admin: bool):
+    """Create or update the Account for a Canvas user, and sign it in."""
+    account = Account.query.filter_by(canvas_id=canvas_id).one_or_none()
+    if account is None:
+        account = Account(canvas_id=canvas_id)
+        db.session.add(account)
+    account.email = email
+    account.name = name or email
+    account.canvas_courses = courses
+    account.is_global_admin = is_global_admin
+    db.session.commit()
+    login_user(account, remember=True)
+
+
 def complete_login(token: dict):
     """Create or update the signed-in Account from a Canvas OAuth token response."""
     canvas_user_id = str(token["user"]["id"])
     access_token = token["access_token"]
     profile = canvas_service.get_profile(canvas_user_id, access_token)
     email = profile.get("primary_email") or profile.get("login_id")
+    if not email:
+        abort(403, "Your bCourses profile has no email address, which the queue needs to sign you in. "
+                   "Add one in bCourses, or ask your course staff.")
     courses = canvas_service.get_user_courses(canvas_user_id, access_token)
     override_id = current_app.config.get("ADMIN_OVERRIDE_CANVAS_COURSE_ID")
-
-    account = Account.query.filter_by(canvas_id=canvas_user_id).one_or_none()
-    if account is None:
-        account = Account(canvas_id=canvas_user_id)
-        db.session.add(account)
-    account.email = email
-    account.name = profile.get("name") or email
-    account.canvas_courses = courses
-    account.is_global_admin = override_id is not None and str(override_id) in courses
-    db.session.commit()
-    login_user(account, remember=True)
+    sign_in_account(canvas_user_id, email, profile.get("name"), courses,
+                    is_global_admin=override_id is not None and str(override_id) in courses)
 
 
 def course_user(account: Account):
@@ -156,15 +164,7 @@ def create_testing_login(app: flask.Flask):
         form = request.form
         is_staff = form.get("is_staff") == "on"
         email = form["email"]
-        canvas_id = f"dev:{email}"
-        account = Account.query.filter_by(canvas_id=canvas_id).one_or_none()
-        if account is None:
-            account = Account(canvas_id=canvas_id)
-            db.session.add(account)
-        account.email = email
-        account.name = form["name"] or email
-        account.is_global_admin = False
-        account.canvas_courses = {
+        courses = {
             str(o.canvas_id): {
                 "name": o.name,
                 "code": o.code,
@@ -175,6 +175,5 @@ def create_testing_login(app: flask.Flask):
             }
             for o in Offering.query.all()
         }
-        db.session.commit()
-        login_user(account, remember=True)
+        sign_in_account(f"dev:{email}", email, form["name"], courses, is_global_admin=False)
         return _after_login()
