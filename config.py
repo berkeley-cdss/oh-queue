@@ -51,11 +51,8 @@ CANVAS_SERVER_URL = os.getenv(
 CANVAS_CLIENT_ID = os.getenv("CANVAS_CLIENT_ID")
 CANVAS_CLIENT_SECRET = os.getenv("CANVAS_CLIENT_SECRET")
 # Optional: members of this Canvas course are staff and admin in every course.
-ADMIN_OVERRIDE_CANVAS_COURSE_ID = (
-    int(os.getenv("ADMIN_OVERRIDE_CANVAS_COURSE_ID"))
-    if os.getenv("ADMIN_OVERRIDE_CANVAS_COURSE_ID")
-    else None
-)
+ADMIN_OVERRIDE_CANVAS_COURSE_ID = os.getenv("ADMIN_OVERRIDE_CANVAS_COURSE_ID")
+ADMIN_OVERRIDE_CANVAS_COURSE_ID = int(ADMIN_OVERRIDE_CANVAS_COURSE_ID) if ADMIN_OVERRIDE_CANVAS_COURSE_ID else None
 
 # Appointment emails. Without EMAIL_SERVER they're logged instead of sent.
 EMAIL_SERVER = os.getenv("EMAIL_SERVER")
