@@ -73,13 +73,15 @@ def message_json(message: ChatMessage):
 
 
 def ticket_json(ticket):
-    if not has_ticket_access(ticket):
+    # Its student keeps seeing a group ticket after leaving the group.
+    is_own = current_user.is_authenticated and ticket.user_id == current_user.id
+    if not (is_own or has_ticket_access(ticket)):
         return public_ticket_json(ticket)
     group = ticket.group
     return {
         "id": ticket.id,
         "status": ticket.status.name,
-        "user": user_json(ticket.user) if group else student_json(ticket.user),
+        "user": user_json(ticket.user),
         "created": ticket.created.isoformat(),
         "sort_key": ticket.sort_key.isoformat(),
         "rerequest_threshold": ticket.rerequest_threshold
@@ -318,8 +320,8 @@ def group_json(group: Group):
 
 
 def public_group_json(group: Group):
-    """A group other students can join, as its card shows it: no members'
-    details, links or chat."""
+    """A group other students can join, as its card and page show it: no
+    members' emails or links, and no group links or chat."""
     return {
         "id": group.id,
         "created": group.created.isoformat(),
@@ -328,7 +330,9 @@ def public_group_json(group: Group):
                 "id": attendance.id,
                 "group_id": attendance.group_id,
                 "group_attendance_status": attendance.group_attendance_status.name,
-                "user": {"id": attendance.user.id, "shortName": attendance.user.short_name},
+                # The group's page lists its members for students deciding
+                # whether to join.
+                "user": public_user_json(attendance.user),
             }
             for attendance in group.attendees
             if attendance.group_attendance_status == GroupAttendanceStatus.present
@@ -632,7 +636,7 @@ def is_staff(f):
 
 
 def has_ticket_access(ticket: Ticket):
-    if not current_user.is_authenticated:
+    if not current_user.is_authenticated or not ticket:
         return False
     group = ticket.group
     if group:

@@ -52,6 +52,7 @@ def queue(app):
     api(bob, "create_group", {**ids, "question": "3", "call-link": "meet.google.com/bobgroup"})
     with app.app_context():
         group_id = Group.query.one().id
+    api(bob, "update_group", {"id": group_id, "description": "study group"})
     api(bob, "send_chat_message", {"mode": "group", "id": group_id, "content": "group chat"})
 
     return {"staff": staff, "alice": alice, "bob": bob, "visitor": visitor,
@@ -116,13 +117,16 @@ def test_group_members_see_their_group_in_full(queue):
 
 
 @pytest.mark.parametrize("viewer", ["alice", "visitor"])
-def test_others_see_only_what_a_group_card_shows(queue, viewer):
+def test_others_see_only_what_a_group_card_and_page_show(queue, viewer):
     group = state(queue[viewer])["groups"][0]
-    # What the card shows: the question, description and first name.
-    assert (group["description"], group["question"]) == (state(queue["bob"])["groups"][0]["description"], "3")
+    assert (group["description"], group["question"]) == ("study group", "3")
     assert group["messages"] == []
     assert "call_url" not in group and "doc_url" not in group
-    assert group["attendees"][0]["user"] == {"id": group["attendees"][0]["user"]["id"], "shortName": "Bob"}
+    # The group's page lists who's in it, without their emails or links.
+    member = group["attendees"][0]["user"]
+    assert {k: member[k] for k in ("name", "shortName", "isStaff")} == {
+        "name": "Bob Student", "shortName": "Bob", "isStaff": False}
+    assert set(member) == {"id", "name", "shortName", "isStaff"}
 
 
 def test_signed_out_visitors_cant_change_a_group(queue, app):
@@ -132,7 +136,7 @@ def test_signed_out_visitors_cant_change_a_group(queue, app):
     assert "permission" in response["messages"][0]["text"]
     with app.app_context():
         group = db.session.get(Group, queue["group"])
-        assert not group.description.startswith("changed")
+        assert group.description == "study group"
         assert group.ticket_id is None
 
 
@@ -140,3 +144,19 @@ def test_signed_out_visitors_cant_open_a_group_by_its_address(queue):
     response = queue["visitor"].post("/api/connect", json={"url": f"http://localhost/groups/{queue['group']}/"})
     groups = [g for _, s in response.get_json()["updates"] for g in s.get("groups", [])]
     assert all("call_url" not in g for g in groups)
+
+
+def test_students_keep_seeing_their_group_ticket_after_leaving(queue):
+    api(queue["bob"], "delete", [queue["bob_ticket"]])
+    api(queue["bob"], "create_group_ticket", {"id": queue["group"]})
+    group_ticket = [t for t in state(queue["bob"])["tickets"] if t["group_id"] == queue["group"]][0]["id"]
+    api(queue["bob"], "leave_group", queue["group"])
+    bob_id = state(queue["bob"])["current_user"]["id"]
+    history = {t["id"]: t for t in api(queue["bob"], "get_user", bob_id)["tickets"]}
+    assert history[group_ticket]["user"]["email"] == "bob@example.edu"
+    assert history[group_ticket]["description"] == "This ticket is associated with a group."
+
+
+def test_a_missing_ticket_is_refused_not_an_error(queue):
+    response = api(queue["alice"], "update_ticket", {"id": 999, "description": "x"})
+    assert "permission" in response["messages"][0]["text"]
