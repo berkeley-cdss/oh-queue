@@ -50,6 +50,16 @@ def can_be_offering(canvas_id) -> bool:
     return int(canvas_id) <= MAX_OFFERING_CANVAS_ID
 
 
+def start_month(start_at) -> str:
+    """The year and month of an ISO 8601 term start, such as "2026-08", or ""."""
+    return (start_at or "")[:7]
+
+
+def newest_first_key(start_at, name):
+    """Sorts courses newest term first, then by name (with reverse=True), as seating does."""
+    return (start_at or "", name)
+
+
 class Offering(db.Model):
     """One semester's bCourses course that has been set up in this app, as in
     seating and sections."""
@@ -66,6 +76,10 @@ class Offering(db.Model):
     code = db.Column(db.String(255), nullable=True)
     # ISO 8601 start of the course's term, as in seating.
     start_at = db.Column(db.String(255), nullable=True)
+    # Taken off the site by a course admin. The row stays, so importing the
+    # course again brings it back under the same key, with its data, even
+    # for a course linked to an old key like "cs61a".
+    hidden = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
 
     @classmethod
     def for_canvas_id(cls, canvas_id):
@@ -79,7 +93,7 @@ class Offering(db.Model):
 
     @property
     def start_month(self) -> str:
-        return (self.start_at or "")[:7]
+        return start_month(self.start_at)
 
     def __repr__(self):
         return f"<Offering {self.name}>"

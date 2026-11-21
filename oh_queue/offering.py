@@ -14,7 +14,7 @@ OFFERING_URL_PREFIX = "/offerings/<int:canvas_course_id>"
 
 def load_offering(canvas_course_id: int):
     offering = Offering.for_canvas_id(canvas_course_id)
-    if offering is None:
+    if offering is None or offering.hidden:
         abort(404, "The queue isn't set up for this course yet. If this is unexpected, ask your course staff.")
     g.offering = offering
 

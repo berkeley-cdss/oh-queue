@@ -5,7 +5,7 @@ import time
 from operator import or_
 from urllib.parse import urljoin, urlparse
 
-from flask import Blueprint, g, jsonify, render_template, request
+from flask import Blueprint, g, jsonify, render_template, request, url_for
 from flask_login import current_user
 from oh_queue import app, db
 from oh_queue.models import (
@@ -29,7 +29,7 @@ from sqlalchemy import desc
 from sqlalchemy.orm import joinedload, selectinload
 import requests
 
-from oh_queue.offering import OFFERING_URL_PREFIX, get_canvas_course_id, get_course, get_course_name, load_offering
+from oh_queue.offering import OFFERING_URL_PREFIX, get_course, get_course_name, load_offering
 
 # Each course's queue page and API live under /offerings/<canvas course id>/.
 bp = Blueprint("offering", __name__, url_prefix=OFFERING_URL_PREFIX)
@@ -561,7 +561,7 @@ def index(*args, **kwargs):
         "index.html",
         course_name=get_course_name(),
         # Where the course's pages and API are, for the React app.
-        base_path=f"/offerings/{get_canvas_course_id()}",
+        base_path=url_for("offering.index").rstrip("/"),
     )
 
 

@@ -28,7 +28,21 @@ async function post(endpoint, data, skipTimeout) {
   if (skipTimeout) {
     return promise;
   }
-  return timeoutPromise(10000, promise).then((resp) => resp.json());
+  return timeoutPromise(10000, promise).then((resp) => {
+    // Refused (no longer enrolled in the course) or gone (the course was
+    // hidden): if the page itself now fails too, reload it, so it shows the
+    // server's explanation instead of seeming offline. Checking the page
+    // first means an API error alone can't make the page reload over and over.
+    if (resp.status === 403 || resp.status === 404) {
+      return fetch(window.location.href, { cache: "no-cache" }).then((page) => {
+        if (!page.ok) {
+          window.location.reload();
+        }
+        throw new Error(`${endpoint} answered ${resp.status}`);
+      });
+    }
+    return resp.json();
+  });
 }
 
 class Socket {
