@@ -15,22 +15,11 @@ from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from flask import current_app, jsonify, request
 
+from oh_queue.errors import error_page
 from oh_queue.models import db
 
 # How long to trust a result, so most requests don't query the database for it.
 CACHE_SECONDS = 60
-
-
-def is_api_request() -> bool:
-    return "/api/" in request.path
-
-
-def error_page(title: str, message: str, status: int):
-    # Rendered without render_template, whose context processors include
-    # Flask-Login's, which loads the signed-in user from the database: that may
-    # be what failed. error.html doesn't show the user either.
-    template = current_app.jinja_env.get_template("pages/error.html")
-    return template.render(title=title, message=message), status
 
 
 def schema_problem(migrations_dir: str) -> str | None:
@@ -89,6 +78,7 @@ def check_schema_before_requests(app: flask.Flask, migrations_dir: str):
             return None
         if request.path == "/health":
             return problem, 503
-        if is_api_request():
-            return jsonify({"success": False, "message": problem}), 503
+        # As errors.py answers the course API.
+        if "/api/" in request.path:
+            return jsonify({"message": problem}), 503
         return error_page("Database migration needed", problem, 503)

@@ -58,7 +58,6 @@ def test_database_behind_says_to_upgrade(checked_app):
 
     api = client.post(COURSE + "/api/connect", json={})
     assert api.status_code == 503
-    assert api.json["success"] is False
     assert "flask db upgrade" in api.json["message"]
 
 

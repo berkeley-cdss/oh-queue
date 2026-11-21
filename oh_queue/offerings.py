@@ -2,11 +2,11 @@
 
 import click
 import flask
-from flask import abort, current_app, flash, redirect, render_template, request, url_for
+from flask import abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy.exc import IntegrityError
 
-from oh_queue.models import Offering, can_be_offering, db
+from oh_queue.models import Offering, can_be_offering, db, newest_first_key, start_month
 
 
 def _categorized_offerings(account):
@@ -14,7 +14,8 @@ def _categorized_offerings(account):
     enrolled in, like seating's offerings page."""
     # Skip too-big IDs, which Postgres refuses to compare with the column.
     canvas_ids = [int(i) for i in account.canvas_courses if can_be_offering(i)]
-    existing = Offering.query.filter(Offering.canvas_id.in_(canvas_ids)).all()
+    shown = Offering.query.filter(Offering.hidden.is_(False))
+    existing = shown.filter(Offering.canvas_id.in_(canvas_ids)).all()
     staff, students, other = [], [], []
     for offering in existing:
         info = account.canvas_courses[str(offering.canvas_id)]
@@ -28,16 +29,18 @@ def _categorized_offerings(account):
         else:
             other.append(offering)
     if account.is_global_admin:
-        staff += Offering.query.filter(Offering.canvas_id.notin_(canvas_ids)).all()
+        staff += shown.filter(Offering.canvas_id.notin_(canvas_ids)).all()
     db.session.commit()
 
     def newest_first(offerings):
-        return sorted(offerings, key=lambda o: (o.start_at or "", o.display_name), reverse=True)
+        return sorted(offerings, key=lambda o: newest_first_key(o.start_at, o.display_name), reverse=True)
 
     return newest_first(staff), newest_first(students), newest_first(other)
 
 
 def create_offering_pages(app: flask.Flask):
+    app.add_template_filter(start_month, "start_month")
+
     @app.route("/")
     def index():
         if current_user.is_authenticated:
@@ -60,7 +63,9 @@ def create_offering_pages(app: flask.Flask):
     @app.route("/offerings/new", methods=["GET", "POST"])
     @login_required
     def add_offerings():
-        existing = {c.canvas_id for c in Offering.query.with_entities(Offering.canvas_id)}
+        # Hidden offerings can be imported again.
+        existing = {c.canvas_id for c in Offering.query.filter(Offering.hidden.is_(False))
+                    .with_entities(Offering.canvas_id)}
         candidates = {
             int(canvas_id): info
             for canvas_id, info in current_user.canvas_courses.items()
@@ -74,11 +79,15 @@ def create_offering_pages(app: flask.Flask):
             if not chosen:
                 flash("No course offering imported.", "info")
                 return redirect(url_for("offerings"))
-            db.session.add_all(
-                Offering(canvas_id=i, key=str(i), name=candidates[i]["name"],
-                         code=candidates[i]["code"], start_at=candidates[i]["start_at"])
-                for i in chosen
-            )
+            for i in chosen:
+                # A hidden offering comes back under its key, with its data.
+                offering = Offering.for_canvas_id(i)
+                if offering is None:
+                    offering = Offering(canvas_id=i, key=str(i))
+                    db.session.add(offering)
+                offering.hidden = False
+                info = candidates[i]
+                offering.name, offering.code, offering.start_at = info["name"], info["code"], info["start_at"]
             try:
                 db.session.commit()
             except IntegrityError:
@@ -88,37 +97,25 @@ def create_offering_pages(app: flask.Flask):
                 return redirect(url_for("offerings"))
             flash(f"Imported {len(chosen)} course offerings.", "success")
             return redirect(url_for("offerings"))
-        rows = sorted(candidates.items(), key=lambda item: (item[1]["start_at"] or "", item[1]["name"]), reverse=True)
+        rows = sorted(candidates.items(), key=lambda item: newest_first_key(item[1]["start_at"], item[1]["name"]),
+                      reverse=True)
         return render_template("pages/new_offerings.html", title="Add New Course Offerings", candidates=rows)
 
     @app.route("/offerings/<int:canvas_id>/remove", methods=["POST"])
     @login_required
     def remove_offering(canvas_id):
-        """Take an offering off the site, as in sections, but keep its tickets
-        and settings: they're stored under its key, not linked to the Offering
-        row, so importing the course again brings them back."""
+        """Take an offering off the site, as in sections, keeping its tickets and
+        settings: the row is only marked hidden, so importing the course again
+        brings it back under the same key."""
         offering = Offering.for_canvas_id(canvas_id)
-        if offering is None:
+        if offering is None or offering.hidden:
             abort(404)
         if not current_user.is_admin_in(canvas_id):
             abort(403, "Only course admins (instructors and Lead TAs) can remove an offering.")
-        # Read before the delete expires them.
-        key, name, display_name = offering.key, offering.name, offering.display_name
-        db.session.delete(offering)
+        offering.hidden = True
         db.session.commit()
-        if key == str(canvas_id):
-            flash(f"Hid {display_name}. Its tickets and settings are kept; "
-                  "import it again to restore them.", "success")
-        else:
-            # Linked from a per-course site: importing would start over under a
-            # new key, and linking it again is a command only a maintainer can
-            # run, so the command goes in the log for them.
-            flash(f"Hid {display_name}. Its tickets and settings are kept under "
-                  f"'{key}'. Ask a maintainer to restore them.", "success")
-            current_app.logger.info(
-                "%s removed offering %s (key %s); to restore it, run: "
-                "flask link-offering %s %s \"%s\"",
-                current_user.email, canvas_id, key, canvas_id, key, name)
+        flash(f"Hid {offering.display_name}. Its tickets and settings are kept; "
+              "import it again to bring them back.", "success")
         return redirect(url_for("offerings"))
 
     create_link_offering_command(app)

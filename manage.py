@@ -10,7 +10,7 @@ import alembic
 import alembic.command
 from alembic.config import Config
 from dotenv import load_dotenv
-from flask import render_template
+from flask import render_template, url_for
 from flask_migrate import Migrate
 from werkzeug.serving import run_simple
 
@@ -108,7 +108,8 @@ def seed_data():
         db.session.add(ticket)
 
     db.session.commit()
-    print(f"Seeded {offering.display_name}: open /offerings/{offering.canvas_id}/")
+    with app.test_request_context():
+        print(f"Seeded {offering.display_name}: open {url_for('offering.index', canvas_course_id=offering.canvas_id)}")
 
 
 @app.cli.command("resetdb")

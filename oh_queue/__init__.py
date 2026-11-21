@@ -3,6 +3,7 @@ import os
 
 from flask_session import Session
 from datetime import timedelta
+from oh_queue.errors import register_error_handlers
 from oh_queue.login import create_login_client
 from oh_queue.offerings import create_offering_pages
 from oh_queue.schema_check import check_schema_before_requests
@@ -45,6 +46,7 @@ db.init_app(app)
 # Initialize Canvas login and the pages for choosing a course
 create_login_client(app)
 create_offering_pages(app)
+register_error_handlers(app)
 
 # Configure server-side sessions
 app.config['SESSION_TYPE'] = 'sqlalchemy'

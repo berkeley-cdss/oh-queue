@@ -38,6 +38,7 @@ def upgrade():
         sa.Column("name", sa.String(length=255), nullable=False),
         sa.Column("code", sa.String(length=255), nullable=True),
         sa.Column("start_at", sa.String(length=255), nullable=True),
+        sa.Column("hidden", sa.Boolean(), server_default=sa.false(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("key"),
     )

@@ -132,8 +132,12 @@ def test_only_course_admins_remove_offerings_and_their_data_is_kept(client, two_
 
 
 def test_unknown_offerings_are_not_found(client):
-    assert client.get("/offerings/999/").status_code == 404
-    assert client.post("/offerings/999/api/connect", json={}).status_code == 404
+    response = client.get("/offerings/999/")
+    assert response.status_code == 404
+    assert "The queue isn&#39;t set up for this course yet" in response.get_data(as_text=True)
+    response = client.post("/offerings/999/api/connect", json={})
+    assert response.status_code == 404
+    assert "isn't set up" in response.get_json()["message"]
 
 
 def make_ticket(client, course_key, prefix):
@@ -204,3 +208,23 @@ def test_importing_a_course_someone_else_just_imported_is_not_an_error(client):
     assert "Someone else just imported" in page
     with client.application.app_context():
         assert Offering.query.filter_by(canvas_id=202).count() == 0
+
+
+def test_a_hidden_linked_course_comes_back_with_its_key_and_data(client):
+    # The test offering is linked to "cs61a", the key a per-course site used.
+    canvas_sign_in(client, "prof@example.edu", {"101": role(is_staff=True, is_admin=True)})
+    client.get(COURSE + "/")
+    with client.application.app_context():
+        db.session.add(Assignment(name="Hog", visible=True, course="cs61a"))
+        db.session.commit()
+
+    assert client.post(COURSE + "/remove").status_code == 302
+    assert client.get(COURSE + "/").status_code == 404
+    assert f'href="{COURSE}/"' not in offerings_page(client)
+    assert 'value="101"' in client.get("/offerings/new").get_data(as_text=True)
+
+    client.post("/offerings/new", data={"offerings": ["101"]})
+    assert client.get(COURSE + "/").status_code == 200
+    with client.application.app_context():
+        assert [(o.canvas_id, o.key, o.hidden) for o in Offering.query] == [(101, "cs61a", False)]
+    assert [a["name"] for a in connect(client, COURSE)["assignments"]] == ["Hog"]

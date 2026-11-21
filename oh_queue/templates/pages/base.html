@@ -30,7 +30,8 @@
 
         <div class="collapse navbar-collapse" id="site-nav">
           <ul class="navbar-nav ms-auto">
-            {# error.html sets hide_account: loading the user needs the database, which may be what failed #}
+            {# error.html sets hide_account: loading the user can be what failed (someone not enrolled
+               in the course, or a database that doesn't match the migrations) #}
             {% if hide_account %}
             {% elif current_user.is_authenticated %}
               {# the title already links home; as on the course pages, Offerings leads back to the list #}

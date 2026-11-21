@@ -8,7 +8,7 @@ Students request help on an assignment and question number from a location.
 
 Students and staff sign in with bCourses, and a person's staff role in each course comes from their bCourses enrollment.
 
-One site serves every course, with seating's and sections' routes: after signing in, `/offerings` lists your courses, and each course's queue is at `/offerings/<bCourses course id>/`. Course staff set up a queue for one of their bCourses courses with **Import courses from Canvas**. A course moved from one of the old per-course sites keeps its data under its old key (such as `cs61a`): a maintainer links it to its bCourses course with `flask link-offering <bCourses course id> <key> "<name>"`.
+One site serves every course, with seating's and sections' routes: after signing in, `/offerings` lists your courses, and each course's queue is at `/offerings/<bCourses course id>/`. Course staff set up a queue for one of their bCourses courses with **Import courses from Canvas**. A course moved from one of the old per-course sites keeps its data under its old key (such as `cs61a`): a maintainer links it to its bCourses course with `python manage.py link-offering <bCourses course id> <key> "<name>"`.
 
 ## Installation
 
