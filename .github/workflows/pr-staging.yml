@@ -74,7 +74,9 @@ jobs:
           service: preview-oh-pr-${{ github.event.number }}
           region: us-west1
           source: .
-          flags: '--allow-unauthenticated --service-account=oh-app@staging-cdss-web-apps.iam.gserviceaccount.com --max-instances=3'
+          # The image is built as oh-build, which can only build, not as the default compute
+          # service account, which has Editor on the project.
+          flags: '--allow-unauthenticated --service-account=oh-app@staging-cdss-web-apps.iam.gserviceaccount.com --build-service-account=projects/staging-cdss-web-apps/serviceAccounts/oh-build@staging-cdss-web-apps.iam.gserviceaccount.com --max-instances=3'
           # RUN_MIGRATIONS is never set here: previews share the staging database.
           env_vars: |
             ENV=prod
