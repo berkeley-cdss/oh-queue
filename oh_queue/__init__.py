@@ -1,9 +1,11 @@
 import logging
+import os
 
 from flask_session import Session
 from datetime import timedelta
 from oh_queue.login import create_login_client
 from oh_queue.offerings import create_offering_pages
+from oh_queue.schema_check import check_schema_before_requests
 
 # Flask-related stuff
 
@@ -24,6 +26,8 @@ from oh_queue.models import (
 )
 
 logging.basicConfig(level=logging.INFO)
+
+MIGRATIONS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "migrations")
 
 # Initialize the application
 app = Flask(__name__)
@@ -52,6 +56,17 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE'] = not app.debug
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 Session(app)
+
+# Before the views' hooks, so a database that doesn't match the migrations
+# gets an explanation rather than errors from its first query.
+check_schema_before_requests(app, MIGRATIONS_DIR)
+
+
+# For Cloud Run and the Dockerfile's health check.
+@app.route("/health")
+def health():
+    return "ok"
+
 
 # Import views, which need the app set up first
 import oh_queue.views  # noqa: E402

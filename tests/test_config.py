@@ -72,3 +72,26 @@ def test_admin_override_course_is_optional():
     assert load_config(
         {"ENV": "dev", "ADMIN_OVERRIDE_CANVAS_COURSE_ID": "42"}, "ADMIN_OVERRIDE_CANVAS_COURSE_ID"
     ) == (0, "[42]")
+
+
+CLOUD_SQL = {
+    "ENV": "prod",
+    "SECRET_KEY": "secret",
+    "CLOUD_SQL_INSTANCE": "project:us-west1:instance",
+    "DB_USER": "oh-app@project.iam",
+    "DB_NAME": "oh",
+}
+
+
+def test_cloud_sql_needs_no_database_url():
+    code, values = load_config(CLOUD_SQL, "SQLALCHEMY_DATABASE_URI")
+    assert code == 0
+    assert values == "['postgresql+pg8000://']"
+
+
+@pytest.mark.parametrize("missing", ["DB_USER", "DB_NAME"])
+def test_cloud_sql_requires(missing):
+    env = {k: v for k, v in CLOUD_SQL.items() if k != missing}
+    code, error = load_config(env)
+    assert code != 0
+    assert f"Set {missing}." in error
