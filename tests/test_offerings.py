@@ -132,8 +132,12 @@ def test_only_course_admins_remove_offerings_and_their_data_is_kept(client, two_
 
 
 def test_unknown_offerings_are_not_found(client):
-    assert client.get("/offerings/999/").status_code == 404
-    assert client.post("/offerings/999/api/connect", json={}).status_code == 404
+    response = client.get("/offerings/999/")
+    assert response.status_code == 404
+    assert "The queue isn&#39;t set up for this course yet" in response.get_data(as_text=True)
+    response = client.post("/offerings/999/api/connect", json={})
+    assert response.status_code == 404
+    assert "isn't set up" in response.get_json()["message"]
 
 
 def make_ticket(client, course_key, prefix):

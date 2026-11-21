@@ -70,9 +70,13 @@ def test_only_people_enrolled_in_the_course_can_open_it(client):
     canvas_sign_in(client, "visitor@example.edu", {"202": role(is_student=True), "101": role()})
     response = client.get(COURSE + "/")
     assert response.status_code == 403
-    assert b"enrolled" in response.data
+    page = response.get_data(as_text=True)
+    # The site's error page, with the reason and a way back, not Werkzeug's bare one.
+    assert "You aren&#39;t enrolled in this course on bCourses" in page
+    assert 'href="/"' in page and "Back to the Office Hours Queue" in page
     response = client.post(COURSE + "/api/connect", json={"url": "http://localhost/"})
     assert response.status_code == 403
+    assert "enrolled" in response.get_json()["message"]
 
     canvas_sign_in(client, "visitor@example.edu", {"101": role(is_student=True)})
     assert client.get(COURSE + "/").status_code == 200
