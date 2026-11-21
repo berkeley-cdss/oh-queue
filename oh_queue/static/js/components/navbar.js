@@ -103,13 +103,21 @@ let Navbar = ({ state, mode }) => {
                     <Link to={`/user/${currentUser.id}`}>Ticket History</Link>
                   </li>
                   <li>
-                    <a href="/oauth/logout/">Log out</a>
+                    <a href="/offerings">Offerings</a>
+                  </li>
+                  <li>
+                    {/* A POST, so other sites can't sign people out. */}
+                    <form method="post" action="/logout/">
+                      <button type="submit" className="dropdown-form-button">
+                        Log out
+                      </button>
+                    </form>
                   </li>
                 </ul>
               </li>
             ) : (
               <li>
-                <a href="/oauth/canvas_login/"> Login</a>
+                <a href={loginPath()}> Login</a>
               </li>
             )}
           </ul>

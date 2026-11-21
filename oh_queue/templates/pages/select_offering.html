@@ -1,0 +1,69 @@
+{% extends 'pages/base.html' %}
+
+{% macro offering_row(offering, link=true, removable=false) %}
+  <li class="list-group-item d-flex align-items-center gap-3">
+    <small class="offering-term">{{ offering.start_month or "No Date" }}</small>
+    {% if link %}
+      <a class="item-link flex-grow-1" href="{{ url_for('offering.index', canvas_course_id=offering.canvas_id) }}">
+        {{ offering.name }}
+      </a>
+    {% else %}
+      <span class="flex-grow-1">{{ offering.name }}</span>
+    {% endif %}
+    {% if removable %}
+      {# a form, not seating's link, so that only a deliberate click removes it #}
+      <form method="post" action="{{ url_for('remove_offering', canvas_id=offering.canvas_id) }}"
+            data-confirm="Hide this offering? Its tickets and settings are kept, and come back if it is imported again.">
+        <button type="submit" class="icon-button" aria-label="Hide {{ offering.name }}"
+                data-bs-toggle="tooltip" data-bs-title="Hide"><i class="bi bi-eye-slash" aria-hidden="true"></i></button>
+      </form>
+    {% endif %}
+  </li>
+{% endmacro %}
+
+{% block body %}
+<section class="rooms">
+  <h2 class="h4">Staff Course Offerings</h2>
+  <p>The following course offerings that you are a staff member of already have a queue set up. You can now manage their queues. You can add more courses you are a staff member of by clicking the button below.
+  </p>
+  <ul class="list-group mb-3">
+  {% if staff_offerings_existing == [] %}
+    <li class="list-group-item">
+      You are not a staff member in any course offerings with a queue set up.
+    </li>
+  {% endif %}
+  {% for offering in staff_offerings_existing %}
+    {{ offering_row(offering, removable=offering.canvas_id in removable_ids) }}
+  {% endfor %}
+  </ul>
+  <div class="text-center mb-4">
+    <a class="btn btn-primary" href="{{ url_for('add_offerings') }}">Import courses from Canvas</a>
+  </div>
+  <h2 class="h4">Student Course Offerings</h2>
+  <p>The following course offerings that you are a student of already have a queue set up. You can now ask for help in office hours. If you expect to see a course here but it is not here, your course staff have not yet set up a queue for the course. Contact your course staff.
+  </p>
+  <ul class="list-group mb-4">
+  {% if student_offerings_existing == [] %}
+    <li class="list-group-item">
+      You are not a student in any course offerings with a queue set up.
+    </li>
+  {% endif %}
+  {% for offering in student_offerings_existing %}
+    {{ offering_row(offering) }}
+  {% endfor %}
+  </ul>
+  <h2 class="h4">Other Course Offerings</h2>
+  <p>In the following course offerings you are neither a staff member nor a student, but a queue has been set up. You cannot do anything with these offerings.
+  </p>
+  <ul class="list-group mb-4">
+  {% if other_offerings_existing == [] %}
+    <li class="list-group-item">
+      There are no other course offerings with a queue set up.
+    </li>
+  {% endif %}
+  {% for offering in other_offerings_existing %}
+    {{ offering_row(offering, link=false) }}
+  {% endfor %}
+  </ul>
+</section>
+{% endblock %}

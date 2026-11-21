@@ -2,7 +2,9 @@ import logging
 
 from flask_session import Session
 from datetime import timedelta
+from oh_queue.errors import register_error_handlers
 from oh_queue.login import create_login_client
+from oh_queue.offerings import create_offering_pages
 
 # Flask-related stuff
 
@@ -37,8 +39,10 @@ app.jinja_env.globals.update(
 
 db.init_app(app)
 
-# Initialize Canvas login
+# Initialize Canvas login and the pages for choosing a course
 create_login_client(app)
+create_offering_pages(app)
+register_error_handlers(app)
 
 # Configure server-side sessions
 app.config['SESSION_TYPE'] = 'sqlalchemy'

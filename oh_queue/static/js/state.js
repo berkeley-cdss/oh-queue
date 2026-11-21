@@ -110,6 +110,8 @@ type State = {
    * This is an ES6 Map from ticket ID to the ticket data.
    */
   tickets: Map<number, Ticket>,
+  /* For signed-out visitors, who get no tickets: how many have each status. */
+  ticketCounts: ?{ [string]: number },
   /* Ticket IDs for any tickets we are currently loading. */
   loadingTickets: Set<number>,
   /* Current ticket filter. */
@@ -130,6 +132,7 @@ let initialState: State = {
   config: {},
   groups: [],
   tickets: new Map(),
+  ticketCounts: null,
   loadingTickets: new Set(),
   filter: {
     location_id: null,
@@ -297,6 +300,16 @@ function getTickets(state: State, status: string): Array<Ticket> {
         return 0;
       }
     });
+}
+
+/* How many active tickets have this status: from the counts the server
+ * sends signed-out visitors, or else from the tickets.
+ */
+function ticketCount(state: State, status: string): number {
+  if (state.ticketCounts) {
+    return state.ticketCounts[status] || 0;
+  }
+  return getTickets(state, status).length;
 }
 
 function applyFilter(filter: Filter, tickets: Array<Ticket>): Array<Ticket> {

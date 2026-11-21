@@ -3,8 +3,8 @@ let PresenceIndicator = ({ state, hideWaitTime, hideWelcome }) => {
   let numStudentsOnline = presence && presence.students ? presence.students : 0;
   let numStaffOnline = presence && presence.staff ? presence.staff : 0;
   let color = numStaffOnline ? "success" : "warning";
-  let pendingTickets = getTickets(state, "pending");
-  let assignedTickets = getTickets(state, "assigned");
+  let pendingCount = ticketCount(state, "pending");
+  let assignedCount = ticketCount(state, "assigned");
 
   var studentMessage = numStudentsOnline + " students";
   var staffMessage = numStaffOnline + " assistants";
@@ -22,10 +22,10 @@ let PresenceIndicator = ({ state, hideWaitTime, hideWelcome }) => {
   var avgHelpTime = 10;
 
   // how many assistants are unoccupied
-  var availableAssistants = numStaffOnline - assignedTickets.length;
+  var availableAssistants = numStaffOnline - assignedCount;
 
   // how many students need help, assuming all avaiable assistants are assigned
-  var stillNeedHelp = Math.max(0, pendingTickets.length - availableAssistants);
+  var stillNeedHelp = Math.max(0, pendingCount - availableAssistants);
 
   var waitColor = "#646468";
 

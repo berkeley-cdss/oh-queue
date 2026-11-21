@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+{# The pages outside a course, copied from sections (server/templates/base.html), which adapted
+   seating's, so the three apps look alike; keep them in sync. #}
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="description" content="Office hours queues for UC Berkeley courses">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon/favicon.ico') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='pages/vendor/bootstrap/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='pages/vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='pages/css/style.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='pages/css/flash.css') }}">
+    <title>{% block title %}{{ title }}{% endblock %}</title>
+  </head>
+
+  <body>
+    <nav class="navbar navbar-expand-lg bg-primary site-header" data-bs-theme="dark">
+      <div class="container-fluid">
+        {# the page this is; its top-level heading #}
+        <h1 class="site-title">
+          <a class="navbar-brand" href="{{ url_for('index') }}">{{ title }}</a>
+        </h1>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#site-nav"
+                aria-controls="site-nav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="site-nav">
+          <ul class="navbar-nav ms-auto">
+            {# error.html sets hide_account: loading the user can be what failed (someone not enrolled in the course) #}
+            {% if hide_account %}
+            {% elif current_user.is_authenticated %}
+              {# the title already links home; as on the course pages, Offerings leads back to the list #}
+              {% if request.endpoint != 'offerings' %}
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('offerings') }}">Offerings</a></li>
+              {% endif %}
+              <li class="nav-item dropdown">
+                <a id="auth-menu" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  {{ current_user.name }}
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end" data-bs-theme="light" aria-labelledby="auth-menu">
+                  <li>
+                    <form method="post" action="{{ url_for('logout') }}">
+                      <button type="submit" class="dropdown-item">Log Out</button>
+                    </form>
+                  </li>
+                </ul>
+              </li>
+            {% else %}
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('login') }}">Login</a></li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+          <div class="flash-messages">
+              {% for category, message in messages %}
+                  {# the app flashes 'error', which Bootstrap calls 'danger' #}
+                  <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                      <span class="alert-message">{{ message }}</span>
+                      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                  </div>
+              {% endfor %}
+          </div>
+      {% endif %}
+    {% endwith %}
+
+    <main class="site-content">
+      {% block body %}{% endblock %}
+    </main>
+
+    <script src="{{ url_for('static', filename='pages/vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='pages/js/confirm.js') }}"></script>
+    <script src="{{ url_for('static', filename='pages/js/tooltips.js') }}"></script>
+  </body>
+</html>

@@ -1,117 +1,152 @@
-"""Signing in with bCourses, and the development login."""
+"""Signing in with bCourses, roles in each course, and the development login."""
 
+from types import SimpleNamespace
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
 
 import pytest
 from authlib.integrations.base_client import OAuthError
-from flask import session
-from flask_login import current_user
 
 from oh_queue import canvas_service
-from oh_queue.login import _safe_next, complete_login
-from oh_queue.models import User
-from tests.conftest import log_in
+from oh_queue.login import _safe_next
+from oh_queue.models import MAX_OFFERING_CANVAS_ID, Account, User, db
+from tests.conftest import AUTHORIZE, COURSE, canvas_sign_in, log_in, role
 
 
-class Enrollment:
-    def __init__(self, type, role=None):
-        self.type = type
-        self.role = role or type
+def current_user(client):
+    """Who the course's queue says is signed in, as the page loads it."""
+    assert client.get(COURSE + "/").status_code == 200
+    response = client.post(COURSE + "/api/connect", json={"url": "http://localhost/"})
+    assert response.status_code == 200
+    states = [state for _, state in response.get_json()["updates"] if "current_user" in state]
+    return states[0]["current_user"]
 
 
-class CanvasCourse:
-    def __init__(self, *enrollment_types):
-        self.enrollment_types = enrollment_types
-
-    def get_enrollments(self, user_id):
-        return [Enrollment(t) for t in self.enrollment_types]
-
-
-def sign_in(app, email, *enrollment_types, override=False):
-    """Run complete_login for Canvas user 42 with Canvas mocked; return the
-    signed-in User and the mocked get_course."""
-    profile = {"primary_email": email, "name": email.split("@")[0].title()}
-    with app.test_request_context("/"), \
-         patch.object(canvas_service, "get_profile", return_value=profile), \
-         patch.object(canvas_service, "get_course", return_value=CanvasCourse(*enrollment_types)) as get_course, \
-         patch.object(canvas_service, "in_admin_override_course", return_value=override):
-        complete_login({"user": {"id": 42}, "access_token": "token"})
-        assert current_user.email == email
-        # Nothing after sign-in uses the Canvas token, so it isn't kept.
-        assert "token" not in [v for v in session.values() if isinstance(v, str)]
-    with app.app_context():
-        return User.query.filter_by(email=email).one(), get_course
+@pytest.mark.parametrize("roles", [role(is_staff=True), role(is_staff=True, is_admin=True)])
+def test_staff_in_the_course_are_staff(client, roles):
+    canvas_sign_in(client, "ta@example.edu", {"101": roles})
+    user = current_user(client)
+    assert user["isStaff"]
+    assert user["name"] == "Ta"
+    with client.application.app_context():
+        assert User.query.filter_by(email="ta@example.edu").one().course == "cs61a"
 
 
-@pytest.mark.parametrize("enrollment", ["TaEnrollment", "TeacherEnrollment"])
-def test_tas_and_teachers_are_staff(app, enrollment):
-    user, get_course = sign_in(app, "ta@example.edu", enrollment)
-    assert user.is_staff
-    assert user.course == "cs61a"
-    assert user.name == "Ta"
-    # Roles come from the configured bCourses course.
-    get_course.assert_called_once_with(101, "token")
+def test_students_and_staff_of_other_courses_are_not_staff(client):
+    canvas_sign_in(client, "student@example.edu", {"101": role(is_student=True), "202": role(is_staff=True)})
+    assert not current_user(client)["isStaff"]
 
 
-@pytest.mark.parametrize("enrollments", [("StudentEnrollment",), ("ObserverEnrollment",), ()])
-def test_others_are_not_staff(app, enrollments):
-    user, _ = sign_in(app, "student@example.edu", *enrollments)
-    assert not user.is_staff
-
-
-def test_role_is_updated_at_each_sign_in(app):
-    sign_in(app, "ta@example.edu", "TaEnrollment")
-    user, _ = sign_in(app, "ta@example.edu", "StudentEnrollment")
-    assert not user.is_staff
-    with app.app_context():
+def test_roles_are_updated_at_each_sign_in(client):
+    canvas_sign_in(client, "ta@example.edu", {"101": role(is_staff=True)})
+    assert current_user(client)["isStaff"]
+    canvas_sign_in(client, "ta@example.edu", {"101": role(is_student=True)})
+    assert not current_user(client)["isStaff"]
+    with client.application.app_context():
         assert User.query.filter_by(email="ta@example.edu").count() == 1
+        assert Account.query.count() == 1
 
 
-def test_admin_override_members_are_staff_without_reading_the_course(app):
-    user, get_course = sign_in(app, "admin@example.edu", override=True)
-    assert user.is_staff
-    get_course.assert_not_called()
+def test_admin_override_members_are_staff_in_every_course(client):
+    canvas_sign_in(client, "admin@example.edu", {"999": role(is_student=True)})
+    assert current_user(client)["isStaff"]
+    with client.application.app_context():
+        assert Account.query.one().is_global_admin
 
 
-class Course:
-    def __init__(self, id):
-        self.id = id
+def test_signing_in_keeps_each_course_s_existing_users(client):
+    with client.application.app_context():
+        db.session.add(User(email="ta@example.edu", name="Old Name", is_staff=False, course="cs61a",
+                            call_url="meet.google.com/ta"))
+        db.session.commit()
+    canvas_sign_in(client, "ta@example.edu", {"101": role(is_staff=True)})
+    current_user(client)
+    with client.application.app_context():
+        user = User.query.one()
+        assert (user.name, user.is_staff, user.call_url) == ("Ta", True, "meet.google.com/ta")
 
 
-def test_admin_override_course_is_the_configured_one(app_context):
+def test_only_people_enrolled_in_the_course_can_open_it(client):
+    canvas_sign_in(client, "visitor@example.edu", {"202": role(is_student=True), "101": role()})
+    response = client.get(COURSE + "/")
+    assert response.status_code == 403
+    page = response.get_data(as_text=True)
+    # The site's error page, with the reason and a way back, not Werkzeug's bare one.
+    assert "You aren&#39;t enrolled in this course on bCourses" in page
+    assert 'href="/"' in page and "Back to the Office Hours Queue" in page
+    response = client.post(COURSE + "/api/connect", json={"url": "http://localhost/"})
+    assert response.status_code == 403
+    assert "enrolled" in response.get_json()["message"]
+
+    canvas_sign_in(client, "visitor@example.edu", {"101": role(is_student=True)})
+    assert client.get(COURSE + "/").status_code == 200
+    with client.application.app_context():
+        assert User.query.filter_by(email="visitor@example.edu").count() == 1
+
+
+def test_cookies_from_the_per_course_sites_are_ignored(client):
+    with client.application.app_context():
+        db.session.add(User(email="ta@example.edu", name="TA", is_staff=True, course="cs61a"))
+        db.session.commit()
+    client.get(COURSE + "/")
+    # Flask-Login's session key, holding a User id as the per-course sites did.
+    with client.session_transaction() as session:
+        session["_user_id"] = "1"
+    assert current_user(client) is None
+
+
+class CanvasCourse(SimpleNamespace):
+    pass
+
+
+def test_user_courses_have_each_role_and_skip_courses_that_cant_be_offerings(app_context):
+    def course(id, *types, role=None):
+        return CanvasCourse(id=id, name=f"Course {id}", course_code=f"C{id}", term={"start_at": "2026-08-19"},
+                            enrollments=[{"type": t, "role": role or t} for t in types])
+    courses = [
+        course(1, "teacher"),
+        course(2, "ta", role="Lead TA"),
+        course(3, "ta"),
+        course(4, "student"),
+        course(5, "observer"),
+        course(MAX_OFFERING_CANVAS_ID + 1, "student"),
+        CanvasCourse(id=7, name="No access"),
+    ]
     with patch.object(canvas_service, "_client") as client:
-        courses = client.return_value.get_user.return_value.get_courses
-        courses.return_value = [Course(1), Course(999)]
-        assert canvas_service.in_admin_override_course(42, "token")
-        courses.return_value = [Course(1), Course(1549197)]
-        assert not canvas_service.in_admin_override_course(42, "token")
+        client.return_value.get_user.return_value.get_courses.return_value = courses
+        result = canvas_service.get_user_courses(42, "token")
+    roles = {i: (c["is_staff"], c["is_admin"], c["is_student"]) for i, c in result.items()}
+    assert roles == {
+        "1": (True, True, False),
+        "2": (True, True, False),
+        "3": (True, False, False),
+        "4": (False, False, True),
+        "5": (False, False, False),
+    }
+    assert result["1"]["start_at"] == "2026-08-19"
 
 
-def test_no_admin_override_course_skips_canvas(app_context, monkeypatch):
-    monkeypatch.setitem(app_context.config, "ADMIN_OVERRIDE_CANVAS_COURSE_ID", None)
-    with patch.object(canvas_service, "_client") as client:
-        assert not canvas_service.in_admin_override_course(42, "token")
-    client.assert_not_called()
-
-
-def test_canvas_login_redirects_to_canvas(client):
-    response = client.get("/oauth/canvas_login?next=/admin", headers={"X-Forwarded-Proto": "https"})
+def test_login_redirects_to_canvas(client):
+    response = client.get(f"/login/?next={COURSE}/admin", headers={"X-Forwarded-Proto": "https"})
     assert response.status_code == 302
     location = urlparse(response.headers["Location"])
     query = parse_qs(location.query)
     assert (location.netloc, location.path) == ("canvas.example.edu", "/login/oauth2/auth")
     assert query["client_id"] == ["client-id"]
     # Behind Cloud Run's proxy, the callback is https.
-    assert query["redirect_uri"] == ["https://localhost/oauth/canvas_authorized"]
+    assert query["redirect_uri"] == ["https://localhost/authorized/"]
     assert set(query["scope"][0].split()) == set(canvas_service.SCOPES)
     with client.session_transaction() as s:
-        assert s["after_login"] == "/admin"
+        assert s["after_login"] == f"{COURSE}/admin"
 
 
-def test_canvas_login_without_a_client_id(client, monkeypatch):
+def test_login_without_a_client_id(client, monkeypatch):
     monkeypatch.setitem(client.application.config, "CANVAS_CLIENT_ID", None)
-    assert client.get("/oauth/canvas_login").status_code == 503
+    response = client.get("/login/")
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/testing-login/")
+    monkeypatch.setitem(client.application.config, "ENV", "prod")
+    assert client.get("/login/").status_code == 503
 
 
 @pytest.mark.parametrize("target, expected", [
@@ -128,22 +163,18 @@ def test_only_paths_on_this_site_are_followed_after_sign_in(target, expected):
     assert _safe_next(target) == expected
 
 
-def test_canvas_authorized_signs_in_and_goes_back(client):
-    with client.session_transaction() as s:
-        s["after_login"] = "/admin"
-    with patch("authlib.integrations.flask_client.FlaskOAuth2App.authorize_access_token",
-               return_value={"user": {"id": 42}, "access_token": "token"}), \
-         patch("oh_queue.login.complete_login") as complete:
-        response = client.get("/oauth/canvas_authorized?code=abc&state=xyz")
-    complete.assert_called_once_with({"user": {"id": 42}, "access_token": "token"})
-    assert response.status_code == 302
-    assert response.headers["Location"].endswith("/admin")
+def test_sign_in_goes_back_to_the_page_or_to_the_offerings(client):
+    client.get(f"/login/?next={COURSE}/admin")
+    response = canvas_sign_in(client, "ta@example.edu", {})
+    assert response.headers["Location"].endswith(f"{COURSE}/admin")
+    response = canvas_sign_in(client, "ta@example.edu", {})
+    assert response.headers["Location"].endswith("/offerings")
 
 
 def test_canvas_errors_are_escaped(client):
     error = OAuthError(error="access_denied", description="<script>alert(1)</script>")
-    with patch("authlib.integrations.flask_client.FlaskOAuth2App.authorize_access_token", side_effect=error):
-        response = client.get("/oauth/canvas_authorized")
+    with patch(AUTHORIZE, side_effect=error):
+        response = client.get("/authorized/")
     assert response.status_code == 403
     assert b"<script>" not in response.data
     assert b"&lt;script&gt;" in response.data
@@ -151,6 +182,7 @@ def test_canvas_errors_are_escaped(client):
 
 def test_development_login(client):
     log_in(client, "ta@example.edu", is_staff=True)
+    assert current_user(client)["isStaff"]
     with client.application.app_context():
         assert User.query.filter_by(email="ta@example.edu", course="cs61a").one().is_staff
 
@@ -161,16 +193,26 @@ def test_no_development_login_in_production(client, monkeypatch):
     response = client.post("/testing-login/authorized", data={"email": "a@example.edu", "name": "A"})
     assert response.status_code == 404
     with client.application.app_context():
-        assert User.query.count() == 0
+        assert Account.query.count() == 0
 
 
 def test_logout(client):
-    def can_change_settings():
-        response = client.post("/api/update_config", json={"key": "is_queue_open", "value": "true"})
-        return "messages" not in (response.get_json()["action"] or {})
-
-    client.get("/")
     log_in(client)
-    assert can_change_settings()
-    client.get("/oauth/logout")
-    assert not can_change_settings()
+    assert current_user(client) is not None
+    # Only a POST signs out, so other sites can't.
+    assert client.get("/logout/").status_code == 405
+    assert current_user(client) is not None
+    response = client.post("/logout/")
+    assert response.status_code == 302
+    assert current_user(client) is None
+
+
+def test_a_profile_without_an_email_is_refused_clearly(client):
+    with patch(AUTHORIZE, return_value={"user": {"id": 42}, "access_token": "token"}), \
+         patch.object(canvas_service, "get_profile", return_value={"name": "No Email"}), \
+         patch.object(canvas_service, "get_user_courses", return_value={}):
+        response = client.get("/authorized/?code=abc&state=xyz")
+    assert response.status_code == 403
+    assert b"no email address" in response.data
+    with client.application.app_context():
+        assert Account.query.count() == 0

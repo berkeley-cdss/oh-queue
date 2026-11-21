@@ -1,0 +1,23 @@
+{% extends 'pages/base.html' %}
+
+{% block title %}Office Hours Queue{% endblock %}
+
+{% block body %}
+<div class="landing">
+  <h2 class="text-center my-4">Welcome to the Office Hours Queue!</h2>
+  <p class="lead">
+    Get help in office hours: join your course's queue, in person or online, and see when it's your turn.
+  </p>
+  <p>
+    As a course staff member, you can set up your course's queue, help students in order, and run group office hours. As a student, you can ask for help and follow your request.
+  </p>
+  <p>
+    Please login with bCourses to get started.
+  </p>
+  <div class="text-center">
+    <a href="{{ url_for('login') }}" class="btn btn-primary">
+      Login
+    </a>
+  </div>
+</div>
+{% endblock %}

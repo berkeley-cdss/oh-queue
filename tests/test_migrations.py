@@ -9,7 +9,7 @@ database from MySQL to Postgres renamed them (idx_<number>_<name>).
 import sqlalchemy as sa
 from flask_migrate import downgrade, stamp, upgrade
 
-from oh_queue.models import db
+from oh_queue.models import Account, Offering, db
 
 BEFORE = "8f4b2d6f0c1a"
 REMOVED_KEYS = [
@@ -68,11 +68,37 @@ def check_upgrade_and_downgrade():
     assert "notification_state" not in tables()
 
 
+def test_adds_offerings_and_accounts(app_context):
+    try:
+        sql("INSERT INTO config_entries (key, value, public, course) VALUES ('is_queue_open', 'true', 1, 'cs61a')")
+        stamp(revision="d3a7e5f1c0b2")
+        downgrade(revision="4370289bdaeb")
+        assert not {"offerings", "account"} & tables()
+        assert sorted(sql("SELECT key, value FROM config_entries")) == [
+            ("is_queue_open", "true"), ("only_registered_students", "false")]
+
+        upgrade(revision="d3a7e5f1c0b2")
+        assert {"offerings", "account"} <= tables()
+        # Courses are only open to people enrolled in them, so the setting goes.
+        assert sql("SELECT key FROM config_entries") == [("is_queue_open",)]
+        indexes = {i["name"]: i["unique"] for t in ("offerings", "account")
+                   for i in sa.inspect(db.engine).get_indexes(t)}
+        assert indexes == {"ix_offerings_canvas_id": 1, "ix_account_canvas_id": 1, "ix_account_email": 0}
+        # The models use the migrated tables.
+        db.session.add(Offering(canvas_id=101, key="cs61a", name="CS 61A"))
+        db.session.add(Account(canvas_id="42", email="a@example.edu", name="A", canvas_courses={"101": {}}))
+        db.session.commit()
+        assert Account.query.one().canvas_courses == {"101": {}}
+    finally:
+        db.session.rollback()
+        sql("DROP TABLE IF EXISTS alembic_version")
+
+
 def test_it_is_the_only_head(app_context):
     from alembic.script import ScriptDirectory
 
     config = app_context.extensions["migrate"].migrate.get_config()
-    assert ScriptDirectory.from_config(config).get_heads() == ["4370289bdaeb"]
+    assert ScriptDirectory.from_config(config).get_heads() == ["d3a7e5f1c0b2"]
 
 
 APPOINTMENT_KEYS = [

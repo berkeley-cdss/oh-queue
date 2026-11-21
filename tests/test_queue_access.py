@@ -1,11 +1,11 @@
 """What the queue sends each viewer: staff see everything; a student sees their
 own tickets and groups in full, and only what the queue lists about anyone
-else's; signed-out visitors see only that."""
+else's; signed-out visitors see only how many tickets there are."""
 
 import pytest
 
 from oh_queue.models import Assignment, Group, Location, db
-from tests.conftest import log_in
+from tests.conftest import COURSE, log_in
 
 PRIVATE_TICKET_FIELDS = {
     "description", "call_url", "doc_url", "llm_tips", "use_llm", "student_help_type",
@@ -15,12 +15,12 @@ PRIVATE_TICKET_FIELDS = {
 
 
 def state(client):
-    response = client.post("/api/connect", json={"url": "http://localhost/"})
+    response = client.post(COURSE + "/api/connect", json={"url": "http://localhost/"})
     return {key: value for _, s in response.get_json()["updates"] for key, value in s.items()}
 
 
 def api(client, name, payload):
-    return client.post(f"/api/{name}", json=payload).get_json()["action"]
+    return client.post(f"{COURSE}/api/{name}", json=payload).get_json()["action"]
 
 
 @pytest.fixture()
@@ -28,7 +28,7 @@ def queue(app):
     """A queue with one ticket from each of two students, the first being
     helped by a TA and holding a chat message, and a group from the second."""
     staff, alice, bob, visitor = (app.test_client() for _ in range(4))
-    staff.get("/")
+    staff.get(COURSE + "/")
     log_in(staff, "ta@example.edu", "TA Person", is_staff=True)
     log_in(alice, "alice@example.edu", "Alice Student", is_staff=False)
     log_in(bob, "bob@example.edu", "Bob Student", is_staff=False)
@@ -94,11 +94,18 @@ def test_students_see_only_what_the_queue_lists_about_other_tickets(queue):
     assert (theirs["status"], theirs["question"], theirs["helper"]["name"]) == ("assigned", "1", "TA Person")
 
 
-def test_signed_out_visitors_see_only_what_the_queue_lists(queue):
-    seen = tickets(queue["visitor"])
-    assert set(seen) == {queue["alice_ticket"], queue["bob_ticket"]}
-    for ticket in seen.values():
-        assert_public(ticket)
+def test_signed_out_visitors_see_how_long_the_queue_is_but_no_tickets(queue):
+    seen = state(queue["visitor"])
+    assert seen["tickets"] == []
+    assert seen["ticket_counts"] == {"pending": 1, "assigned": 1, "juggled": 0, "rerequested": 0}
+    # Not even through a ticket's address.
+    response = queue["visitor"].post(
+        COURSE + "/api/connect", json={"url": f"http://localhost{COURSE}/tickets/{queue['alice_ticket']}/"})
+    assert [t for _, s in response.get_json()["updates"] for t in s.get("tickets", [])] == []
+
+
+def test_signed_in_people_get_tickets_not_counts(queue):
+    assert "ticket_counts" not in state(queue["bob"])
 
 
 def test_only_staff_see_who_is_online(queue):
@@ -148,10 +155,11 @@ def test_signed_out_visitors_cant_change_a_group(queue, app):
 def test_others_cant_open_a_closed_group_by_its_address(queue, viewer):
     # A closed group isn't in the active list, so only its address could add it.
     api(queue["staff"], "delete_group", queue["group"])
-    response = queue[viewer].post("/api/connect", json={"url": f"http://localhost/groups/{queue['group']}/"})
+    response = queue[viewer].post(COURSE + "/api/connect", json={"url": f"http://localhost{COURSE}/groups/{queue['group']}/"})
     groups = [g for _, s in response.get_json()["updates"] for g in s.get("groups", [])]
     assert groups == []
-    staff_view = queue["staff"].post("/api/connect", json={"url": f"http://localhost/groups/{queue['group']}/"})
+    group_url = f"http://localhost{COURSE}/groups/{queue['group']}/"
+    staff_view = queue["staff"].post(COURSE + "/api/connect", json={"url": group_url})
     assert [g["id"] for _, s in staff_view.get_json()["updates"] for g in s.get("groups", [])] == [queue["group"]]
 
 
@@ -161,7 +169,7 @@ def test_joining_a_group_sends_its_ticket_in_full(queue):
     group_ticket = [t for t in state(queue["alice"])["tickets"] if t["group_id"] == queue["group"]][0]
     assert group_ticket["user"] is None
     api(queue["alice"], "delete", [queue["alice_ticket"]])
-    response = queue["alice"].post("/api/join_group", json=queue["group"]).get_json()
+    response = queue["alice"].post(COURSE + "/api/join_group", json=queue["group"]).get_json()
     sent = [update["ticket"] for event, update in response["updates"]
             if event == "event" and update["type"] == "group_joined"]
     assert [(t["id"], t["user"]["shortName"]) for t in sent] == [(group_ticket["id"], "Bob")]
@@ -176,7 +184,7 @@ def test_students_keep_seeing_their_group_ticket_after_leaving(queue):
     history = {t["id"]: t for t in api(queue["bob"], "get_user", bob_id)["tickets"]}
     assert history[group_ticket]["user"]["email"] == "bob@example.edu"
     # Its page, too: the ticket's address adds it, in full.
-    response = queue["bob"].post("/api/connect", json={"url": f"http://localhost/tickets/{group_ticket}/"})
+    response = queue["bob"].post(COURSE + "/api/connect", json={"url": f"http://localhost{COURSE}/tickets/{group_ticket}/"})
     page = [t for _, s in response.get_json()["updates"] for t in s.get("tickets", []) if t["id"] == group_ticket]
     assert page and page[0]["description"] == "This ticket is associated with a group."
     # Seeing it isn't changing it: that still takes being in the group.

@@ -61,6 +61,7 @@ class App extends React.Component {
       }
     }
     if (Array.isArray(data.tickets)) {
+      this.state.ticketCounts = data.ticket_counts || null;
       const ticketIDs = new Set();
       for (var ticket of data.tickets) {
         setTicket(this.state, ticket);
@@ -78,7 +79,6 @@ class App extends React.Component {
       for (const key of [
         "party_enabled",
         "allow_private_party_tickets",
-        "only_registered_students",
         "show_presence",
         "enable_shuffle",
         "send_ticket_notifications",
@@ -193,7 +193,10 @@ class App extends React.Component {
     const Root = isPartyRoot(state) ? Party : Home;
 
     return (
-      <BrowserRouter ref={(router) => (this.router = router)}>
+      <BrowserRouter
+        basename={window.basePath}
+        ref={(router) => (this.router = router)}
+      >
         <div>
           <Switch>
             <Route

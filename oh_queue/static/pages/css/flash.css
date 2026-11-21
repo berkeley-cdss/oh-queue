@@ -1,0 +1,13 @@
+/* Copied from sections (server/assets/css/flash.css), which copied seating's; keep them in sync. */
+
+.flash-messages {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1080;
+  width: 300px;
+}
+
+.flash-messages .alert {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}

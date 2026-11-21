@@ -1,13 +1,13 @@
 import flask
 from authlib.integrations.base_client import OAuthError
 from authlib.integrations.flask_client import OAuth
-from flask import abort, redirect, render_template, request, session, url_for
+from flask import abort, current_app, redirect, render_template, request, session, url_for
 from flask_login import LoginManager, login_user, logout_user
 from markupsafe import escape
 
 from oh_queue import canvas_service
-from oh_queue.course import get_canvas_course_id, get_course
-from oh_queue.models import User, db
+from oh_queue.models import Account, Offering, User, db
+from oh_queue.offering import current_offering, get_course, in_offering
 
 AFTER_LOGIN_KEY = "after_login"
 
@@ -26,30 +26,61 @@ def _safe_next(target):
     return None
 
 
-def complete_login(token: dict):
-    """Create or update the signed-in User from a Canvas OAuth token response."""
-    user_id = token["user"]["id"]
-    access_token = token["access_token"]
-    profile = canvas_service.get_profile(user_id, access_token)
-    user_email = profile.get("primary_email")
-    user_name = profile.get("name")
-    course = get_course()
+def _after_login():
+    return redirect(session.pop(AFTER_LOGIN_KEY, None) or url_for("offerings"))
 
-    user = User.query.filter_by(email=user_email, course=course).one_or_none()
-    if user is None:
-        user = User(email=user_email, name=user_name, is_staff=False, course=course)
-        db.session.add(user)
-    user.name = user_name or user_email
 
-    # Members of the admin override course are staff even in a course they
-    # aren't enrolled in.
-    if canvas_service.in_admin_override_course(user_id, access_token):
-        user.is_staff = True
-    else:
-        canvas_course = canvas_service.get_course(get_canvas_course_id(), access_token)
-        user.is_staff = canvas_service.is_staff(canvas_course, user_id)
+def sign_in_account(canvas_id: str, email: str, name: str, courses: dict, is_global_admin: bool):
+    """Create or update the Account for a Canvas user, and sign it in."""
+    account = Account.query.filter_by(canvas_id=canvas_id).one_or_none()
+    if account is None:
+        account = Account(canvas_id=canvas_id)
+        db.session.add(account)
+    account.email = email
+    account.name = name or email
+    account.canvas_courses = courses
+    account.is_global_admin = is_global_admin
     db.session.commit()
-    login_user(user, remember=True)
+    login_user(account, remember=True)
+
+
+def complete_login(token: dict):
+    """Create or update the signed-in Account from a Canvas OAuth token response."""
+    canvas_user_id = str(token["user"]["id"])
+    access_token = token["access_token"]
+    profile = canvas_service.get_profile(canvas_user_id, access_token)
+    email = profile.get("primary_email") or profile.get("login_id")
+    if not email:
+        abort(403, "Your bCourses profile has no email address, which the queue needs to sign you in. "
+                   "Add one in bCourses, or ask your course staff.")
+    courses = canvas_service.get_user_courses(canvas_user_id, access_token)
+    override_id = current_app.config.get("ADMIN_OVERRIDE_CANVAS_COURSE_ID")
+    sign_in_account(canvas_user_id, email, profile.get("name"), courses,
+                    is_global_admin=override_id is not None and str(override_id) in courses)
+
+
+def course_user(account: Account):
+    """The account's User row in the current course, created on first visit.
+
+    Staff status follows the account's Canvas roles from its last sign-in.
+    Returns None if the account isn't enrolled in the course as staff or a
+    student (members of the admin override course are staff everywhere).
+    """
+    canvas_id = current_offering().canvas_id
+    is_staff = account.is_staff_in(canvas_id)
+    if not is_staff and account.course_info(canvas_id) is None:
+        return None
+    course = get_course()
+    user = User.query.filter_by(email=account.email, course=course).one_or_none()
+    if user is None:
+        user = User(email=account.email, name=account.name, is_staff=is_staff, course=course)
+        db.session.add(user)
+    elif (user.name, user.is_staff) == (account.name, is_staff):
+        return user
+    user.name = account.name
+    user.is_staff = is_staff
+    db.session.commit()
+    return user
 
 
 def create_login_client(app: flask.Flask):
@@ -72,50 +103,77 @@ def create_login_client(app: flask.Flask):
     )
 
     @login_manager.user_loader
-    def load_user(user_id):
-        return User.query.filter_by(id=user_id, course=get_course()).one_or_none()
+    def load_user(session_id):
+        account_id = Account.parse_session_id(session_id)
+        account = db.session.get(Account, account_id) if account_id else None
+        if account is None or not in_offering():
+            return account
+        user = course_user(account)
+        if user is None:
+            abort(403, "You aren't enrolled in this course on bCourses. If you were just added, "
+                       "accept the invitation in bCourses, then log out and sign in again.")
+        return user
 
-    @app.route("/oauth/canvas_login")
-    def canvas_login():
-        if not app.config["CANVAS_CLIENT_ID"]:
-            abort(503)
+    @login_manager.unauthorized_handler
+    def unauthorized():
+        return redirect(url_for("login", next=request.full_path.rstrip("?")))
+
+    # Same routes as seating and sections.
+    @app.route("/login/")
+    def login():
         session[AFTER_LOGIN_KEY] = _safe_next(request.args.get("next"))
-        return canvas.authorize_redirect(url_for("canvas_authorized", _external=True))
+        if not app.config["CANVAS_CLIENT_ID"]:
+            if app.config["ENV"] == "dev":
+                return redirect(url_for("testing_login"))
+            abort(503)
+        return canvas.authorize_redirect(url_for("authorized", _external=True))
 
-    @app.route("/oauth/canvas_authorized")
-    def canvas_authorized():
+    @app.route("/authorized/")
+    def authorized():
         try:
             token = canvas.authorize_access_token()
         except OAuthError as e:
             # The error comes from query parameters anyone can put in a link: escape it.
             return f"Access denied: {escape(e.description or e.error or 'unknown error')}", 403
         complete_login(token)
-        return redirect(session.pop(AFTER_LOGIN_KEY, None) or url_for("index"))
+        return _after_login()
 
-    @app.route("/oauth/logout")
+    # A POST, so a link or image on another site can't sign people out.
+    @app.route("/logout/", methods=["POST"])
     def logout():
         logout_user()
         return redirect(url_for("index"))
+
+    create_testing_login(app)
+
+
+def create_testing_login(app: flask.Flask):
+    """In development, a form for signing in as anyone, without Canvas."""
 
     @app.route("/testing-login/", strict_slashes=False)
     def testing_login():
         if app.config["ENV"] != "dev":
             abort(404)
-        return render_template("login.html", callback=url_for("testing_authorized"))
+        return render_template("login.html", title="Development Login", callback=url_for("testing_authorized"))
 
     @app.route("/testing-login/authorized", methods=["POST"], strict_slashes=False)
     def testing_authorized():
+        """Sign in as anyone, as a TA or a student in every offering."""
         if app.config["ENV"] != "dev":
             abort(404)
         form = request.form
         is_staff = form.get("is_staff") == "on"
-        course = get_course()
-        user = User.query.filter_by(email=form["email"], course=course).one_or_none()
-        if user is None:
-            user = User(email=form["email"], name=form["name"], is_staff=is_staff, course=course)
-            db.session.add(user)
-        else:
-            user.is_staff = is_staff
-        db.session.commit()
-        login_user(user, remember=True)
-        return redirect(url_for("index"))
+        email = form["email"]
+        courses = {
+            str(o.canvas_id): {
+                "name": o.name,
+                "code": o.code,
+                "start_at": o.start_at,
+                "is_staff": is_staff,
+                "is_admin": is_staff,
+                "is_student": not is_staff,
+            }
+            for o in Offering.query.all()
+        }
+        sign_in_account(f"dev:{email}", email, form["name"], courses, is_global_admin=False)
+        return _after_login()

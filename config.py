@@ -40,11 +40,6 @@ DATABASE_CONNECT_OPTIONS = {}
 
 LOCAL_TIMEZONE = os.getenv("TIMEZONE", "US/Pacific")
 
-# The course this deployment serves. In development, the UC Berkeley sandbox's
-# test course.
-COURSE_KEY = required("COURSE_KEY", dev_default="cs61a")
-CANVAS_COURSE_ID = int(required("CANVAS_COURSE_ID", dev_default="157"))
-
 CANVAS_SERVER_URL = os.getenv(
     "CANVAS_SERVER_URL", "https://ucberkeleysandbox.instructure.com/"
 )
