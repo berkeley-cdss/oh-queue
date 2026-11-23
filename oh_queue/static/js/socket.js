@@ -29,11 +29,15 @@ async function post(endpoint, data, skipTimeout) {
     return promise;
   }
   return timeoutPromise(10000, promise).then((resp) => {
-    // Refused (no longer enrolled in the course) or gone (the course was
-    // hidden): if the page itself now fails too, reload it, so it shows the
-    // server's explanation instead of seeming offline. Checking the page
-    // first means an API error alone can't make the page reload over and over.
-    if (resp.status === 403 || resp.status === 404) {
+    // Refused (no longer enrolled in the course), gone (the course was
+    // hidden) or unavailable (the database doesn't match the migrations): if
+    // the page itself now fails too, reload it, so it shows the server's
+    // explanation instead of seeming offline. Checking the page first means an
+    // API error alone can't make the page reload over and over. Only the app's
+    // own 503, which is JSON: Cloud Run answers 503 itself when no instance is
+    // free, and that passes, so it's treated as offline until the next poll.
+    const isJson = (resp.headers.get("Content-Type") || "").includes("application/json");
+    if (resp.status === 403 || resp.status === 404 || (resp.status === 503 && isJson)) {
       return fetch(window.location.href, { cache: "no-cache" }).then((page) => {
         if (!page.ok) {
           window.location.reload();

@@ -29,6 +29,12 @@ Then open http://localhost:3000/offerings/157/ (the course `seed_data` sets up) 
 
 `seed_data` adds sample assignments, locations, students and tickets. `python manage.py resetdb` starts the database over.
 
+## Deployment
+
+The app runs on Google Cloud Run, like seating and sections, from the `Dockerfile`: one non-root gunicorn worker with threads, with a health check at `/health`. The image builds the frontend with `flask build`, since in production the app serves `oh_queue/static/public/` as it is. It connects to Cloud SQL as the service account it runs as (`CLOUD_SQL_INSTANCE`, `DB_USER`, `DB_NAME`), so no database password is stored, and gets its other secrets from Secret Manager.
+
+Each pull request from a branch in this repository is deployed as a preview on the staging project (`.github/workflows/pr-staging.yml`), and the preview's URL is commented on the PR. Previews share the staging database and never run migrations; see [docs/migrations.md](docs/migrations.md).
+
 ## Running tests
 
 With the packages installed as above:

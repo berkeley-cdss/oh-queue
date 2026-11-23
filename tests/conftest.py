@@ -37,6 +37,10 @@ from oh_queue.models import db as sqlalchemy_db  # noqa: E402
 COURSE = "/offerings/101"
 
 # manage.py registers Flask-Migrate for the CLI; the migration tests need it too.
+# The tests build their tables with create_all, so the database has no
+# migration for the schema check to compare; test_schema_check turns it on.
+flask_app.config["CHECK_SCHEMA"] = False
+
 if "migrate" not in flask_app.extensions:
     Migrate(flask_app, sqlalchemy_db)
 

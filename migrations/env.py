@@ -1,6 +1,6 @@
 from alembic import context
 from flask import current_app
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import text
 from logging.config import fileConfig
 import logging
 
@@ -10,11 +10,20 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-fileConfig(config.config_file_name)
+# Without turning off loggers that already exist, such as the app's when the
+# tests run migrations in the same process.
+fileConfig(config.config_file_name, disable_existing_loggers=False)
 logger = logging.getLogger("alembic.env")
 
-# Get the URL from Flask config
-db_url = current_app.config.get("SQLALCHEMY_DATABASE_URI")
+
+# Flask-SQLAlchemy's engine, which connects the way the app does (on Cloud
+# Run, with IAM auth through the Cloud SQL connector rather than a URL).
+def get_engine():
+    return current_app.extensions["migrate"].db.engine
+
+
+# For offline mode, which only needs the URL
+db_url = get_engine().url.render_as_string(hide_password=False)
 
 # Escape '%' by replacing it with '%%' so Alembic's ConfigParser doesn't trip
 if db_url:
@@ -67,12 +76,6 @@ def run_migrations_online():
                 directives[:] = []
                 logger.info("No changes in schema detected.")
 
-    engine = engine_from_config(
-        config.get_section(config.config_ini_section),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
-
     # Flask-Migrate 4 already sets render_as_batch; a copy, so these callbacks
     # (which read this run's config) aren't kept for the next command run in
     # the same process, such as in the tests
@@ -80,7 +83,7 @@ def run_migrations_online():
     conf_args.setdefault("render_as_batch", True)
     conf_args.setdefault("process_revision_directives", process_revision_directives)
 
-    connection = engine.connect()
+    connection = get_engine().connect()
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
@@ -89,6 +92,10 @@ def run_migrations_online():
 
     try:
         with context.begin_transaction():
+            if connection.dialect.name == "postgresql":
+                # Several Cloud Run instances can start at once; the first takes
+                # this lock and migrates, and the rest wait, then find nothing to do.
+                connection.execute(text("SELECT pg_advisory_xact_lock(724502)"))
             context.run_migrations()
     finally:
         connection.close()

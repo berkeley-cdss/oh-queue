@@ -1,0 +1,127 @@
+name: PR Preview Deployment
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: read
+
+env:
+  # Keyless auth via Workload Identity Federation; only this repository may
+  # impersonate the deployer service account.
+  WORKLOAD_IDENTITY_PROVIDER: projects/137456085712/locations/global/workloadIdentityPools/github/providers/berkeley-cdss
+  DEPLOYER_SERVICE_ACCOUNT: oh-gh-actions-deployer@staging-cdss-web-apps.iam.gserviceaccount.com
+
+# One deploy per PR at a time; a newer push supersedes an in-progress deploy.
+concurrency:
+  group: preview-oh-pr-${{ github.event.number }}
+  cancel-in-progress: true
+
+# Fork PRs get no OIDC token, and their code shouldn't run with staging secrets,
+# so previews only deploy for branches in this repository. Dependabot PRs are
+# skipped too: they run their own changed workflows before review, so a bumped
+# action pin would otherwise get the deployer's GCP access unreviewed.
+jobs:
+  cleanup-preview-service:
+    if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      # Lets google-github-actions/auth exchange GitHub's OIDC token for GCP credentials.
+      id-token: write
+    steps:
+      - id: auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.DEPLOYER_SERVICE_ACCOUNT }}
+
+      - name: Delete Cloud Run Preview Service
+        run: |
+          gcloud run services delete preview-oh-pr-${{ github.event.number }} \
+            --region=us-west1 \
+            --quiet || true
+
+  deploy-preview-service:
+    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Lets google-github-actions/auth exchange GitHub's OIDC token for GCP credentials.
+      id-token: write
+      # Lets the deploy job comment the preview URL on the PR.
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+
+      - id: auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.DEPLOYER_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Deploy to Cloud Run (Preview)
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@2028e2d7d30a78c6910e0632e48dd561b064884d # v3.0.1
+        with:
+          service: preview-oh-pr-${{ github.event.number }}
+          region: us-west1
+          source: .
+          # The image is built as oh-build, which can only build, not as the default compute
+          # service account, which has Editor on the project.
+          flags: '--allow-unauthenticated --service-account=oh-app@staging-cdss-web-apps.iam.gserviceaccount.com --build-service-account=projects/staging-cdss-web-apps/serviceAccounts/oh-build@staging-cdss-web-apps.iam.gserviceaccount.com --max-instances=3'
+          # RUN_MIGRATIONS is never set here: previews share the staging database.
+          env_vars: |
+            ENV=prod
+            # Lets the app explain that a PR adding a migration can't run as a preview.
+            PREVIEW_PR=${{ github.event.number }}
+            CANVAS_SERVER_URL=https://ucberkeley.test.instructure.com/
+            ADMIN_OVERRIDE_CANVAS_COURSE_ID=1549197
+            # Cloud SQL IAM database auth as the service's own account; no password.
+            CLOUD_SQL_INSTANCE=staging-cdss-web-apps:us-west1:staging-cdss-web-apps-2
+            DB_USER=oh-app@staging-cdss-web-apps.iam
+            DB_NAME=oh
+          secrets: |
+            CANVAS_CLIENT_ID=oh-canvas-client-id:latest
+            CANVAS_CLIENT_SECRET=oh-canvas-client-secret:latest
+            SECRET_KEY=oh-secret-key:latest
+            LLM_TIPS_ENDPOINT=oh-llm-tips-endpoint:latest
+            LLM_TIPS_AUTH_TOKEN=oh-llm-tips-auth-token:latest
+
+      - name: Allow Unauthenticated Access (allUsers)
+        run: |
+          gcloud run services add-iam-policy-binding preview-oh-pr-${{ github.event.number }} \
+            --region=us-west1 \
+            --member="allUsers" \
+            --role="roles/run.invoker"
+
+      - name: Comment PR with Preview URL
+        uses: actions/github-script@v7
+        env:
+          PREVIEW_URL: https://preview-oh-pr-${{ github.event.number }}-137456085712.us-west1.run.app
+        with:
+          script: |
+            // The preview URL is stable for the life of the PR, so only comment once.
+            const marker = '<!-- oh-pr-preview -->';
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            if (comments.some(c => c.body?.includes(marker))) {
+              core.info('Preview URL already commented; skipping.');
+              return;
+            }
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `${marker}\n🚀 **Staging Preview Deployed!**\n\nURL: ${process.env.PREVIEW_URL}`
+            });

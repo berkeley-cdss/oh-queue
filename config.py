@@ -32,11 +32,48 @@ if ENV != "dev":
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_SAMESITE = "Lax"
 
-SQLALCHEMY_DATABASE_URI = required(
-    "DATABASE_URL", dev_default="sqlite:///" + os.path.join(basedir, "app.db")
-)
+
+def _cloud_sql_creator(instance, user, db):
+    """Connect to Cloud SQL with IAM database authentication, as the service
+    account the app runs as, so no database password is stored. Copied from
+    sections (server/config.py).
+
+    Cloud Run's built-in /cloudsql socket can't do IAM login, hence the connector.
+    """
+    import threading
+
+    from google.cloud.sql.connector import Connector
+
+    connector = None
+    lock = threading.Lock()
+
+    def connect():
+        # Made on the first connection, not when this module is imported, so
+        # loading the settings doesn't look up Google credentials.
+        nonlocal connector
+        with lock:
+            if connector is None:
+                # Lazy refresh suits Cloud Run, where CPU is throttled between requests.
+                connector = Connector(refresh_strategy="lazy")
+        return connector.connect(instance, "pg8000", user=user, db=db, enable_iam_auth=True)
+
+    return connect
+
+
+# The database: Cloud SQL with IAM auth (CLOUD_SQL_INSTANCE, DB_USER, DB_NAME)
+# when deployed, otherwise DATABASE_URL, or in development a local SQLite file.
+SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
+CLOUD_SQL_INSTANCE = os.getenv("CLOUD_SQL_INSTANCE")
+if CLOUD_SQL_INSTANCE:
+    SQLALCHEMY_DATABASE_URI = "postgresql+pg8000://"
+    SQLALCHEMY_ENGINE_OPTIONS["creator"] = _cloud_sql_creator(
+        CLOUD_SQL_INSTANCE, required("DB_USER"), required("DB_NAME")
+    )
+else:
+    SQLALCHEMY_DATABASE_URI = required(
+        "DATABASE_URL", dev_default="sqlite:///" + os.path.join(basedir, "app.db")
+    )
 SQLALCHEMY_TRACK_MODIFICATIONS = False
-DATABASE_CONNECT_OPTIONS = {}
 
 LOCAL_TIMEZONE = os.getenv("TIMEZONE", "US/Pacific")
 

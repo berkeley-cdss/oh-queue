@@ -1,0 +1,38 @@
+# VCS and CI
+.git
+.gitignore
+.github
+
+# Dependencies and build output (rebuilt inside the image)
+node_modules/
+oh_queue/static/public/
+oh_queue/static/.webassets-cache/
+
+# Local Python environments and caches
+venv/
+.venv
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Secrets and local config - never bake these into an image
+.env*
+*credentials*.json
+
+# Local databases and exports
+*.db
+*.sql
+
+# Tests and dev-only files
+tests/
+pytest.ini
+.coverage
+coverage.xml
+requirements-dev.txt
+codecov.yml
+.flake8
+.flowconfig
+mise.toml
+docs/
+README.md
+**/.DS_Store
