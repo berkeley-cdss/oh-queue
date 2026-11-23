@@ -59,8 +59,8 @@ app.config['SESSION_COOKIE_SECURE'] = not app.debug
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 Session(app)
 
-# Before the views' hooks, so a database that doesn't match the migrations
-# gets an explanation rather than errors from its first query.
+# A database that doesn't match the migrations gets an explanation rather than
+# errors from its first query (see schema_check.py).
 check_schema_before_requests(app, MIGRATIONS_DIR)
 
 

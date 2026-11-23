@@ -11,7 +11,9 @@ Commit the migration with the model change. Migrations only need to work on Post
 
 ## Migrations and PR Previews
 
-As in sections, the app checks that the database's migration matches the code's latest migration (`oh_queue/schema_check.py`). While they differ, every page, API call and `/health` returns 503, rather than failing on the first query that uses a missing column. The check is repeated at most once a minute.
+As in sections, the app checks that the database's migration matches the code's latest migration (`oh_queue/schema_check.py`). While the database is behind the code, every page, API call and `/health` returns 503, rather than failing on the first query that uses a missing column. The check is repeated at most once a minute.
+
+Outside previews, a database that is *ahead* of the code is only logged as a warning, and the app keeps serving. That's the old version during a deploy, after the new version has migrated but before traffic moves to it, or after a new version fails to start. Migrations should keep the previous version working (add columns before code uses them, and remove them only once no deployed code does).
 
 This means **a PR that adds a migration can't be tried on its preview.** The preview shares the staging database, which only gets the migration when the PR is merged and staging deploys, so the preview shows "This is a preview of PR #N, which adds a database migration… Merge the PR to see its changes on staging." Test such a PR locally (`flask db upgrade` against your own database), then merge it and check staging.
 
