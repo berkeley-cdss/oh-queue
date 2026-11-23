@@ -92,8 +92,6 @@ jobs:
             CANVAS_CLIENT_ID=oh-canvas-client-id:latest
             CANVAS_CLIENT_SECRET=oh-canvas-client-secret:latest
             SECRET_KEY=oh-secret-key:latest
-            LLM_TIPS_ENDPOINT=oh-llm-tips-endpoint:latest
-            LLM_TIPS_AUTH_TOKEN=oh-llm-tips-auth-token:latest
 
       - name: Allow Unauthenticated Access (allUsers)
         run: |

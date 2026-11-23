@@ -82,7 +82,6 @@ class App extends React.Component {
         "show_presence",
         "enable_shuffle",
         "send_ticket_notifications",
-        "enable_llm_features"
       ]) {
         this.state.config[key] = JSON.parse(this.state.config[key]);
       }

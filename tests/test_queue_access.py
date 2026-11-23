@@ -7,11 +7,7 @@ import pytest
 from oh_queue.models import Assignment, Group, Location, db
 from tests.conftest import COURSE, log_in
 
-PRIVATE_TICKET_FIELDS = {
-    "description", "call_url", "doc_url", "llm_tips", "use_llm", "student_help_type",
-    "student_help_other", "staff_help_type", "staff_help_other", "llm_tips_influence",
-    "rerequest_threshold",
-}
+PRIVATE_TICKET_FIELDS = {"description", "call_url", "doc_url", "rerequest_threshold"}
 
 
 def state(client):

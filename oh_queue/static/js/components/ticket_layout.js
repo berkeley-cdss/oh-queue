@@ -91,17 +91,6 @@ function TicketLayout({ loadTicket, state, socket, match }) {
             />
           </div>
         </div>
-        {isStaff(state) &&
-          (state.config.enable_llm_features === true ||
-            state.config.enable_llm_features === "true") &&
-          ticket.llm_tips && (
-          <div className="row">
-            <div className="col-xs-12 col-md-6 col-md-offset-3">
-              <hr />
-              <LlmTips tips={ticket.llm_tips} className="ticket-llm-tips--card" />
-            </div>
-          </div>
-        )}
         {!ticket.group_id && (
           <div className="row">
             <div className="col-xs-12 col-md-6 col-md-offset-3">

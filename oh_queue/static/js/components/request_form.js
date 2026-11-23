@@ -86,26 +86,11 @@ function RequestForm(props) {
     );
   }
 
-  const llmTipsEnabled =
-    state.config.enable_llm_features === true ||
-    state.config.enable_llm_features === "true";
   const [locationID, setLocationID] = React.useState(null);
-  const [useLlmTips, setUseLlmTips] = React.useState(llmTipsEnabled);
-  const llmTipsToggleId = "llm-tips-toggle";
 
   const handleLocationChange = (e) => {
     setLocationID(e.target.value);
   };
-
-  const handleLlmTipsConsentChange = (value) => {
-    setUseLlmTips(value);
-  };
-
-  React.useEffect(() => {
-    if (!llmTipsEnabled && useLlmTips) {
-      setUseLlmTips(false);
-    }
-  }, [llmTipsEnabled, useLlmTips]);
 
   const showOnlineInput = locationID && state.locations[locationID].online;
   const linkKnown = locationID && state.locations[locationID].link;
@@ -210,37 +195,6 @@ function RequestForm(props) {
             </div>
           </div>
         </div>
-        {llmTipsEnabled && (
-          <div className="form-group llm-toggle-group">
-            <div className="llm-toggle-title">
-              <span className="llm-toggle-label">
-                May we prompt a course specific LLM pipeline (GPT-4) to get a
-                response to your question?
-              </span>
-              <label className="llm-toggle-switch" htmlFor={llmTipsToggleId}>
-                <input
-                  id={llmTipsToggleId}
-                  type="checkbox"
-                  checked={useLlmTips}
-                  onChange={(e) => handleLlmTipsConsentChange(e.target.checked)}
-                  aria-label="Use course-specific LLM pipeline (GPT-4)"
-                />
-                <span className="llm-toggle-slider" aria-hidden="true" />
-                <span className="llm-toggle-state">
-                  {useLlmTips ? "Yes" : "No"}
-                </span>
-              </label>
-            </div>
-            <p className="llm-toggle-subtitle">
-              If yes, please toggle the switch above.
-            </p>
-            <input
-              type="hidden"
-              name="use_llm"
-              value={useLlmTips ? "true" : "false"}
-            />
-          </div>
-        )}
         {party_enabled && is_queue_open && (
           <div className="form-group form-group-lg">
             <button

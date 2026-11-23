@@ -33,17 +33,6 @@ function AdminTicketsManager({ state: { config } }) {
               </td>
             </tr>
             <tr>
-              <td>(Data 100 Only) Enable LLM features?</td>
-              <td className="col-md-1">
-                <ConfigLinkedToggle
-                  config={config}
-                  configKey="enable_llm_features"
-                  offText="No"
-                  onText="Yes"
-                />
-              </td>
-            </tr>
-            <tr>
               <td>
                 <p>
                   What type of magic word should the queue require to submit new

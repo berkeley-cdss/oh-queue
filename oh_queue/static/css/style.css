@@ -319,6 +319,14 @@ h6.truncate {
   padding-left: 12px;
 }
 
+.ticket-desc-xs {
+  margin-top: 4px;
+}
+
+.ticket-created-md {
+  padding-left: 12px;
+}
+
 .ticket-llm-tips {
   display: block;
   border: 1px solid #cfd8e3;
@@ -902,95 +910,6 @@ h4.list-group-item-heading::before {
 
 .activity-buttons > .btn {
   margin-right: 10px;
-}
-
-.llm-toggle-group {
-  margin-top: 15px;
-  border: 1px solid #e1e7ef;
-  border-radius: 4px;
-  padding: 12px 16px;
-  background-color: #fafcff;
-}
-
-.llm-toggle-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.llm-toggle-label {
-  font-weight: 600;
-  color: #1b3b61;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.llm-toggle-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.llm-toggle-switch input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  border: 0;
-}
-
-.llm-toggle-slider {
-  position: relative;
-  width: 44px;
-  height: 22px;
-  background: #c0c7d1;
-  border-radius: 999px;
-  transition: background-color 150ms ease-out;
-}
-
-.llm-toggle-slider:before {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  content: "";
-  transition: transform 150ms ease-out;
-}
-
-.llm-toggle-switch input:checked + .llm-toggle-slider {
-  background: #5cb85c;
-}
-
-.llm-toggle-switch input:checked + .llm-toggle-slider:before {
-  transform: translateX(22px);
-}
-
-.llm-toggle-switch input:focus-visible + .llm-toggle-slider {
-  outline: 2px solid #1b3b61;
-  outline-offset: 2px;
-}
-
-.llm-toggle-state {
-  font-weight: 600;
-  color: #1b3b61;
-  min-width: 22px;
-  text-align: center;
-}
-
-.llm-toggle-subtitle {
-  margin: 6px 0 0 0;
-  font-size: 13px;
-  color: #4c5c72;
 }
 
 /* The navbar's Log out is a form button, styled like the menu's links */
