@@ -321,58 +321,6 @@ h6.truncate {
 
 .ticket-desc-xs {
   margin-top: 4px;
-}
-
-.ticket-created-md {
-  padding-left: 12px;
-}
-
-.ticket-llm-tips {
-  display: block;
-  border: 1px solid #cfd8e3;
-  background-color: #f8fbff;
-  border-radius: 4px;
-  padding: 10px 12px;
-  font-size: 13px;
-  line-height: 1.4;
-  color: #2c3e50;
-}
-
-.ticket-llm-tips-title {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: #0b4b7f;
-  margin-bottom: 4px;
-}
-
-.ticket-llm-tips-body {
-  margin: 0;
-}
-
-.ticket-llm-tips--inline {
-  clear: both;
-  width: 100%;
-  margin: 10px 12px 5px 12px;
-}
-
-.ticket-llm-tips--inline .ticket-llm-tips-body {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  max-height: 4.2em;
-}
-
-.ticket-llm-tips--card {
-  margin-top: 10px;
-  margin-bottom: 10px;
-}
-
-.ticket-desc-xs {
-  margin-top: 4px;
   margin-bottom: 4px;
 }
 
