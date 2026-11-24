@@ -27,7 +27,6 @@ from oh_queue.models import (
 )
 from sqlalchemy import desc
 from sqlalchemy.orm import joinedload, selectinload
-import requests
 
 from oh_queue.offering import OFFERING_URL_PREFIX, get_course, get_course_name, load_offering
 
@@ -75,7 +74,7 @@ def message_json(message: ChatMessage):
 
 def public_ticket_json(ticket):
     """Someone else's ticket, as the queue lists it: no student, description,
-    chat, links or LLM tips. A field added here goes to everyone."""
+    chat or links. A field added here goes to everyone."""
     return {
         "id": ticket.id,
         "status": ticket.status.name,
@@ -107,133 +106,7 @@ def ticket_json(ticket):
         "call_url": ticket.call_url,
         "doc_url": ticket.doc_url,
         "messages": [message_json(message) for message in ticket.messages],
-        "llm_tips": ticket.llm_tips,
-        "use_llm": ticket.use_llm,
-        "student_help_type": ticket.student_help_type,
-        "student_help_other": ticket.student_help_other,
-        "staff_help_type": ticket.staff_help_type,
-        "staff_help_other": ticket.staff_help_other,
-        "llm_tips_influence": ticket.llm_tips_influence,
     }
-
-
-def parse_bool(value):
-    if isinstance(value, bool):
-        return value
-    if value is None:
-        return False
-    return str(value).lower() in ["true", "1", "yes", "on"]
-
-
-def llm_tips_enabled():
-    entry = ConfigEntry.query.filter_by(
-        key="enable_llm_features", course=get_course()
-    ).one_or_none()
-    return entry is not None and entry.value == "true"
-
-
-LLM_HELP_TYPE_OPTIONS = {
-    "conceptual",
-    "debugging",
-    "past_exams_studying",
-    "other",
-}
-
-LLM_TIPS_INFLUENCE_OPTIONS = {
-    "helpful",
-    "helpful_minimal",
-    "neutral",
-    "not_helpful_but_accurate",
-    "not_helpful_at_all",
-}
-
-
-def ensure_config_entry(key, value, public):
-    entry = ConfigEntry.query.filter_by(key=key, course=get_course()).one_or_none()
-
-    if entry is None:
-        try:
-            new_entry = ConfigEntry(key=key, value=value, public=public, course=get_course())
-            db.session.add(new_entry)
-            db.session.commit()  # Commit IMMEDIATELY
-        except Exception:
-            db.session.rollback()  # roll back and ignore the error
-
-
-def build_llm_tips_payload(ticket):
-    chat_log = [
-        {
-            "user": message.user.short_name if message.user else "Unknown",
-            "body": message.body,
-            "created": message.created.isoformat(),
-        }
-        for message in sorted(ticket.messages, key=lambda msg: msg.created)
-    ]
-    return {
-        "assignment": ticket.assignment.name if ticket.assignment else "",
-        "question": ticket.question,
-        "location": ticket.location.name if ticket.location else "",
-        "description": ticket.description or "",
-        "chat": chat_log,
-        "student_email": ticket.user.email if ticket.user else "",
-    }
-
-
-def request_llm_tips_if_enabled(ticket):
-    if not llm_tips_enabled() or not ticket.use_llm:
-        return
-    endpoint = app.config.get("LLM_TIPS_ENDPOINT")
-    auth_token = app.config.get("LLM_TIPS_AUTH_TOKEN")
-    if not endpoint or not auth_token:
-        app.logger.info(
-            "LLM tips skipped for ticket %s; endpoint or auth token missing", ticket.id
-        )
-        return
-
-    payload = build_llm_tips_payload(ticket)
-    headers = {"Content-Type": "application/json", "Authorization": auth_token}
-    try:
-        response = requests.post(
-            endpoint,
-            json=payload,
-            headers=headers,
-            timeout=(3.05, 60),
-        )
-        response.raise_for_status()
-    except requests.exceptions.ConnectTimeout:
-        app.logger.warning(
-            "LLM tips request connect timeout for ticket %s", ticket.id
-        )
-        return
-    except requests.exceptions.ReadTimeout:
-        app.logger.warning("LLM tips request read timeout for ticket %s", ticket.id)
-        return
-    except requests.RequestException as exc:
-        app.logger.warning(
-            "LLM tips request failed for ticket %s: %s", ticket.id, exc, exc_info=True
-        )
-        return
-
-    try:
-        data = response.json()
-    except ValueError:
-        app.logger.warning(
-            "LLM tips response not JSON for ticket %s (status %s)",
-            ticket.id,
-            response.status_code,
-        )
-        return
-
-    tip_text = data.get("llm_tips") or data.get("tips") or data.get("Miloh")
-    if not isinstance(tip_text, str) or not tip_text.strip():
-        app.logger.info(
-            "LLM tips response missing text for ticket %s: %s", ticket.id, data
-        )
-        return
-
-    ticket.llm_tips = tip_text.strip()
-    db.session.commit()
-    emit_event(ticket, TicketEventType.update)
 
 
 def assignment_json(assignment):
@@ -536,14 +409,6 @@ def init_config():
             course=get_course(),
         )
     )
-    db.session.add(
-        ConfigEntry(
-            key="enable_llm_features",
-            value="false",
-            public=True,
-            course=get_course(),
-        )
-    )
     db.session.commit()
 
 
@@ -554,7 +419,6 @@ def index(*args, **kwargs):
     check = db.session.query(ConfigEntry).filter_by(course=get_course()).first()
     if not check:
         init_config()
-    ensure_config_entry("enable_llm_features", "false", True)
     db.session.commit()
 
     return render_template(
@@ -854,7 +718,6 @@ def create(form):
 
     call_link = form.get("call-link", "")
     doc_link = form.get("doc-link", "")
-    use_llm = parse_bool(form.get("use_llm")) if llm_tips_enabled() else False
 
     location = Location.query.filter_by(
         course=get_course(), id=location_id
@@ -891,14 +754,12 @@ def create(form):
         course=get_course(),
         call_url=call_link,
         doc_url=doc_link,
-        use_llm=use_llm,
     )
 
     db.session.add(ticket)
     db.session.commit()
 
     emit_event(ticket, TicketEventType.create)
-    request_llm_tips_if_enabled(ticket)
     return socket_redirect(ticket_id=ticket.id)
 
 
@@ -1000,70 +861,6 @@ def resolve(data):
     for ticket in tickets:
         if not (current_user.is_staff or ticket.user.id == current_user.id):
             return socket_unauthorized()
-        llm_feedback_required = (
-            llm_tips_enabled()
-            and ticket.use_llm
-            and isinstance(ticket.llm_tips, str)
-            and ticket.llm_tips.strip()
-        )
-        if llm_feedback_required:
-            is_staff = current_user.is_staff
-            is_student = current_user.id == ticket.user.id
-            staff_help_type = data.get("staff_help_type")
-            staff_help_other = data.get("staff_help_other")
-            llm_tips_influence = data.get("llm_tips_influence")
-            student_help_type = data.get("student_help_type")
-            student_help_other = data.get("student_help_other")
-
-            if is_staff:
-                if staff_help_type not in LLM_HELP_TYPE_OPTIONS:
-                    return socket_error(
-                        "Please answer what you helped the student with.",
-                        category="warning",
-                        ticket_id=ticket.id,
-                    )
-                if (
-                    staff_help_type == "other"
-                    and (not staff_help_other or not staff_help_other.strip())
-                ):
-                    return socket_error(
-                        "Please describe what you helped the student with.",
-                        category="warning",
-                        ticket_id=ticket.id,
-                    )
-                if llm_tips_influence not in LLM_TIPS_INFLUENCE_OPTIONS:
-                    return socket_error(
-                        "Please answer how the LLM tips influenced your approach.",
-                        category="warning",
-                        ticket_id=ticket.id,
-                    )
-                ticket.staff_help_type = staff_help_type
-                ticket.staff_help_other = (
-                    staff_help_other.strip() if staff_help_other else None
-                )
-                ticket.llm_tips_influence = llm_tips_influence
-
-            if is_student and ticket.helper_id:
-                if student_help_type:
-                    if student_help_type not in LLM_HELP_TYPE_OPTIONS:
-                        return socket_error(
-                            "Please select a valid option for what staff helped with.",
-                            category="warning",
-                            ticket_id=ticket.id,
-                        )
-                    if (
-                        student_help_type == "other"
-                        and (not student_help_other or not student_help_other.strip())
-                    ):
-                        return socket_error(
-                            "Please describe what staff helped with.",
-                            category="warning",
-                            ticket_id=ticket.id,
-                        )
-                    ticket.student_help_type = student_help_type
-                    ticket.student_help_other = (
-                        student_help_other.strip() if student_help_other else None
-                    )
         ticket.status = TicketStatus.resolved
         if local:
             location = ticket.location
@@ -1491,7 +1288,6 @@ def create_group(form):
 
     call_link = form.get("call-link", "")
     doc_link = form.get("doc-link", "")
-    use_llm = parse_bool(form.get("use_llm")) if llm_tips_enabled() else False
 
     location = Location.query.filter_by(
         course=get_course(), id=location_id
@@ -1531,7 +1327,6 @@ def create_group(form):
         course=get_course(),
         call_url=call_link,
         doc_url=doc_link,
-        use_llm=use_llm,
     )
 
     db.session.add(group)
@@ -1659,7 +1454,6 @@ def create_group_ticket(data, group):
         course=get_course(),
         call_url=group.call_url,
         doc_url=group.doc_url,
-        use_llm=group.use_llm,
     )
 
     db.session.add(ticket)
@@ -1669,7 +1463,6 @@ def create_group_ticket(data, group):
     db.session.commit()
 
     emit_event(ticket, TicketEventType.create)
-    request_llm_tips_if_enabled(ticket)
     emit_group_event(group, "group_ticket_created")
 
 

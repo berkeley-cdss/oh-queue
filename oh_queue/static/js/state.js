@@ -38,13 +38,6 @@ type Ticket = {
   call_url: string,
   doc_url: string,
   group_id: number,
-  llm_tips: ?string,
-  use_llm: boolean,
-  student_help_type: ?string,
-  student_help_other: ?string,
-  staff_help_type: ?string,
-  staff_help_other: ?string,
-  llm_tips_influence: ?string,
 };
 
 type TicketAssignment = {

@@ -1,4 +1,5 @@
-"""The migrations that remove Slack notifications, okpy backup links, and appointments.
+"""The migrations that remove Slack notifications, okpy backup links, appointments
+and LLM tips.
 
 The migrations before them were written for MySQL and don't run on SQLite, so
 the tests start from the current tables, as `manage.py initdb` makes them.
@@ -98,7 +99,7 @@ def test_it_is_the_only_head(app_context):
     from alembic.script import ScriptDirectory
 
     config = app_context.extensions["migrate"].migrate.get_config()
-    assert ScriptDirectory.from_config(config).get_heads() == ["d3a7e5f1c0b2"]
+    assert ScriptDirectory.from_config(config).get_heads() == ["42b35af5ed41"]
 
 
 APPOINTMENT_KEYS = [
@@ -149,8 +150,8 @@ def check_appointments_upgrade_and_downgrade():
     sql("INSERT INTO user (id, email, name, course) VALUES (1, 'a@example.edu', 'A', 'cs61a')")
     sql("INSERT INTO location (id, name, online, link, course) VALUES (1, 'Cory', 0, '', 'cs61a')")
     sql("INSERT INTO assignment (id, name, course) VALUES (1, 'Hog', 'cs61a')")
-    sql("""INSERT INTO ticket (id, status, user_id, assignment_id, location_id, question, use_llm, course)
-           VALUES (1, 'pending', 1, 1, 1, '1', 0, 'cs61a')""")
+    sql("""INSERT INTO ticket (id, status, user_id, assignment_id, location_id, question, course)
+           VALUES (1, 'pending', 1, 1, 1, '1', 'cs61a')""")
     sql("""INSERT INTO appointment (id, start_time, duration, capacity, num_reminders_sent, private_pinged,
            description, location_id, status, course)
            VALUES (1, '2026-01-01', '1970-01-01 01:00:00', 5, 0, 0, '', 1, 'pending', 'cs61a')""")
@@ -176,3 +177,39 @@ def check_appointments_upgrade_and_downgrade():
         [(key,) for key in APPOINTMENT_KEYS + ["is_queue_open"]])
     upgrade(revision="4370289bdaeb")
     assert not {"appointment", "appointment_signup"} & tables()
+
+
+LLM_TICKET_COLUMNS = {"llm_tips", "use_llm", "student_help_type", "student_help_other",
+                      "staff_help_type", "staff_help_other", "llm_tips_influence"}
+
+
+def test_removes_llm_tips(app_context):
+    try:
+        for course in ("cs61a", "data8"):
+            sql("INSERT INTO config_entries (key, value, public, course) VALUES ('is_queue_open', 'true', 1, :course)",
+                course=course)
+        stamp(revision="42b35af5ed41")
+        downgrade(revision="d3a7e5f1c0b2")
+        assert LLM_TICKET_COLUMNS <= columns("ticket")
+        assert "use_llm" in columns("group")
+        # The setting comes back off, once per course.
+        assert sorted(sql("SELECT course, key, value FROM config_entries WHERE key = 'enable_llm_features'")) == [
+            ("cs61a", "enable_llm_features", "false"), ("data8", "enable_llm_features", "false")]
+        sql("UPDATE config_entries SET value = 'true' WHERE key = 'enable_llm_features' AND course = 'cs61a'")
+
+        sql("INSERT INTO user (id, email, name, course) VALUES (1, 'a@example.edu', 'A', 'cs61a')")
+        sql("INSERT INTO location (id, name, online, link, course) VALUES (1, 'Cory', 0, '', 'cs61a')")
+        sql("INSERT INTO assignment (id, name, course) VALUES (1, 'Hog', 'cs61a')")
+        sql("""INSERT INTO ticket (id, status, user_id, assignment_id, location_id, question, course,
+               llm_tips, use_llm, staff_help_type, llm_tips_influence)
+               VALUES (1, 'pending', 1, 1, 1, '1', 'cs61a', 'Try this', 1, 'debugging', 'helpful')""")
+
+        upgrade(revision="42b35af5ed41")
+
+        assert not LLM_TICKET_COLUMNS & columns("ticket")
+        assert "use_llm" not in columns("group")
+        assert sql("SELECT id, question FROM ticket") == [(1, "1")]
+        assert sorted(sql("SELECT course, key FROM config_entries")) == [
+            ("cs61a", "is_queue_open"), ("data8", "is_queue_open")]
+    finally:
+        sql("DROP TABLE IF EXISTS alembic_version")

@@ -21,9 +21,6 @@ TEST_ENV = {
     "ADMIN_OVERRIDE_CANVAS_COURSE_ID": "999",
 }
 os.environ.update(TEST_ENV)
-# Settings a developer's shell might have that the tests mustn't use.
-for name in ("LLM_TIPS_ENDPOINT", "LLM_TIPS_AUTH_TOKEN"):
-    os.environ.pop(name, None)
 
 import pytest  # noqa: E402
 from flask_migrate import Migrate  # noqa: E402

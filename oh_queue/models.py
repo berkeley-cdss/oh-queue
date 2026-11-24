@@ -253,13 +253,6 @@ class Ticket(db.Model):
     question = db.Column(db.String(255), nullable=False)
 
     description = db.Column(db.Text)
-    llm_tips = db.Column(db.Text)
-    use_llm = db.Column(db.Boolean, nullable=False, default=False)
-    student_help_type = db.Column(db.String(64))
-    student_help_other = db.Column(db.Text)
-    staff_help_type = db.Column(db.String(64))
-    staff_help_other = db.Column(db.Text)
-    llm_tips_influence = db.Column(db.String(64))
 
     user = db.relationship(User, foreign_keys=[user_id])
     helper = db.relationship(User, foreign_keys=[helper_id])
@@ -270,7 +263,6 @@ class Ticket(db.Model):
 
     call_url = db.Column(db.String(255))
     doc_url = db.Column(db.String(255))
-    use_llm = db.Column(db.Boolean, nullable=False, default=False)
 
     @classmethod
     def for_user(cls, user):
@@ -345,7 +337,6 @@ class Group(db.Model):
 
     call_url = db.Column(db.String(255))
     doc_url = db.Column(db.String(255))
-    use_llm = db.Column(db.Boolean, nullable=False, default=False)
 
     course = db.Column(db.String(255), nullable=False, index=True)
 

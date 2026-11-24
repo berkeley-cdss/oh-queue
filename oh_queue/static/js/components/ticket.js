@@ -3,9 +3,6 @@ let Ticket = ({ state, ticket, independent }) => {
   let location = ticketLocation(app.state, ticket);
 
   const staff = isStaff(state);
-  const llmTipsEnabled =
-    state.config.enable_llm_features === true ||
-    state.config.enable_llm_features === "true";
 
   const staffName = ticket.helper
     ? isTicketHelper(state, ticket)
@@ -83,9 +80,6 @@ let Ticket = ({ state, ticket, independent }) => {
             .asDays() > 1 && <span className="badge"> Old Ticket </span>}
         </small>
       </h4>
-      {staff && llmTipsEnabled && ticket.llm_tips && (
-        <LlmTips tips={ticket.llm_tips} className="ticket-llm-tips--inline" />
-      )}
     </TicketLink>
   );
 };
