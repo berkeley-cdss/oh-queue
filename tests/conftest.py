@@ -8,6 +8,7 @@ under the key the per-course sites used.
 
 import os
 import tempfile
+import zlib
 from unittest.mock import patch
 
 _db_dir = tempfile.mkdtemp()
@@ -15,6 +16,9 @@ TEST_ENV = {
     "ENV": "dev",
     "SECRET_KEY": "test",
     "DATABASE_URL": "sqlite:///" + os.path.join(_db_dir, "test.db"),
+    # The tests cover the real Canvas path, with canvas_service mocked; the dev
+    # login's tests and the browser tests turn the fake Canvas on.
+    "MOCK_CANVAS": "false",
     "CANVAS_SERVER_URL": "https://canvas.example.edu/",
     "CANVAS_CLIENT_ID": "client-id",
     "CANVAS_CLIENT_SECRET": "client-secret",
@@ -71,13 +75,11 @@ def client(app):
 
 
 def log_in(client, email="staff@example.edu", name="Staff", is_staff=True):
-    """Sign in through the development login, as a TA or a student in every
-    offering, then open the test offering, which makes its User row."""
-    form = {"email": email, "name": name}
-    if is_staff:
-        form["is_staff"] = "on"
-    response = client.post("/testing-login/authorized", data=form)
-    assert response.status_code == 302
+    """Sign in through Canvas as a TA (and admin) or a student in the test
+    offering, then open it, which makes its User row."""
+    courses = {"101": role(is_staff=is_staff, is_admin=is_staff, is_student=not is_staff)}
+    # One Canvas account per email, as on bCourses.
+    response = canvas_sign_in(client, email, courses, canvas_user_id=zlib.crc32(email.encode()), name=name)
     assert client.get(COURSE + "/").status_code == 200
     return response
 
@@ -92,10 +94,10 @@ def role(is_staff=False, is_student=False, is_admin=False,
             "is_staff": is_staff, "is_admin": is_admin, "is_student": is_student}
 
 
-def canvas_sign_in(client, email, courses, canvas_user_id=42):
+def canvas_sign_in(client, email, courses, canvas_user_id=42, name=None):
     """Sign in through /authorized/ as Canvas user ``canvas_user_id``, enrolled in
     ``courses`` ({str(canvas course id): role(...)}), with Canvas mocked."""
-    profile = {"primary_email": email, "name": email.split("@")[0].title()}
+    profile = {"primary_email": email, "name": name or email.split("@")[0].title()}
     with patch(AUTHORIZE, return_value={"user": {"id": canvas_user_id}, "access_token": "token"}), \
          patch.object(canvas_service, "get_profile", return_value=profile), \
          patch.object(canvas_service, "get_user_courses", return_value=courses) as get_user_courses:

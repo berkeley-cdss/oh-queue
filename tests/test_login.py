@@ -1,4 +1,4 @@
-"""Signing in with bCourses, roles in each course, and the development login."""
+"""Signing in with bCourses, roles in each course. The dev login is in test_dev_login.py."""
 
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -140,15 +140,6 @@ def test_login_redirects_to_canvas(client):
         assert s["after_login"] == f"{COURSE}/admin"
 
 
-def test_login_without_a_client_id(client, monkeypatch):
-    monkeypatch.setitem(client.application.config, "CANVAS_CLIENT_ID", None)
-    response = client.get("/login/")
-    assert response.status_code == 302
-    assert response.headers["Location"].endswith("/testing-login/")
-    monkeypatch.setitem(client.application.config, "ENV", "prod")
-    assert client.get("/login/").status_code == 503
-
-
 @pytest.mark.parametrize("target, expected", [
     ("/admin", "/admin"),
     ("/tickets/3/?a=b", "/tickets/3/?a=b"),
@@ -178,22 +169,6 @@ def test_canvas_errors_are_escaped(client):
     assert response.status_code == 403
     assert b"<script>" not in response.data
     assert b"&lt;script&gt;" in response.data
-
-
-def test_development_login(client):
-    log_in(client, "ta@example.edu", is_staff=True)
-    assert current_user(client)["isStaff"]
-    with client.application.app_context():
-        assert User.query.filter_by(email="ta@example.edu", course="cs61a").one().is_staff
-
-
-def test_no_development_login_in_production(client, monkeypatch):
-    monkeypatch.setitem(client.application.config, "ENV", "prod")
-    assert client.get("/testing-login/").status_code == 404
-    response = client.post("/testing-login/authorized", data={"email": "a@example.edu", "name": "A"})
-    assert response.status_code == 404
-    with client.application.app_context():
-        assert Account.query.count() == 0
 
 
 def test_logout(client):

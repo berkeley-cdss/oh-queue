@@ -18,6 +18,7 @@ from werkzeug.serving import run_simple
 load_dotenv()
 
 from oh_queue import app  # noqa: E402
+from oh_queue.fake_canvas_data import FAKE_COURSES  # noqa: E402
 from oh_queue.models import (  # noqa: E402
     Assignment,
     Location,
@@ -32,8 +33,9 @@ from oh_queue.models import (  # noqa: E402
 os.environ["FLASK_APP"] = "manage.py"
 
 migrate = Migrate(app, db)
-# The UC Berkeley sandbox's test course, which seed_data sets up.
-DEV_CANVAS_COURSE_ID = 157
+# The course seed_data sets up: the fake Canvas's CS 169A, which every seeded
+# user is in (oh_queue/fake_canvas_data).
+DEV_CANVAS_COURSE_ID = 1234567
 alembic_cfg = Config("migrations/alembic.ini")
 
 
@@ -55,10 +57,12 @@ def seed_data():
 
     print("Seeding...")
 
-    # The UC Berkeley sandbox's test course, under the key the per-course sites used.
+    # The development course, as importing it from the fake Canvas would set it up.
     offering = Offering.query.filter_by(canvas_id=DEV_CANVAS_COURSE_ID).one_or_none()
     if offering is None:
-        offering = Offering(canvas_id=DEV_CANVAS_COURSE_ID, key="cs61a", name="CS 61A (sandbox)", code="CS 61A")
+        fake_course = FAKE_COURSES[str(DEV_CANVAS_COURSE_ID)]
+        offering = Offering(canvas_id=DEV_CANVAS_COURSE_ID, key=str(DEV_CANVAS_COURSE_ID),
+                            name=fake_course["name"], code=fake_course["course_code"])
         db.session.add(offering)
     course = offering.key
 

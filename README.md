@@ -25,9 +25,13 @@ python manage.py seed_data
 yarn dev
 ```
 
-`yarn dev` runs the Flask server on port 3000 and Vite's dev server on port 5173, which serves the React app in `src/` to the Flask page and updates it as you edit. (`python manage.py run_server` on its own serves the last `yarn build` instead.) Then open http://localhost:3000/offerings/157/ (the course `seed_data` sets up) and sign in. Without `CANVAS_CLIENT_ID`, signing in goes to a development login, where you can be anyone, as a TA or a student in every course. The database is SQLite (`app.db`) unless `.env` sets `DATABASE_URL`. To sign in with bCourses instead, set `CANVAS_CLIENT_ID` and `CANVAS_CLIENT_SECRET` in `.env` to the UC Berkeley sandbox's developer key.
+`yarn dev` runs the Flask server on port 3000 and Vite's dev server on port 5173, which serves the React app in `src/` to the Flask page and updates it as you edit. (`python manage.py run_server` on its own serves the last `yarn build` instead.) Then open http://localhost:3000/offerings/1234567/ (the course `seed_data` sets up) and sign in. The database is SQLite (`app.db`) unless `.env` sets `DATABASE_URL`.
+
+In development, Canvas is mocked by default, as in seating and sections: signing in goes to `/dev_login/`, which lists the fake Canvas's users (`oh_queue/fake_canvas_data`, the same as sections') and their roles, with a button to sign in as each. Yu Long is a TA, Oski Bear a teacher, and Jimmy Xu a student in CS 169A (Canvas course 1234567). To sign in with bCourses instead, set `MOCK_CANVAS=false` and set `CANVAS_CLIENT_ID` and `CANVAS_CLIENT_SECRET` in `.env` to the UC Berkeley sandbox's developer key. `seed_data`'s course is the fake Canvas's, so with bCourses, import one of your sandbox courses instead. Production always uses bCourses.
 
 `seed_data` adds sample assignments, locations, students and tickets. `python manage.py resetdb` starts the database over.
+
+If your database was seeded before the fake Canvas, it still has the old seeded course (Canvas course 157, under the key `cs61a`), which no fake Canvas user is enrolled in, so you can't open it. To get a database with only CS 169A, start over: run `python manage.py resetdb` then `python manage.py seed_data`, or delete `app.db` and run `initdb` and `seed_data` again. This deletes everything in the local database.
 
 ## Deployment
 

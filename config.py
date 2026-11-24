@@ -5,7 +5,7 @@ import os
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 # dev or prod. Required, so a deployment that forgets it doesn't get the
-# development settings (like the testing login).
+# development settings (like the fake Canvas).
 ENV = os.getenv("ENV", "").lower()
 if ENV not in ("dev", "prod"):
     raise RuntimeError("Set ENV to dev or prod.")
@@ -77,11 +77,16 @@ SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 LOCAL_TIMEZONE = os.getenv("TIMEZONE", "US/Pacific")
 
+# As in seating and sections, development uses the fake Canvas
+# (oh_queue/fake_canvas.py) unless MOCK_CANVAS=false, so a fresh checkout can
+# sign in through /dev_login/ without Canvas credentials. Production always
+# uses real Canvas, and needs its developer key.
+MOCK_CANVAS = ENV == "dev" and (os.getenv("MOCK_CANVAS") or "true").lower() == "true"
 CANVAS_SERVER_URL = os.getenv(
     "CANVAS_SERVER_URL", "https://ucberkeleysandbox.instructure.com/"
 )
-CANVAS_CLIENT_ID = os.getenv("CANVAS_CLIENT_ID")
-CANVAS_CLIENT_SECRET = os.getenv("CANVAS_CLIENT_SECRET")
+CANVAS_CLIENT_ID = os.getenv("CANVAS_CLIENT_ID") if MOCK_CANVAS else required("CANVAS_CLIENT_ID")
+CANVAS_CLIENT_SECRET = os.getenv("CANVAS_CLIENT_SECRET") if MOCK_CANVAS else required("CANVAS_CLIENT_SECRET")
 # Optional: members of this Canvas course are staff and admin in every course.
 ADMIN_OVERRIDE_CANVAS_COURSE_ID = os.getenv("ADMIN_OVERRIDE_CANVAS_COURSE_ID")
 ADMIN_OVERRIDE_CANVAS_COURSE_ID = int(ADMIN_OVERRIDE_CANVAS_COURSE_ID) if ADMIN_OVERRIDE_CANVAS_COURSE_ID else None

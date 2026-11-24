@@ -158,7 +158,9 @@ def connect(client, prefix):
 
 def test_each_course_has_its_own_queue_users_and_roles(app, two_courses):
     student, ta = app.test_client(), app.test_client()
-    log_in(student, "student@example.edu", is_staff=False)
+    canvas_sign_in(student, "student@example.edu", {"101": role(is_student=True), "202": role(is_student=True)},
+                   canvas_user_id=7)
+    student.get(COURSE + "/")
     student.get(OTHER + "/")
     canvas_sign_in(ta, "ta@example.edu", {"101": role(is_staff=True), "202": role(is_student=True)})
     ta.get(COURSE + "/")
