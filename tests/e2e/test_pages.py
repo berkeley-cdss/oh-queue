@@ -9,10 +9,7 @@ from selenium.webdriver.support.select import Select
 
 from oh_queue.models import (Assignment, ConfigEntry, Group, GroupAttendance, GroupAttendanceStatus, GroupStatus, Ticket,
                              TicketStatus, User, db)
-from tests.conftest import COURSE
-
-STAFF = ("staff@example.edu", "Staff Member", True)
-STUDENT = ("student@example.edu", "Student Person", False)
+from tests.browser import COURSE, STAFF, STUDENT
 
 
 def add_group(app, question="3"):
@@ -46,7 +43,7 @@ def add_group(app, question="3"):
     ("/no_such_page", "Page Not Found"),
 ])
 def test_staff_pages(site, path, text):
-    site.log_in(*STAFF)
+    site.log_in(STAFF)
     site.visit(COURSE + path)
     assert text in site.text()
     assert site.console_errors() == []
@@ -58,7 +55,7 @@ def test_staff_pages(site, path, text):
     ("/no_such_page", "Page Not Found"),
 ])
 def test_student_pages(site, path, text):
-    site.log_in(*STUDENT)
+    site.log_in(STUDENT)
     site.visit(COURSE + path)
     assert text in site.text()
     assert site.console_errors() == []
@@ -66,25 +63,25 @@ def test_student_pages(site, path, text):
 
 def test_student_activity_log(site):
     """Students see their own activity, not everyone's."""
-    site.log_in(*STUDENT)
+    site.log_in(STUDENT)
     site.visit(COURSE + "/activity_log")
-    site.wait(lambda: "/user/" in site.driver.current_url and "student@example.edu" in site.text())
+    site.wait(lambda: "/user/" in site.driver.current_url and STUDENT.email in site.text())
     assert site.console_errors() == []
 
 
 def test_user_page(site, app):
-    site.log_in(*STAFF)
+    site.log_in(STAFF)
     site.visit(COURSE + "/")
     with app.app_context():
-        staff_id = User.query.filter_by(email=STAFF[0]).one().id
+        staff_id = User.query.filter_by(email=STAFF.email).one().id
     site.visit(f"{COURSE}/user/{staff_id}")
-    assert "Staff Member" in site.text()
+    assert STAFF.name in site.text()
     assert site.console_errors() == []
 
 
 def test_group_page(site, app):
     group_id = add_group(app)
-    site.log_in(*STAFF)
+    site.log_in(STAFF)
     site.visit(f"{COURSE}/groups/{group_id}")
     site.wait(lambda: "Grouped Student" in site.text())
     assert site.console_errors() == []
@@ -92,7 +89,7 @@ def test_group_page(site, app):
 
 def test_request_and_resolve_ticket(site, app):
     # The student asks for help with Hog question 3 in Cory 247...
-    site.log_in(*STUDENT)
+    site.log_in(STUDENT)
     site.visit(COURSE + "/")
     Select(site.driver.find_element(By.ID, "assignment_id")).select_by_visible_text("Hog")
     Select(site.driver.find_element(By.ID, "location_id")).select_by_visible_text("Cory 247")
@@ -105,12 +102,12 @@ def test_request_and_resolve_ticket(site, app):
         ticket_id = Ticket.query.one().id
 
     # A TA helps them, then resolves the ticket.
-    site.log_in(*STAFF)
+    site.log_in(STAFF)
     site.visit(f"{COURSE}/tickets/{ticket_id}")
     site.button("Help").click()
     site.wait(lambda: "Being helped by you" in site.text())
     site.button("Resolve").click()
-    site.wait(lambda: "Resolved by Staff Member" in site.text()
+    site.wait(lambda: f"Resolved by {STAFF.name}" in site.text()
               or site.driver.current_url.rstrip("/").endswith(COURSE))
     with app.app_context():
         assert Ticket.query.one().status.name == "resolved"
@@ -123,7 +120,7 @@ def config_value(app, key):
 
 
 def test_admin_saves_settings(site, app):
-    site.log_in(*STAFF)
+    site.log_in(STAFF)
     site.visit(COURSE + "/admin")
 
     # a setting with a Save button: the hold delay
@@ -156,7 +153,7 @@ def ticket_description(app, ticket_id):
 
 def test_ticket_description_is_saved(site, app):
     with app.app_context():
-        student = User(email=STUDENT[0], name=STUDENT[1], course="cs61a")
+        student = User(email=STUDENT.email, name=STUDENT.name, course="cs61a")
         db.session.add(student)
         db.session.flush()
         ticket = Ticket(user=student, status=TicketStatus.pending, assignment_id=1, location_id=1,
@@ -165,7 +162,7 @@ def test_ticket_description_is_saved(site, app):
         db.session.commit()
         ticket_id = ticket.id
 
-    site.log_in(*STUDENT)
+    site.log_in(STUDENT)
     site.visit(f"{COURSE}/tickets/{ticket_id}")
     box = site.wait(lambda: site.driver.find_element(By.CSS_SELECTOR, "textarea.description-box"))
     assert box.get_attribute("value") == "Old description"
@@ -177,7 +174,7 @@ def test_ticket_description_is_saved(site, app):
 
 
 def test_error_page_home_button(site):
-    site.log_in(*STAFF)
+    site.log_in(STAFF)
     site.visit(COURSE + "/no_such_page")
     site.button("Home").click()
     site.wait(lambda: "Waiting (0)" in site.text())
@@ -197,7 +194,7 @@ def test_signed_out_queue_goes_to_the_party_page(site, app):
 
 def test_welcome_message_references_without_semicolons(site, app):
     """Messages written for react-markdown 4, which decoded `&nbsp` like `&nbsp;`."""
-    site.log_in(*STAFF)
+    site.log_in(STAFF)
     site.visit(COURSE + "/")  # sets up the course's settings
     with app.app_context():
         ConfigEntry.query.filter_by(course="cs61a", key="welcome").one().value = \
@@ -218,7 +215,7 @@ def test_welcome_message_references_without_semicolons(site, app):
 def test_group_that_does_not_exist(site):
     """Staff see that it isn't found, after asking for it once."""
     site.watch_requests()
-    site.log_in(*STAFF)
+    site.log_in(STAFF)
     site.visit(f"{COURSE}/groups/12345")
     site.wait(lambda: "Not found" in site.text())
     time.sleep(2)
@@ -227,7 +224,7 @@ def test_group_that_does_not_exist(site):
 
 
 def test_group_page_with_an_id_that_is_not_a_number(site):
-    site.log_in(*STAFF)
+    site.log_in(STAFF)
     site.visit(f"{COURSE}/groups/abc")
     site.wait(lambda: "Not found" in site.text())
 
@@ -236,7 +233,7 @@ def test_group_page_asks_again_after_a_failed_request(site):
     """A group that doesn't exist: the first request fails, as if the network were down,
     and the page asks again once it's back online."""
     site.watch_requests(fail={"load_group": 1})
-    site.log_in(*STAFF)
+    site.log_in(STAFF)
     site.visit(f"{COURSE}/groups/12345")
     # the page polls every ten seconds, which brings it back online
     site.wait(lambda: "Not found" in site.text(), timeout=25)
@@ -245,7 +242,7 @@ def test_group_page_asks_again_after_a_failed_request(site):
 
 def test_group_without_a_question(site, app):
     add_group(app, question="")
-    site.log_in(*STAFF)
+    site.log_in(STAFF)
     site.visit(COURSE + "/party")
     # the group's card, which shows its assignment, question and location
     card = site.wait(lambda: next(iter(site.driver.find_elements(By.CSS_SELECTOR, ".card-holder .card")), None))
@@ -255,7 +252,7 @@ def test_group_without_a_question(site, app):
 
 def test_failed_setting_save_can_be_tried_again(site):
     site.watch_requests(fail={"update_config": 1})
-    site.log_in(*STAFF)
+    site.log_in(STAFF)
     site.visit(COURSE + "/admin")
     delay = site.driver.find_element(By.CSS_SELECTOR, "input[type=number]")
     delay.clear()
@@ -284,7 +281,7 @@ def test_next_ticket_shows_the_next_tickets_assignment(site, app):
         db.session.commit()
     first, second = tickets
 
-    site.log_in(*STAFF)
+    site.log_in(STAFF)
     site.visit(f"{COURSE}/tickets/{first}")
     site.button("Help").click()
     site.wait(lambda: "Being helped by you" in site.text())
@@ -306,7 +303,7 @@ def test_staff_see_a_timed_magic_word(site, app):
         for key, value in settings.items():
             ConfigEntry.query.filter_by(course="cs61a", key=key).one().value = value
         db.session.commit()
-    site.log_in(*STAFF)
+    site.log_in(STAFF)
     site.visit(COURSE + "/")
     # right away, not after the first ten-second refresh
     site.wait(lambda: "Magic word:" in site.text(), timeout=5)
@@ -319,7 +316,7 @@ def test_description_is_asked_for_when_required(site, app):
     with app.app_context():
         ConfigEntry.query.filter_by(course="cs61a", key="description_required").one().value = "true"
         db.session.commit()
-    site.log_in(*STUDENT)
+    site.log_in(STUDENT)
     site.visit(COURSE + "/")
     Select(site.driver.find_element(By.ID, "assignment_id")).select_by_visible_text("Hog")
     Select(site.driver.find_element(By.ID, "location_id")).select_by_visible_text("Cory 247")
@@ -339,7 +336,7 @@ def test_description_is_asked_for_when_required(site, app):
 
 
 def test_account_menu_signs_out(site):
-    site.log_in(*STAFF)
+    site.log_in(STAFF)
     site.visit(COURSE + "/")
     menu = site.driver.find_element(By.ID, "account-menu")
     assert menu.get_attribute("aria-expanded") == "false"

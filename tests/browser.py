@@ -6,6 +6,7 @@ import json
 import re
 import threading
 import time
+from collections import namedtuple
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -18,6 +19,15 @@ from selenium.webdriver.support.ui import WebDriverWait
 from werkzeug.serving import make_server
 
 from oh_queue.vite import MANIFEST
+
+# Seeded in oh_queue/fake_canvas_data. Everyone signs in through /dev_login/ as one
+# of them: Yu Long is a TA in CS 169A (Canvas course 1234567), the course the tests
+# use, and Jimmy Xu a student in it and a TA in COMPSCI 168 (2345678).
+SeededUser = namedtuple("SeededUser", "canvas_id email name")
+STAFF = SeededUser("123456", "long_yu@berkeley.edu", "Yu Long")
+STUDENT = SeededUser("234567", "jx@berkeley.edu", "Jimmy Xu")
+CANVAS_COURSE_ID = 1234567
+COURSE = f"/offerings/{CANVAS_COURSE_ID}"
 
 # Counts the page's requests in flight, so a test can wait for the course page's data
 # to load. It runs before the page's own scripts, in a function so its names don't
@@ -47,18 +57,12 @@ class Site:
         # scripts that run on every page, added by watch_requests
         self.scripts = []
 
-    def log_in(self, email, name, is_staff):
-        """Sign in through the development login, as a TA or a student in every offering."""
+    def log_in(self, user):
+        """Sign in through the dev login as a SeededUser."""
         self.driver.delete_all_cookies()
-        self.driver.get(f"{self.base_url}/testing-login/")
-        for field, value in (("name", name), ("email", email)):
-            element = self.driver.find_element(By.ID, field)
-            element.clear()
-            element.send_keys(value)
-        if is_staff:
-            self.driver.find_element(By.ID, "is_staff").click()
-        self.driver.find_element(By.CSS_SELECTOR, "button[type=submit]").click()
-        self.wait(lambda: "/testing-login" not in self.driver.current_url)
+        self.driver.get(f"{self.base_url}/dev_login/")
+        self.driver.find_element(By.CSS_SELECTOR, f'button[name=user_id][value="{user.canvas_id}"]').click()
+        self.wait(lambda: "/dev_login" not in self.driver.current_url)
 
     def visit(self, path):
         """Open a course page and wait for the queue's first update from the server."""
@@ -132,6 +136,9 @@ def live_site(window_size="1280,1000"):
     if not Path(MANIFEST).exists():
         pytest.fail("The browser tests need the frontend build: run `yarn build`.")
 
+    # The unit tests turn the fake Canvas off (tests/conftest.py).
+    mock_canvas = app.config["MOCK_CANVAS"]
+    app.config["MOCK_CANVAS"] = True
     server = make_server("localhost", 0, app, threaded=True)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -151,3 +158,4 @@ def live_site(window_size="1280,1000"):
         server.shutdown()
         thread.join()
         server.server_close()
+        app.config["MOCK_CANVAS"] = mock_canvas

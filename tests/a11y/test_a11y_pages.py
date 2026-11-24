@@ -13,9 +13,10 @@ from pathlib import Path
 import pytest
 
 from oh_queue import app
-from tests.a11y.conftest import COURSE, STAFF, STUDENT, VIOLATIONS_BY_RULE
+from tests.a11y.conftest import VIOLATIONS_BY_RULE
 from tests.a11y.utils import COMPLETE_A11Y_STANDARDS, REQUIRED_A11Y_STANDARDS, format_violations, run_axe, \
     save_report
+from tests.browser import COURSE, STAFF, STUDENT, SeededUser
 
 SRC = Path(__file__).parents[2] / "src" / "components"
 
@@ -27,7 +28,7 @@ class Page:
     rule: str
     # its path, with {ids} of the seeded course (conftest.py)
     path: str
-    user: tuple = None
+    user: SeededUser = None
     # the React app's route, for course pages: as in app.jsx, or "admin:" and the
     # route in admin_layout.jsx
     route: str = None
@@ -42,7 +43,7 @@ COURSE_INDEX = "/offerings/<int:canvas_course_id>/"
 
 PAGES = [
     Page("landing", "/", "/"),
-    Page("dev login", "/testing-login/", "/testing-login/"),
+    Page("dev login", "/dev_login/", "/dev_login/"),
     Page("signed-out queue", COURSE_INDEX, f"{COURSE}/", route="/"),
 
     Page("student offerings", "/offerings", "/offerings", STUDENT),
@@ -53,9 +54,10 @@ PAGES = [
     Page("student activity", COURSE_RULE, f"{COURSE}/activity_log", STUDENT, route="/activity_log/*",
          lands_on=f"{COURSE}/user/{{student}}"),
     Page("course not set up", COURSE_INDEX, "/offerings/999/", STUDENT, error=True),
+    # the student is a TA in another course, which they can set up
+    Page("add offerings", "/offerings/new", "/offerings/new", STUDENT),
 
     Page("offerings", "/offerings", "/offerings", STAFF),
-    Page("add offerings", "/offerings/new", "/offerings/new", STAFF),
     Page("queue", COURSE_INDEX, f"{COURSE}/", STAFF, route="/"),
     Page("party", COURSE_RULE, f"{COURSE}/party", STAFF, route="/party"),
     Page("online setup", COURSE_RULE, f"{COURSE}/online_setup", STAFF, route="/online_setup"),
@@ -80,7 +82,7 @@ PAGES = [
 SKIPPED_ROUTES = {
     "/static/<path:filename>": "not a page",
     "/health": "not a page",
-    "/login/": "redirects to bCourses, or to the development login",
+    "/login/": "redirects to bCourses, or to the dev login",
     "/authorized/": "redirects after signing in with bCourses",
 }
 

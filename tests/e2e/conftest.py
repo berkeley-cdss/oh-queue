@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from oh_queue.models import Assignment, Location, db
-from tests.browser import live_site, slugify
+from oh_queue.models import Assignment, Location, Offering, db
+from tests.browser import CANVAS_COURSE_ID, live_site, slugify
 
 SCREENSHOTS = Path("e2e-screenshots")
 
@@ -21,8 +21,10 @@ def live():
 @pytest.fixture()
 def site(app, live):
     """The browser and server, with the test offering (tests/conftest.py), its
-    assignments and locations, and no one signed in."""
+    assignments and locations, and no one signed in. The offering is the fake
+    Canvas's course, so its seeded users are enrolled in it."""
     with app.app_context():
+        Offering.query.filter_by(key="cs61a").one().canvas_id = CANVAS_COURSE_ID
         db.session.add_all([
             Assignment(name="Hog", course="cs61a", visible=True),
             Location(name="Cory 247", course="cs61a", visible=True, online=False, link=""),

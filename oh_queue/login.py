@@ -1,12 +1,12 @@
 import flask
 from authlib.integrations.base_client import OAuthError
 from authlib.integrations.flask_client import OAuth
-from flask import abort, current_app, redirect, render_template, request, session, url_for
+from flask import abort, current_app, redirect, request, session, url_for
 from flask_login import LoginManager, login_user, logout_user
 from markupsafe import escape
 
 from oh_queue import canvas_service
-from oh_queue.models import Account, Offering, User, db
+from oh_queue.models import Account, User, db
 from oh_queue.offering import current_offering, get_course, in_offering
 
 AFTER_LOGIN_KEY = "after_login"
@@ -57,6 +57,13 @@ def complete_login(token: dict):
     override_id = current_app.config.get("ADMIN_OVERRIDE_CANVAS_COURSE_ID")
     sign_in_account(canvas_user_id, email, profile.get("name"), courses,
                     is_global_admin=override_id is not None and str(override_id) in courses)
+
+
+def finish_login(token: dict):
+    """Sign in from a Canvas OAuth token response, then go back to the page the
+    person came from. The dev login (dev_login.py) uses it too."""
+    complete_login(token)
+    return _after_login()
 
 
 def course_user(account: Account):
@@ -122,10 +129,8 @@ def create_login_client(app: flask.Flask):
     @app.route("/login/")
     def login():
         session[AFTER_LOGIN_KEY] = _safe_next(request.args.get("next"))
-        if not app.config["CANVAS_CLIENT_ID"]:
-            if app.config["ENV"] == "dev":
-                return redirect(url_for("testing_login"))
-            abort(503)
+        if canvas_service.is_mock_canvas():
+            return redirect(url_for("dev_login"))
         return canvas.authorize_redirect(url_for("authorized", _external=True))
 
     @app.route("/authorized/")
@@ -135,45 +140,10 @@ def create_login_client(app: flask.Flask):
         except OAuthError as e:
             # The error comes from query parameters anyone can put in a link: escape it.
             return f"Access denied: {escape(e.description or e.error or 'unknown error')}", 403
-        complete_login(token)
-        return _after_login()
+        return finish_login(token)
 
     # A POST, so a link or image on another site can't sign people out.
     @app.route("/logout/", methods=["POST"])
     def logout():
         logout_user()
         return redirect(url_for("index"))
-
-    create_testing_login(app)
-
-
-def create_testing_login(app: flask.Flask):
-    """In development, a form for signing in as anyone, without Canvas."""
-
-    @app.route("/testing-login/", strict_slashes=False)
-    def testing_login():
-        if app.config["ENV"] != "dev":
-            abort(404)
-        return render_template("login.html", title="Development Login", callback=url_for("testing_authorized"))
-
-    @app.route("/testing-login/authorized", methods=["POST"], strict_slashes=False)
-    def testing_authorized():
-        """Sign in as anyone, as a TA or a student in every offering."""
-        if app.config["ENV"] != "dev":
-            abort(404)
-        form = request.form
-        is_staff = form.get("is_staff") == "on"
-        email = form["email"]
-        courses = {
-            str(o.canvas_id): {
-                "name": o.name,
-                "code": o.code,
-                "start_at": o.start_at,
-                "is_staff": is_staff,
-                "is_admin": is_staff,
-                "is_student": not is_staff,
-            }
-            for o in Offering.query.all()
-        }
-        sign_in_account(f"dev:{email}", email, form["name"], courses, is_global_admin=False)
-        return _after_login()

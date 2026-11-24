@@ -8,10 +8,12 @@ import pytest
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+CANVAS_KEY = {"CANVAS_CLIENT_ID": "client-id", "CANVAS_CLIENT_SECRET": "client-secret"}
 PRODUCTION = {
     "ENV": "prod",
     "SECRET_KEY": "secret",
     "DATABASE_URL": "postgresql://db.example.edu/oh",
+    **CANVAS_KEY,
 }
 
 
@@ -43,9 +45,23 @@ def test_env_is_case_insensitive():
 
 
 def test_development_defaults():
-    code, values = load_config({"ENV": "dev"}, "DEBUG", "SECRET_KEY")
+    code, values = load_config({"ENV": "dev"}, "DEBUG", "SECRET_KEY", "MOCK_CANVAS")
     assert code == 0
-    assert values == "[True, 'DEV']"
+    assert values == "[True, 'DEV', True]"
+
+
+def test_development_can_opt_out_of_the_fake_canvas():
+    assert load_config({"ENV": "dev", "MOCK_CANVAS": "false", **CANVAS_KEY}, "MOCK_CANVAS") == (0, "[False]")
+    code, error = load_config({"ENV": "dev", "MOCK_CANVAS": "false"})
+    assert code != 0 and "Set CANVAS_CLIENT_ID." in error
+
+
+def test_production_never_mocks_canvas():
+    assert load_config({**PRODUCTION, "MOCK_CANVAS": "true"}, "MOCK_CANVAS") == (0, "[False]")
+    for name in CANVAS_KEY:
+        env = {key: value for key, value in PRODUCTION.items() if key != name}
+        code, error = load_config({**env, "MOCK_CANVAS": "true"})
+        assert code != 0 and f"Set {name}." in error
 
 
 def test_production_starts_with_everything_set():
@@ -80,6 +96,7 @@ CLOUD_SQL = {
     "CLOUD_SQL_INSTANCE": "project:us-west1:instance",
     "DB_USER": "oh-app@project.iam",
     "DB_NAME": "oh",
+    **CANVAS_KEY,
 }
 
 

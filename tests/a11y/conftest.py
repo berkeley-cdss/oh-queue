@@ -9,15 +9,10 @@ from oh_queue import app
 from oh_queue.models import (Assignment, Group, GroupAttendance, GroupAttendanceStatus, GroupStatus, Location,
                              Offering, Ticket, TicketStatus, User, db)
 from tests.a11y.utils import REPORT_DIR
-from tests.browser import live_site, slugify
+from tests.browser import CANVAS_COURSE_ID, COURSE, STAFF, STUDENT, live_site, slugify
 
 # rule id -> pages that break it, printed at the end of the run
 VIOLATIONS_BY_RULE = defaultdict(set)
-
-COURSE = "/offerings/101"
-# who signs in, through the development login: (email, name, is_staff)
-STAFF = ("staff@example.edu", "Staff Member", True)
-STUDENT = ("student@example.edu", "Student Person", False)
 
 
 def seed():
@@ -28,14 +23,15 @@ def seed():
         db.drop_all()
         db.create_all()
         course = "cs61a"
-        db.session.add(Offering(canvas_id=101, key=course, name="COMPSCI 61A - LEC 001", code="CS 61A"))
-        # A course that was removed, which staff can import again on /offerings/new. (The
-        # development login makes everyone a TA in every offering, hidden or not.)
-        db.session.add(Offering(canvas_id=202, key="202", name="DATA C8 - LEC 001", code="DATA C8", hidden=True))
+        db.session.add(Offering(canvas_id=CANVAS_COURSE_ID, key=course, name="COMPSCI 61A - LEC 001", code="CS 61A"))
+        # A course that was removed, which its staff (the student, a TA in it) can import
+        # again on /offerings/new.
+        db.session.add(Offering(canvas_id=2345678, key="2345678", name="COMPSCI 168", code="COMPSCI 168",
+                                hidden=True))
         hog = Assignment(name="Hog", course=course, visible=True)
         cory = Location(name="Cory 247", course=course, visible=True, online=False, link="")
-        staff = User(email=STAFF[0], name=STAFF[1], is_staff=True, course=course)
-        student = User(email=STUDENT[0], name=STUDENT[1], course=course)
+        staff = User(email=STAFF.email, name=STAFF.name, is_staff=True, course=course)
+        student = User(email=STUDENT.email, name=STUDENT.name, course=course)
         helped = User(email="helped@example.edu", name="Helped Student", course=course)
         grouped = User(email="grouped@example.edu", name="Grouped Student", course=course)
         db.session.add_all([hog, cory, staff, student, helped, grouped])
@@ -76,7 +72,7 @@ class A11ySite:
         if user != self.user:
             self.driver.delete_all_cookies()
             if user is not None:
-                self.site.log_in(*user)
+                self.site.log_in(user)
             self.user = user
         self.driver.get(self.base_url + path)
         self.site.settle()

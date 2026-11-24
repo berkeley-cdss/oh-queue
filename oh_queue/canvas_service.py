@@ -3,6 +3,7 @@
 from canvasapi import Canvas
 from flask import current_app
 
+from oh_queue.fake_canvas import FakeCanvas
 from oh_queue.models import can_be_offering
 
 # What the app asks Canvas for at sign-in.
@@ -16,7 +17,15 @@ SCOPES = [
 STAFF_ENROLLMENT_TYPES = {"ta", "teacher"}
 
 
-def _client(access_token: str) -> Canvas:
+def is_mock_canvas() -> bool:
+    """Whether to use the fake Canvas (fake_canvas.py) rather than bCourses, as in
+    seating and sections. Never in production, whatever the config says."""
+    return bool(current_app.config.get("MOCK_CANVAS")) and current_app.config.get("ENV") != "prod"
+
+
+def _client(access_token: str) -> Canvas | FakeCanvas:
+    if is_mock_canvas():
+        return FakeCanvas()
     return Canvas(current_app.config["CANVAS_SERVER_URL"], access_token)
 
 

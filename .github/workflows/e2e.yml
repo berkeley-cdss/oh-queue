@@ -24,7 +24,7 @@ jobs:
         run: |
           yarn install --frozen-lockfile
           yarn build
-      # the tests sign in through the development login and use Chrome, which the runner has
+      # the tests sign in through the dev login (the fake Canvas) and use Chrome, which the runner has
       - name: Run end to end tests
         run: pytest tests/e2e
       - name: Keep screenshots of failed tests

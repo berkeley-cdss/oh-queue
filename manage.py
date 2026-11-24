@@ -32,8 +32,9 @@ from oh_queue.models import (  # noqa: E402
 os.environ["FLASK_APP"] = "manage.py"
 
 migrate = Migrate(app, db)
-# The UC Berkeley sandbox's test course, which seed_data sets up.
-DEV_CANVAS_COURSE_ID = 157
+# The course seed_data sets up: with the fake Canvas, its CS 169A, which every
+# seeded user is in; otherwise the UC Berkeley sandbox's test course.
+DEV_CANVAS_COURSE_ID = 1234567 if app.config["MOCK_CANVAS"] else 157
 alembic_cfg = Config("migrations/alembic.ini")
 
 
@@ -55,10 +56,10 @@ def seed_data():
 
     print("Seeding...")
 
-    # The UC Berkeley sandbox's test course, under the key the per-course sites used.
+    # The development course (DEV_CANVAS_COURSE_ID), under the key the per-course sites used.
     offering = Offering.query.filter_by(canvas_id=DEV_CANVAS_COURSE_ID).one_or_none()
     if offering is None:
-        offering = Offering(canvas_id=DEV_CANVAS_COURSE_ID, key="cs61a", name="CS 61A (sandbox)", code="CS 61A")
+        offering = Offering(canvas_id=DEV_CANVAS_COURSE_ID, key="cs61a", name="CS 61A (development)", code="CS 61A")
         db.session.add(offering)
     course = offering.key
 

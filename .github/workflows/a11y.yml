@@ -24,7 +24,7 @@ jobs:
         run: |
           yarn install --frozen-lockfile
           yarn build
-      # the audit signs in through the development login and uses Chrome, which the runner has
+      # the audit signs in through the dev login (the fake Canvas) and uses Chrome, which the runner has
       - name: Run A11y Audit
         run: pytest tests/a11y
       - name: Keep axe reports and screenshots

@@ -1,0 +1,50 @@
+{% extends "pages/base.html" %}
+{# Adapted from seating's and sections' dev_login.html. #}
+
+{% block body %}
+<div class="main-container">
+  <h2 class="h5">Dev Login</h2>
+  <p>
+    This server runs against the fake Canvas, so there is no real sign-in. Pick one of the
+    seeded users below. This page does not exist in production.
+  </p>
+
+  <div class="table-responsive">
+    <form method="post">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Canvas ID</th>
+            <th>Enrollments</th>
+            <th><span class="visually-hidden">Log in</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in mock_users %}
+          <tr>
+            <td>
+              {{ user.name }}<br><small>{{ user.email }}</small>
+            </td>
+            <td>{{ user.id }}</td>
+            <td>
+              {% for course in user.courses %}
+                {{ course.roles|join(', ') }} in {{ course.name }} ({{ course.id }}){% if not loop.last %}<br>{% endif %}
+              {% else %}
+                No course enrollments
+              {% endfor %}
+            </td>
+            <td>
+              {# A submit button carries its own name and value, so one form covers every user. #}
+              <button class="btn btn-primary btn-sm text-nowrap"
+                      type="submit" name="user_id" value="{{ user.id }}"
+                      aria-label="Log in as {{ user.name }}">Log in</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </form>
+  </div>
+</div>
+{% endblock %}
