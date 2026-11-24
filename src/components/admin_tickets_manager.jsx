@@ -21,6 +21,7 @@ export function AdminTicketsManager({ state: { config } }) {
                 <ConfigLinkedToggle
                   config={config}
                   configKey="description_required"
+                  label="Description required"
                   offText="No"
                   onText="Yes"
                 />
@@ -32,6 +33,7 @@ export function AdminTicketsManager({ state: { config } }) {
                 <ConfigLinkedToggle
                   config={config}
                   configKey="enable_shuffle"
+                  label="Staff can shuffle the queue"
                   offText="No"
                   onText="Yes"
                 />

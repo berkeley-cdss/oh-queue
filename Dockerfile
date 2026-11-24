@@ -17,6 +17,8 @@ COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
 COPY tsconfig.json vite.config.ts ./
 COPY src ./src
+# the stylesheet the course pages share with the pages outside a course (src/main.jsx)
+COPY oh_queue/static/pages/css ./oh_queue/static/pages/css
 RUN yarn typecheck && yarn build
 
 # ---------------------------------------------------------------------------

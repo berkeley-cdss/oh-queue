@@ -71,60 +71,56 @@ export let Ticket = ({ state, ticket, independent }) => {
 
   let question = ticketQuestion(app.state, ticket);
 
+  const old =
+    moment.duration(moment.utc().diff(moment.utc(ticket.created))).asDays() > 1;
+
   return (
     <TicketLink state={state} ticket={ticket} independent={independent}>
-      <div className="pull-left ticket-index">
-        {ticketPosition(state, ticket)}
-      </div>
-      <h4 className="pull-left">
-        {assignment.name} {question}
-        <br className="visible-xs" />
-        <small className="visible-xs ticket-status-xs">{status}</small>
-        <small className="visible-xs ticket-desc-xs">{description}</small>
-        <small className="visible-xs ticket-created-xs">
-          Ticket created: {ticketTimeAgo(ticket)}
-        </small>
-      </h4>
-      <h4 className="pull-left hidden-xs ticket-desc-md ">
-        <small>{description}</small>
-      </h4>
-      <h4 className="pull-left hidden-xs ticket-created-md ">
-        <small>Ticket created: {ticketTimeAgo(ticket)}</small>
-      </h4>
-      <h4 className="pull-right hidden-xs ticket-status-md">
-        <small>
-          {status}{" "}
-          {moment
-            .duration(moment.utc().diff(moment.utc(ticket.created)))
-            .asDays() > 1 && <span className="badge"> Old Ticket </span>}
-        </small>
-      </h4>
+      {(title) => (
+        <>
+          <span className="ticket-index">{ticketPosition(state, ticket)}</span>
+          <div className="ticket-main">
+            <div className="ticket-title">
+              {title(`${assignment.name} ${question}`)}
+            </div>
+            <div className="ticket-details">
+              {description && (
+                <span className="ticket-description">{description}</span>
+              )}
+              <span>Ticket created: {ticketTimeAgo(ticket)}</span>
+            </div>
+          </div>
+          <div className="ticket-status">
+            {status}{" "}
+            {old && <span className="badge text-bg-secondary">Old Ticket</span>}
+          </div>
+        </>
+      )}
     </TicketLink>
   );
 };
 
+// A ticket's row. Its title links to the ticket's page, for the people who can open
+// it, and the link covers the whole row (Bootstrap's stretched-link).
 export let TicketLink = ({ state, ticket, children, independent }) => {
   let highlight =
     ticketIsMine(state, ticket, true) || isTicketHelper(state, ticket);
   let link = ticketIsMine(state, ticket, true) || isStaff(state);
   let ticketClass = classNames({
     "ticket-row": true,
-    clearfix: true,
     "ticket-link": link,
     "ticket-highlight": highlight,
     "ticket-independent": independent,
     "ticket-rerequested": ticket.status === "rerequested",
     "ticket-juggled": ticket.status === "juggled",
   });
-  if (link) {
-    return (
-      <div className={ticketClass}>
-        <Link to={`/tickets/${ticket.id}`} className="clearfix">
-          {children}
-        </Link>
-      </div>
+  const title = (text) =>
+    link ? (
+      <Link to={`/tickets/${ticket.id}`} className="stretched-link">
+        {text}
+      </Link>
+    ) : (
+      text
     );
-  } else {
-    return <div className={ticketClass}>{children}</div>;
-  }
+  return <div className={ticketClass}>{children(title)}</div>;
 };

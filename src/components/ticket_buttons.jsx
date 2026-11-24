@@ -120,9 +120,11 @@ export class TicketButtons extends React.Component {
     function makeButton(text, style, action) {
       return (
         <button
+          type="button"
           key={text}
           onClick={action}
-          className={`btn btn-${style} btn-lg btn-block`}
+          // "default" was Bootstrap 3's plain button; Bootstrap 5's is the outline one.
+          className={`btn btn-${style === "default" ? "outline-secondary" : style} btn-lg w-100`}
         >
           {text}
         </button>
@@ -279,11 +281,17 @@ export class TicketButtons extends React.Component {
 
     const contents = (
       <React.Fragment>
-        {onlineButtons}
+        {!!onlineButtons.length && (
+          <div className="d-grid gap-2">{onlineButtons}</div>
+        )}
         {onlineHR}
-        {topButtons}
+        {!!topButtons.length && (
+          <div className="d-grid gap-2">{topButtons}</div>
+        )}
         {hr}
-        {bottomButtons}
+        {!!bottomButtons.length && (
+          <div className="d-grid gap-2">{bottomButtons}</div>
+        )}
       </React.Fragment>
     );
 
@@ -293,8 +301,8 @@ export class TicketButtons extends React.Component {
 
     return (
       <div className="row">
-        <div className="col-xs-12 col-md-6 col-md-offset-3">
-          <div className="well">{contents}</div>
+        <div className="col-12 col-md-6 offset-md-3">
+          <div className="card card-body bg-body-tertiary">{contents}</div>
         </div>
       </div>
     );

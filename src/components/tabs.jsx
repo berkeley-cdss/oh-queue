@@ -1,8 +1,8 @@
 import classNames from "classnames";
 import React from "react";
 
-/* Mostly from https://toddmotto.com/creating-a-tabs-component-with-react/
- * Use like this:
+/* Tabs, with the keyboard behavior and roles of WAI-ARIA's tabs pattern
+ * (https://www.w3.org/WAI/ARIA/apg/patterns/tabs/). Use like this:
  *
  * <Tabs selectedIndex={0} onSelect={(index) => ...}>
  *   <Tab label="My Tab">
@@ -14,34 +14,63 @@ import React from "react";
  * </Tabs>
  */
 export let Tabs = ({ selectedIndex, onSelect, children }) => {
-  children = React.Children.toArray(children).filter((x) => x);
-  let renderLabel = (child, index) => {
-    let active = selectedIndex === index;
-    let tabClass = classNames({
-      active: active,
-      pulsating: child.props.shouldHighlight && !active,
-    });
-    return (
-      <li key={index} className={tabClass}>
-        <a
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            onSelect(index);
-          }}
-        >
-          {child.props.label}
-        </a>
-      </li>
-    );
+  const id = React.useId();
+  const tabRefs = React.useRef([]);
+  const tabs = React.Children.toArray(children).filter((x) => x);
+
+  // The arrow keys, Home and End move between the tabs, choosing the one they move to.
+  const onKeyDown = (e, index) => {
+    const last = tabs.length - 1;
+    const next = {
+      ArrowRight: index === last ? 0 : index + 1,
+      ArrowLeft: index === 0 ? last : index - 1,
+      Home: 0,
+      End: last,
+    }[e.key];
+    if (next !== undefined) {
+      e.preventDefault();
+      onSelect(next);
+      tabRefs.current[next]?.focus();
+    }
   };
+
   return (
-    <div className="row tabs-container">
-      <div className="col-xs-12 tabs">
-        <ul className="nav nav-tabs nav-justified">
-          {children.map(renderLabel)}
-        </ul>
-        <div className="tab-content">{children[selectedIndex]}</div>
+    <div className="tabs-container">
+      <ul className="nav nav-tabs nav-justified" role="tablist">
+        {tabs.map((child, index) => {
+          const active = selectedIndex === index;
+          return (
+            <li key={index} className="nav-item" role="presentation">
+              <button
+                type="button"
+                role="tab"
+                id={`${id}-tab-${index}`}
+                ref={(element) => {
+                  tabRefs.current[index] = element;
+                }}
+                aria-selected={active}
+                aria-controls={`${id}-panel`}
+                tabIndex={active ? 0 : -1}
+                className={classNames("nav-link", {
+                  active,
+                  pulsating: child.props.shouldHighlight && !active,
+                })}
+                onClick={() => onSelect(index)}
+                onKeyDown={(e) => onKeyDown(e, index)}
+              >
+                {child.props.label}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <div
+        className="tab-content"
+        role="tabpanel"
+        id={`${id}-panel`}
+        aria-labelledby={`${id}-tab-${selectedIndex}`}
+      >
+        {tabs[selectedIndex]}
       </div>
     </div>
   );

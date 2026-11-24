@@ -10,7 +10,11 @@ export function AdminPartyManager({ state }) {
         <tr>
           <td>What should {state.config.party_name} mode be called?</td>
           <td className="col-md-1">
-            <ConfigLinkedText config={state.config} configKey="party_name" />
+            <ConfigLinkedText
+              config={state.config}
+              configKey="party_name"
+              label="Name of the party queue"
+            />
           </td>
         </tr>
         <tr>
@@ -22,6 +26,7 @@ export function AdminPartyManager({ state }) {
             <ConfigLinkedToggle
               config={state.config}
               configKey="party_enabled"
+              label="Students can create and join groups"
             />
           </td>
         </tr>
@@ -34,6 +39,7 @@ export function AdminPartyManager({ state }) {
             <ConfigLinkedToggle
               config={state.config}
               configKey="allow_private_party_tickets"
+              label="Individual tickets allowed in group mode"
             />
           </td>
         </tr>

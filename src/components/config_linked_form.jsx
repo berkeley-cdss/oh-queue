@@ -55,7 +55,11 @@ export function ConfigLinked({ configKey, configKeys = [], config, render }) {
 
   const submitButton = (
     <button
-      className={saving ? "btn btn-default is-loading" : "btn btn-default"}
+      className={
+        saving
+          ? "btn btn-outline-secondary is-loading"
+          : "btn btn-outline-secondary"
+      }
       name="btn-submit"
       type="submit"
       disabled={saving}

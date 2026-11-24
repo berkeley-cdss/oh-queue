@@ -12,17 +12,13 @@ export function UpdateAssignmentBox({ state, elem, onSubmit }) {
   const [question, setQuestion] = React.useState(elem.question);
 
   return (
-    <div className="request-form form-group form-group-lg">
-      <div className="input-group">
+    <div className="update-assignment">
+      <div className="input-group input-group-lg">
         <SelectPicker
           options={filteredAssignments}
           value={assignment_id}
           onChange={(e) => setAssignment(parseInt(e.target.value))}
-          className="selectpicker form-control form-left"
-          data-live-search="true"
-          data-size="8"
-          data-width="60%"
-          data-style="btn-lg btn-default"
+          className="form-left"
           id="assignment_id"
           name="assignment_id"
           title="Assignment"
@@ -33,7 +29,7 @@ export function UpdateAssignmentBox({ state, elem, onSubmit }) {
           type="text"
           id="question"
           name="question"
-          title="Question"
+          aria-label="Question"
           placeholder="Question"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
@@ -41,11 +37,11 @@ export function UpdateAssignmentBox({ state, elem, onSubmit }) {
       </div>
       {assignment_id !== elem.assignment_id || question !== elem.question ? (
         <button
+          type="button"
           onClick={() => onSubmit({ assignment_id, question })}
-          className="description-button btn btn-default btn-lg btn-block"
+          className="description-button btn btn-primary btn-lg w-100"
         >
-          {" "}
-          Update Assignment{" "}
+          Update Assignment
         </button>
       ) : null}
     </div>

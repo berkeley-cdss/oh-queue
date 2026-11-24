@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 import { Markdown } from "./markdown";
 import React from "react";
+import Alert from "react-bootstrap/Alert";
+import Collapse from "react-bootstrap/Collapse";
 import { app } from "../app_instance";
 import { MagicWordDisplay } from "./magic_word_display";
 import { isStaff, ticketCount } from "../state";
@@ -34,7 +36,8 @@ export let PresenceIndicator = ({ state, hideWaitTime, hideWelcome }) => {
   // how many students need help, assuming all avaiable assistants are assigned
   var stillNeedHelp = Math.max(0, pendingCount - availableAssistants);
 
-  var waitColor = "#646468";
+  // a class for the time's color, dark enough to read on the alert (style.css)
+  var waitColor = "wait-unknown";
 
   // catch if there actually are no assistants available
   if (numStaffOnline == 0) {
@@ -57,13 +60,13 @@ export let PresenceIndicator = ({ state, hideWaitTime, hideWelcome }) => {
 
     // colors for the time
     if (expectedWaitTotal <= 5) {
-      waitColor = "#009900";
+      waitColor = "wait-short";
     } else if (expectedWaitTotal < 10) {
-      waitColor = "#739900";
+      waitColor = "wait-medium";
     } else if (expectedWaitTotal < 25) {
-      waitColor = "#cc5200";
+      waitColor = "wait-long";
     } else {
-      waitColor = "#ff0000";
+      waitColor = "wait-very-long";
     }
 
     // concatenate time range string
@@ -83,45 +86,23 @@ export let PresenceIndicator = ({ state, hideWaitTime, hideWelcome }) => {
   };
 
   return (
-    <div className="col-xs-12">
+    <div className="presence">
       {state.config.is_queue_open === "false" &&
         (state.config.party_enabled || isStaff(state)) && (
-          <div
-            className="alert alert-danger alert-dismissable fade in"
-            role="alert"
-          >
-            <button
-              type="button"
-              className="close"
-              aria-label="Close"
-              data-dismiss="alert"
-            >
-              <span aria-hidden="true">&times;</span>
-            </button>
-            <h3>The queue is currently closed!</h3>
+          <DismissibleAlert variant="danger">
+            <h2 className="alert-heading h4">The queue is currently closed!</h2>
             {state.currentUser && state.currentUser.isStaff && (
               <button className="btn btn-primary" onClick={openQueue}>
                 Open queue
               </button>
             )}
-          </div>
+          </DismissibleAlert>
         )}
 
       {!hideWelcome && (
-        <div
-          className="alert alert-info alert-dismissable fade in"
-          role="alert"
-        >
-          <button
-            type="button"
-            className="close"
-            aria-label="Close"
-            data-dismiss="alert"
-          >
-            <span aria-hidden="true">&times;</span>
-          </button>
+        <DismissibleAlert variant="info">
           <Markdown>{welcomeMessage}</Markdown>
-        </div>
+        </DismissibleAlert>
       )}
 
       {state.config.online_active === "true" &&
@@ -131,78 +112,78 @@ export let PresenceIndicator = ({ state, hideWaitTime, hideWelcome }) => {
           state.config.students_set_online_link,
           state.config.students_set_online_doc,
         ].includes("false") && (
-          <div
-            className="alert alert-warning alert-dismissable fade in"
-            role="alert"
-          >
-            <button
-              type="button"
-              className="close"
-              aria-label="Close"
-              data-dismiss="alert"
-            >
-              <span aria-hidden="true">&times;</span>
-            </button>
-            <h4>Configure Online Queue Settings</h4>
-            <h5>
+          <DismissibleAlert variant="warning">
+            <h2 className="alert-heading h5">
+              Configure Online Queue Settings
+            </h2>
+            <p className="mb-0">
               Remember to go to <Link to="/online_setup">Online Setup</Link> to
               configure your settings for video calls and shared documents,
               otherwise you will not be able to interact with students on the
               Online Queue.
-            </h5>
-          </div>
+            </p>
+          </DismissibleAlert>
         )}
 
       {!hideWaitTime && (
-        <div
-          className={`alert alert-${color} alert-dismissable fade in`}
-          role="alert"
-        >
-          <button
-            type="button"
-            className="close"
-            aria-label="Close"
-            data-dismiss="alert"
-          >
-            <span aria-hidden="true">&times;</span>
-          </button>
-          <h4>
+        <DismissibleAlert variant={color}>
+          <h2 className="alert-heading h5">
             Estimated wait time:{" "}
-            <font color={waitColor}>
-              <strong>{timeRange}</strong>
-            </font>{" "}
-            minutes
-          </h4>
-          <h5>{message}</h5>
+            <strong className={waitColor}>{timeRange}</strong> minutes
+          </h2>
+          <p className="mb-2">{message}</p>
           <MagicWordDisplay state={state} />
           {presence && state.currentUser && state.currentUser.isStaff && (
-            <React.Fragment>
-              <p>
-                <a
-                  data-toggle="collapse"
-                  href="#collapseExample"
-                  role="button"
-                  aria-expanded="false"
-                  aria-controls="collapseExample"
-                >
-                  See online assistants.
-                </a>
-              </p>
-              <div className="collapse" id="collapseExample">
-                <div className="card card-body">
-                  <ul>
-                    {presence.staff_list.map(([email, name]) => (
-                      <li>
-                        {name} (<a href={`mailto:${email}`}> {email}</a>)
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </React.Fragment>
+            <OnlineAssistants staff={presence.staff_list} />
           )}
-        </div>
+        </DismissibleAlert>
       )}
     </div>
   );
 };
+
+// An alert with a button to close it, for the rest of the visit to this page.
+function DismissibleAlert({ variant, children }) {
+  const [shown, setShown] = React.useState(true);
+  return (
+    <Alert
+      variant={variant}
+      dismissible
+      closeLabel="Dismiss"
+      show={shown}
+      onClose={() => setShown(false)}
+    >
+      {children}
+    </Alert>
+  );
+}
+
+// For staff: a button that shows who's helping, with their email addresses.
+function OnlineAssistants({ staff }) {
+  const [open, setOpen] = React.useState(false);
+  const id = React.useId();
+  return (
+    <>
+      <button
+        type="button"
+        className="btn btn-link p-0"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen(!open)}
+      >
+        See online assistants.
+      </button>
+      <Collapse in={open}>
+        <div id={id}>
+          <ul className="mt-2 mb-0">
+            {staff.map(([email, name]) => (
+              <li key={email}>
+                {name} (<a href={`mailto:${email}`}>{email}</a>)
+              </li>
+            ))}
+          </ul>
+        </div>
+      </Collapse>
+    </>
+  );
+}

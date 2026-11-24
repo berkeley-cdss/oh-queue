@@ -2,10 +2,8 @@
 Runs axe on every page of the app, signed in as the kind of user who sees it, as
 sections' and seating's tests/a11y/test_a11y_pages.py do.
 
-Each page must meet WCAG 2.1 AA, except for the violations each page is known to have
-(KNOWN_VIOLATIONS), which the move to Bootstrap 5 will fix. The WCAG 2.2 AA,
-best-practice and Section 508 checks are reported too, but are expected failures until
-the app meets them.
+Each page must meet WCAG 2.1 AA, which Berkeley requires, and also WCAG 2.2 AA and axe's
+best-practice and Section 508 rules, which every page meets.
 """
 
 import re
@@ -86,36 +84,6 @@ SKIPPED_ROUTES = {
     "/authorized/": "redirects after signing in with bCourses",
 }
 
-# The WCAG 2.1 AA rules each page breaks today, by page: the move to Bootstrap 5 will fix
-# these. A page fails on any other violation, and on one listed here that it no longer
-# has, so the list only shrinks.
-KNOWN_VIOLATIONS = {
-    "signed-out queue": {"color-contrast", "link-in-text-block"},
-    "student queue": {"color-contrast"},
-    "student queue page": {"color-contrast"},
-    "student party": {"color-contrast"},
-    "student ticket": {"button-name", "color-contrast"},
-    "student activity": {"color-contrast"},
-    "queue": {"color-contrast"},
-    "party": {"button-name", "color-contrast"},
-    "online setup": {"color-contrast", "link-in-text-block"},
-    "ticket": {"button-name", "color-contrast"},
-    "resolved ticket": {"button-name", "color-contrast"},
-    "group": {"button-name", "color-contrast"},
-    "activity log": {"color-contrast"},
-    "user": {"color-contrast"},
-    "presence": {"color-contrast"},
-    "error": {"color-contrast"},
-    "not found": {"color-contrast"},
-    "admin": {"color-contrast", "label", "list"},
-    "admin general": {"color-contrast", "label", "list"},
-    "admin tickets": {"color-contrast", "list", "select-name"},
-    "admin party": {"color-contrast", "label", "list"},
-    "admin assignments": {"color-contrast", "list"},
-    "admin locations": {"color-contrast", "list"},
-    "admin online": {"color-contrast", "list"},
-}
-
 # The error pages are titled with their status, e.g. "404 Not Found".
 ERROR_TITLES = re.compile(r"\d{3} ")
 
@@ -135,10 +103,6 @@ def test_every_page_is_audited():
         routes.add("admin:index")
     missing = routes - {page.route for page in PAGES}
     assert not missing, f"Add pages for these routes to PAGES in {__file__}: {sorted(missing)}"
-
-
-def test_known_violations_are_pages():
-    assert set(KNOWN_VIOLATIONS) <= {page.name for page in PAGES}
 
 
 def _audit(a11y_site, page, standards, label):
@@ -161,15 +125,9 @@ def _audit(a11y_site, page, standards, label):
 @pytest.mark.parametrize("page", PAGES, ids=[page.name for page in PAGES])
 def test_meets_wcag_21_aa(a11y_site, page):
     report = _audit(a11y_site, page, REQUIRED_A11Y_STANDARDS, "WCAG 2.1 AA")
-    found = {violation["id"] for violation in report["violations"]}
-    known = KNOWN_VIOLATIONS.get(page.name, set())
-    new = found - known
-    assert not new, "\n" + format_violations(report, new)
-    fixed = known - found
-    assert not fixed, f"Fixed: remove {sorted(fixed)} from KNOWN_VIOLATIONS[{page.name!r}] in {__file__}"
+    assert not report["violations"], "\n" + format_violations(report)
 
 
-@pytest.mark.xfail(reason="WCAG 2.2 AA and best practices are not required yet")
 @pytest.mark.parametrize("page", PAGES, ids=[page.name for page in PAGES])
 def test_meets_wcag_22_aa(a11y_site, page):
     report = _audit(a11y_site, page, COMPLETE_A11Y_STANDARDS, "WCAG 2.2 AA")

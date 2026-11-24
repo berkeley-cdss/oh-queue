@@ -2,15 +2,17 @@ import { loginPath } from "../common";
 import { Messages } from "./messages";
 import { RequestForm } from "./request_form";
 
+// The banner at the top of the queue for students: a greeting, and the form for
+// asking for help (or a sign-in button).
 export let Jumbotron = ({ state }) => {
   var isQueueOpen = state.config && JSON.parse(state.config.is_queue_open);
   const party_enabled = state.config.party_enabled;
   let titleText, subtitleText, contents;
   if (!state.currentUser) {
     titleText = "Hi! Please sign in";
-    subtitleText = "Sign in with your bCourse account to request help";
+    subtitleText = "Sign in with your bCourses account to request help";
     contents = (
-      <a className="btn btn-block btn-jumbo btn-outline" href={loginPath()}>
+      <a className="btn btn-primary btn-lg w-100" href={loginPath()}>
         Sign in with bCourses
       </a>
     );
@@ -29,22 +31,18 @@ export let Jumbotron = ({ state }) => {
   }
 
   return (
-    <div className="jumbotron blue">
+    <div className="hero">
       <div className="container">
-        <section className="page-header">
-          <div className="row">
-            <Messages messages={state.messages} />
+        <Messages messages={state.messages} />
+        <div className="row g-4 align-items-center">
+          <div className="col-md-6 col-lg-7">
+            <h2>{titleText}</h2>
+            <p className="lead mb-0">{subtitleText}</p>
           </div>
-          <div className="row">
-            <div className="col-md-7 col-lg-8">
-              <h3 className="truncate">{titleText}</h3>
-              <p className="truncate">{subtitleText}</p>
-            </div>
-            <div className="col-md-5 col-lg-4">
-              <div className="request-form">{contents}</div>
-            </div>
+          <div className="col-md-6 col-lg-5">
+            <div className="request-form">{contents}</div>
           </div>
-        </section>
+        </div>
       </div>
     </div>
   );

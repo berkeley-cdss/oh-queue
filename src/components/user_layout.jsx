@@ -4,6 +4,7 @@ import React from "react";
 import { app } from "../app_instance";
 import { Navbar } from "./navbar";
 import { OfflineIndicator } from "./offline_indicator";
+import { Pager } from "./pager";
 import { Row } from "./row";
 import { timeComparator } from "../state";
 
@@ -43,45 +44,28 @@ export function UserLayout({ state }) {
     <div>
       <Navbar state={state} mode="activity_log" />
       <OfflineIndicator offline={state.offline && state.loaded} />
-      <div className="jumbotron">
-        <div className="container">
-          <h2> {userData.user.name} </h2>
-          <p>{userData.user.email}</p>
-          <div className="activity-buttons">
-            <Link to="/activity_log" className="btn btn-warning">
-              Back to list
-            </Link>
+      <main>
+        <div className="hero">
+          <div className="container">
+            <h2>{userData.user.name}</h2>
+            <p>{userData.user.email}</p>
+            <div className="activity-buttons">
+              <Link to="/activity_log" className="btn btn-warning">
+                Back to list
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
-      <div className="container">
-        <h3>History</h3>
-        <div>
-          <div className="queue">{rows.slice(page * 50, (page + 1) * 50)}</div>
-          <nav>
-            <ul className="pager">
-              <li>
-                <button
-                  className="btn btn-default"
-                  onClick={() => setPage((page) => page - 1)}
-                  disabled={page <= 0}
-                >
-                  Previous
-                </button>
-              </li>
-              <li>
-                <button
-                  className="btn btn-default"
-                  onClick={() => setPage((page) => page + 1)}
-                  disabled={page >= rows.length / 50 - 1}
-                >
-                  Next
-                </button>
-              </li>
-            </ul>
-          </nav>
+        <div className="container">
+          <h3 className="h4">History</h3>
+          <div>
+            <div className="queue">
+              {rows.slice(page * 50, (page + 1) * 50)}
+            </div>
+            <Pager page={page} setPage={setPage} pages={rows.length / 50} />
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

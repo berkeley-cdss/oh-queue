@@ -43,7 +43,7 @@ import {
  *
  * All other React components are "stateless". Many of them are simply pure
  * functions that take the state and produce HTML. A few are slightly more
- * complicated in that they have to interact with jQuery or the network.
+ * complicated in that they have to interact with the network.
  *
  * NB: calling app methods inside a render() method will result in an infinite
  * loop.
@@ -253,7 +253,12 @@ export class App extends React.Component {
             <Route path="/error/*" element={<ErrorView state={state} />} />
             <Route
               path="/presence/*"
-              element={<PresenceIndicator state={state} />}
+              element={
+                <main className="container mt-3">
+                  <h1 className="visually-hidden">{window.courseName} Queue</h1>
+                  <PresenceIndicator state={state} />
+                </main>
+              }
             />
             <Route
               path="/tickets/:id/*"

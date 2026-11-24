@@ -1,3 +1,4 @@
+import React from "react";
 import { Markdown } from "./markdown";
 import { ConfigLinked } from "./config_linked_form";
 
@@ -7,15 +8,19 @@ export function ConfigLinkedMarkdownInput({
   config,
   configKey,
 }) {
+  const id = React.useId();
   return (
     <ConfigLinked
       configKey={configKey}
       config={config}
       render={({ onSubmit, onChange, value, submitButton }) => (
         <form onSubmit={onSubmit}>
-          <div className="form-group">
-            <label>{title} (supports Markdown)</label>
+          <div className="mb-3">
+            <label className="form-label fw-bold" htmlFor={id}>
+              {title} (supports Markdown)
+            </label>
             <textarea
+              id={id}
               className="form-control"
               name="ticket-input"
               placeholder={placeholder}
@@ -23,24 +28,11 @@ export function ConfigLinkedMarkdownInput({
               onChange={onChange}
             />
           </div>
-          <label>{title} Preview:</label>
-          <div
-            className="alert alert-info alert-dismissable fade in"
-            role="alert"
-          >
-            <button
-              type="button"
-              className="close"
-              aria-label="Close"
-              data-dismiss="alert"
-            >
-              <span aria-hidden="true">&times;</span>
-            </button>
+          <p className="form-label fw-bold">{title} Preview:</p>
+          <div className="alert alert-info markdown-preview">
             <Markdown>{value}</Markdown>
           </div>
-          <div className="form-group">
-            <div>{submitButton}</div>
-          </div>
+          <div className="mb-3">{submitButton}</div>
         </form>
       )}
     />

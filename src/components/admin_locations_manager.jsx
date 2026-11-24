@@ -28,11 +28,13 @@ export function AdminLocationsManager({ state }) {
         <AdminItemsBooleanField
           itemType="location"
           propType="online"
+          label={`${item.name} online`}
           item={item}
         />,
         <AdminItemsBooleanField
           itemType="location"
           propType="visible"
+          label={`${item.name} visibility`}
           item={item}
           onText="Visible"
           offText="Hidden"

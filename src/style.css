@@ -1,169 +1,88 @@
-body {
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  font-size: 1.5em;
-  padding-top: 50px;
-  margin-bottom: 1em;
+/* The course pages' own styles. Bootstrap's, and the theme and site header shared
+   with the pages outside a course (oh_queue/static/pages/css/style.css), come first
+   (main.jsx). */
+
+/* As in sections (src/index.css): tabs in Berkeley Blue, rather than the lighter link
+   blue, which is too light on the pulsing tab's background. */
+.nav-tabs {
+  --bs-nav-link-color: var(--berkeley-blue);
+  --bs-nav-link-hover-color: var(--berkeley-blue-dark);
 }
 
-h1,
-h2,
-h3 {
-  font-weight: normal;
-}
-
-h1:before,
-h2:before,
-h3:before,
-h4:before {
-  content: " ";
-  display: block;
-  height: 60px;
-  margin-top: -60px;
-  visibility: hidden;
-}
-
-hr {
-  border-top: 1px solid #eee;
-  height: 1px;
-}
-
-a:hover {
-  text-decoration: none;
-}
-
-/* Queue styles */
-
-.container,
-.jumbotron .container {
+/* The course pages keep to the width they had with Bootstrap 3, so lines of text don't
+   get much longer on a wide screen. */
+.container {
   max-width: 970px;
 }
 
-.navbar-default,
-.navbar-default .navbar-collapse,
-.navbar-default .navbar-form {
-  border: none;
-}
-.navbar-default .navbar-nav > li > a {
-  font-size: 0.8em;
-  font-weight: bold;
-  letter-spacing: 0.2rem;
-  text-transform: uppercase;
+/* Bootstrap's outline buttons in Berkeley Blue, as its filled ones are (style.css of the
+   pages outside a course). */
+.btn-outline-primary {
+  --bs-btn-color: var(--berkeley-blue);
+  --bs-btn-border-color: var(--berkeley-blue);
+  --bs-btn-hover-bg: var(--berkeley-blue);
+  --bs-btn-hover-border-color: var(--berkeley-blue);
+  --bs-btn-focus-shadow-rgb: 0, 50, 98;
+  --bs-btn-active-bg: var(--berkeley-blue-dark);
+  --bs-btn-active-border-color: var(--berkeley-blue-dark);
+  --bs-btn-disabled-color: var(--berkeley-blue);
+  --bs-btn-disabled-border-color: var(--berkeley-blue);
 }
 
-.jumbotron.blue {
-  background-color: #0072c1;
-  background: linear-gradient(to bottom, #0072c1 0%, #acbfff 100%);
-  color: #fff;
+/* Bootstrap's gray outline button, a shade darker: its own gray has 4.44:1 contrast with
+   the light gray behind it in places, under the 4.5:1 WCAG 2.1 AA asks for. */
+.btn-outline-secondary {
+  --bs-btn-color: #5c636a;
+  --bs-btn-border-color: #5c636a;
 }
-.jumbotron.blue a {
-  color: #fff;
+
+/* Links in an alert take the alert's own darker color, as Bootstrap's .alert-link does,
+   since the page's link blue is too light on the alerts' tinted backgrounds. They're
+   underlined, so they don't rely on color alone. */
+.alert a:not(.btn),
+.alert .btn-link {
+  color: var(--bs-alert-link-color);
+  font-weight: 600;
   text-decoration: underline;
 }
-.jumbotron.blue a.btn {
-  text-decoration: none;
-}
-.jumbotron.blue .bootstrap-select a {
-  color: #333;
-}
-.jumbotron.blue .page-header {
-  border: 0;
-}
-.jumbotron .btn-jumbo {
-  font-size: 24px;
-  padding: 20px;
-  border-radius: 6px;
-}
-.stub-jumbotron {
-  padding-top: 24px;
+
+/* The banner at the top of the queue and the activity pages, as in sections: Bootstrap
+   4's jumbotron, which Bootstrap 5 dropped. */
+.hero {
+  padding: 3rem 0;
+  margin-bottom: 2rem;
+  background-color: var(--bs-tertiary-bg);
 }
 
-.input-group {
-  width: 100%;
-}
-.request-form .form-left {
-  width: 60%;
-  height: 100%;
-}
-.request-form .form-right {
-  width: 40%;
-  border-left: none;
+.hero h2 {
+  font-size: 2rem;
 }
 
-.request-form {
-  margin-top: 20px;
+/* The assignment and question, or location and Request, side by side. As specific as
+   Bootstrap's .input-group > .form-select and .form-control, and after them, so these win. */
+.input-group > .form-left {
+  flex: 3 1 0;
 }
 
-.request-form .btn {
-  width: 100%;
+.input-group > .form-right {
+  flex: 2 1 0;
 }
 
-.description-overlay {
-  position: fixed; /* Sit on top of the page content */
-  display: none; /* Hidden by default */
-  width: 100%; /* Full width (cover the whole page) */
-  height: 100%; /* Full height (cover the whole page) */
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5); /* Black background with opacity */
-  z-index: 2; /* Specify a stack order in case you're using a different order for other elements */
-  cursor: pointer; /* Add a pointer on hover */
+.description-box {
+  resize: vertical;
 }
 
-.description-form {
-  height: 100%;
-  width: 100%;
-  position: relative;
-}
-
-.description-form div {
-  margin: 0;
-  position: absolute; /* 2 */
-  top: 50%; /* 3 */
-  left: 50%;
-  margin-right: -50%;
-  transform: translate(-50%, -50%);
-  background-color: white;
-  color: black;
-  padding: 2em;
-  border-radius: 10px;
-  border: 2px solid #0072c1;
-}
-
-.jumbotron .btn {
-  width: 100%;
-}
-.btn-outline {
-  color: #fff;
-  background-image: none;
-  background-color: transparent;
-  border-color: #fff;
-}
-.btn-outline:hover,
-.btn-outline:active {
-  color: #fff;
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-.error-view {
-  margin-top: 20px;
-}
-
-.ticket {
-  margin-top: 20px;
+.description-button {
+  margin-top: 10px;
 }
 
 .ticket-view-name {
-  margin-top: 0;
+  margin-top: 1.5rem;
   margin-bottom: 5px;
 }
 
 .ticket-view-text {
-  font-size: 16px;
-  font-weight: 300;
-  line-height: 1.4;
-  margin-top: 0;
+  font-size: 1rem;
   margin-bottom: 0;
 }
 
@@ -171,632 +90,265 @@ a:hover {
   white-space: pre-wrap;
 }
 
-hr {
-  margin: 10px;
-}
-
-.nav-tabs > .pulsating > a {
-  -webkit-animation: pulse 1.6s ease-in-out infinite alternate;
-  animation: pulse 1.6s ease-in-out infinite alternate;
-  border-bottom-color: transparent;
+/* The tab with help waiting for the TA. */
+.nav-tabs .nav-link.pulsating {
+  animation: pulse 1.6s ease-in-out infinite;
 }
 
 @keyframes pulse {
-  0% {
-    background-color: #001f3f;
-  }
+  0%,
   100% {
-    background-color: aliceblue;
+    background: transparent;
+  }
+  50% {
+    background: var(--bs-primary-bg-subtle);
   }
 }
 
-@-webkit-keyframes pulse {
-  0% {
-    background: transparent;
-  }
-  50% {
-    background: aliceblue;
-  }
-  100% {
-    background: transparent;
-  }
-}
-@keyframes pulse {
-  0% {
-    background: transparent;
-  }
-  50% {
-    background: aliceblue;
-  }
-  100% {
-    background: transparent;
+@media (prefers-reduced-motion: reduce) {
+  .nav-tabs .nav-link.pulsating {
+    animation: none;
+    background: var(--bs-primary-bg-subtle);
   }
 }
 
 /* Queue (list of tickets) */
 
 .queue {
-  border: 1px solid #ddd;
-  border-bottom-left-radius: 3px;
-  border-bottom-right-radius: 3px;
+  border: 1px solid var(--bs-border-color);
   border-top: none;
-  overflow: visible;
-  white-space: normal;
+  border-bottom-left-radius: var(--bs-border-radius);
+  border-bottom-right-radius: var(--bs-border-radius);
 }
 
 .ticket-row {
-  border-top: 1px solid #eee;
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 12px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--bs-border-color-translucent);
 }
 
 .ticket-link:hover {
-  background: #eee;
+  background: var(--bs-secondary-bg);
   transition: background 0.2s;
-  cursor: pointer;
 }
 
 .ticket-highlight {
-  background-color: #f3f3f3;
-}
-
-.assigned-tickets-header {
-  text-align: center;
-  font-size: 15pt;
-  font-weight: 500;
-  margin-bottom: 10px;
+  background-color: var(--bs-tertiary-bg);
 }
 
 .ticket-independent {
-  background-color: white;
-  margin-top: 10px;
-  border: 1px solid #0072c1;
-  color: #0072c1;
-  border-radius: 5px;
+  margin-bottom: 10px;
+  border: 1px solid var(--bs-primary);
+  border-radius: var(--bs-border-radius);
 }
 
-.ticket-rerequested {
-  background-color: #fff08c;
-}
-
+.ticket-rerequested,
 .ticket-rerequested:hover {
-  background-color: #ffea6f;
+  background-color: var(--bs-warning-bg-subtle);
 }
 
-.ticket-rerequested h4 {
-  color: #292929;
-}
-
-.ticket-rerequested:hover h4 {
-  color: black;
-}
-
-.ticket-juggled {
-  background-color: #e2e3e5;
-}
-
+.ticket-juggled,
 .ticket-juggled:hover {
-  background-color: #d6d8d9;
-}
-
-.ticket-juggled h4 {
-  color: #474b4f;
-}
-.ticket-juggled:hover h4 {
-  color: #1b1e21;
+  background-color: var(--bs-secondary-bg);
 }
 
 .ticket-index {
-  margin: 12px;
-  width: 20px;
-  font-size: 11px;
-  color: #999;
+  width: 24px;
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color);
 }
 
-.truncate {
-  /* http://stackoverflow.com/a/1199957/411514 */
+.ticket-main {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+
+.ticket-title {
+  font-size: 1.25rem;
+}
+
+.ticket-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 12px;
+  color: var(--bs-secondary-color);
+}
+
+.ticket-description {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  overflow: hidden; /* "overflow" value must be different from  visible"*/
-  -o-text-overflow: ellipsis; /* Opera < 11*/
-  text-overflow: ellipsis; /* IE, Safari (WebKit), Opera >= 11, FF > 6 */
-}
-h1.truncate,
-h2.truncate,
-h3.truncate,
-h4.truncate,
-h5.truncate,
-h6.truncate {
-  line-height: 1.2;
+  max-width: 100%;
 }
 
-.ticket-desc-md {
-  padding-left: 12px;
+.ticket-status {
+  margin-left: auto;
+  color: var(--bs-secondary-color);
+  text-align: right;
 }
 
-.ticket-desc-xs {
-  margin-top: 4px;
-}
-
-.ticket-created-md {
-  padding-left: 12px;
-}
-
-.ticket-desc-xs {
-  margin-top: 4px;
-  margin-bottom: 4px;
-}
-
-.ticket-status-md {
-  padding-right: 12px;
-}
-
-.ticket-status-xs {
-  margin-top: 6px;
+.assigned-tickets-header {
+  font-size: 1.25rem;
+  text-align: center;
 }
 
 .no-results {
   padding: 100px 60px;
   text-align: center;
-  background-color: #fafafa;
+  background-color: var(--bs-tertiary-bg);
+  overflow-wrap: break-word;
 }
 
-.no-results h4 {
-  word-wrap: break-word;
-  white-space: normal;
-}
-
+/* Staff's buttons for every ticket in a tab, and how many there are. */
 .group-actions {
-  background-color: #f8f8f8;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
   padding: 10px;
-}
-
-.group-actions .btn {
-  margin-left: 10px;
-  height: 34px;
+  background-color: var(--bs-tertiary-bg);
 }
 
 .group-actions p {
-  margin: 0;
-  height: 34px;
-  line-height: 34px;
-  font-weight: 400;
-  color: #777;
+  margin: 0 auto 0 0;
+  color: var(--bs-secondary-color);
 }
 
-/* Navbar colors */
-
-.navbar-default {
-  background-color: #0072c1;
-  border-color: #0085e1;
-}
-.navbar-default .navbar-brand,
-.navbar-default .navbar-brand a {
-  color: #ecf0f1;
-}
-.navbar-default .navbar-brand:hover,
-.navbar-default .navbar-brand:focus,
-.navbar-default .navbar-brand a:hover,
-.navbar-default .navbar-brand a:focus {
-  color: #ffffff;
-}
-.navbar-default .navbar-text {
-  color: #ecf0f1;
-}
-.navbar-default .navbar-nav > li > a {
-  color: #ecf0f1;
-}
-.navbar-default .navbar-nav > li > a:hover,
-.navbar-default .navbar-nav > li > a:focus {
-  color: #ffffff;
-}
-.navbar-default .navbar-nav > .active > a,
-.navbar-default .navbar-nav > .active > a:hover,
-.navbar-default .navbar-nav > .active > a:focus {
-  color: #ffffff;
-  background-color: #0085e1;
-}
-.navbar-default .navbar-nav > .open > a,
-.navbar-default .navbar-nav > .open > a:hover,
-.navbar-default .navbar-nav > .open > a:focus {
-  color: #ffffff;
-  background-color: #0085e1;
-}
-.navbar-default .navbar-toggle {
-  border-color: #0085e1;
-}
-.navbar-default .navbar-toggle:hover,
-.navbar-default .navbar-toggle:focus {
-  background-color: #0085e1;
-}
-.navbar-default .navbar-toggle .icon-bar {
-  background-color: #ecf0f1;
-}
-.navbar-default .navbar-collapse,
-.navbar-default .navbar-form {
-  border-color: #ecf0f1;
-}
-.navbar-default .navbar-link {
-  color: #ecf0f1;
-}
-.navbar-default .navbar-link:hover {
-  color: #ffffff;
+/* The estimated wait time's colors, dark enough to read on the alert. */
+.wait-unknown {
+  color: var(--bs-secondary-color);
 }
 
-@media (max-width: 767px) {
-  .navbar-default .navbar-nav .open .dropdown-menu > li > a {
-    color: #ecf0f1;
-  }
-  .navbar-default .navbar-nav .open .dropdown-menu > li > a:hover,
-  .navbar-default .navbar-nav .open .dropdown-menu > li > a:focus {
-    color: #ffffff;
-  }
-  .navbar-default .navbar-nav .open .dropdown-menu > .active > a,
-  .navbar-default .navbar-nav .open .dropdown-menu > .active > a:hover,
-  .navbar-default .navbar-nav .open .dropdown-menu > .active > a:focus {
-    color: #ffffff;
-    background-color: #0085e1;
-  }
+.wait-short {
+  color: #0f5132;
 }
 
-.code {
-  font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+.wait-medium {
+  color: #4d5b00;
 }
 
-.has-tooltip {
-  text-decoration: none;
-  border-bottom: 1px dashed #707373;
-}
-.has-tooltip:after {
-  content: "?";
-  color: #bcc0c0;
-  margin-left: 0.25em;
+.wait-long {
+  color: #8a3b00;
 }
 
-.description-box {
-  resize: none;
-  border: 2px dashed rgba(119, 119, 119, 0.5); /* #777 */
-  padding: 10px;
-  width: 100%;
+.wait-very-long {
+  color: #9b1c1c;
 }
 
-.description-button {
-  margin-top: 10px;
-  margin-bottom: 10px;
+.markdown-preview > :last-child {
+  margin-bottom: 0;
 }
 
-/* Mostly stolen from offline.js */
+.alert > div > :last-child,
+.alert > p:last-child {
+  margin-bottom: 0;
+}
+
+/* A banner across the top while the page can't reach the server (after offline.js). */
 
 .offline {
-  text-align: center;
-  min-height: 50px;
-  max-width: 100%;
-  overflow: hidden;
   position: fixed;
   z-index: 2000;
-  margin: auto;
   top: 0;
   left: 0;
   right: 0;
-}
-
-.offline-down:after {
-  -webkit-animation: offline-rotation 0.7s linear infinite;
-  animation: offline-rotation 0.7s linear infinite;
-  -webkit-backface-visibility: hidden;
-  -webkit-border-radius: 50%;
-  border-radius: 50%;
-  content: " ";
-  display: block;
-  position: absolute;
-  right: 1em;
-  top: 0;
-  bottom: 0;
-  margin: auto;
-  height: 1em;
-  width: 1em;
-  border: 2px solid rgba(0, 0, 0, 0);
-  border-top-color: #7c6d1f;
-  border-left-color: #7c6d1f;
-  opacity: 0.7;
+  text-align: center;
+  overflow: hidden;
 }
 
 .offline-down {
-  background: #f8ecad;
-  color: #7c6d1f;
-  opacity: 100;
+  background: var(--bs-warning-bg-subtle);
+  color: var(--bs-warning-text-emphasis);
   transition: opacity 0.5s;
 }
 
+.offline-down::after {
+  content: " ";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 1em;
+  margin: auto;
+  width: 1em;
+  height: 1em;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-left-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
 .offline-up {
-  background: #d6e9c6;
-  color: #468847;
+  background: var(--bs-success-bg-subtle);
+  color: var(--bs-success-text-emphasis);
   opacity: 0;
+  visibility: hidden;
   transition:
     visibility 0.5s,
     opacity 0.5s;
   transition-delay: 2s;
-  visibility: hidden;
 }
 
 .offline-content {
-  line-height: 20px;
   padding: 15px;
 }
 
-@-webkit-keyframes offline-rotation {
-  0% {
-    transform: rotate(0deg);
-    -webkit-transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(359deg);
-    -webkit-transform: rotate(359deg);
-  }
-}
-
-@-keyframes offline-rotation {
-  0% {
-    transform: rotate(0deg);
-    -webkit-transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(359deg);
-    -webkit-transform: rotate(359deg);
-  }
-}
-
-/* Queue tabs */
-
-@media (max-width: 750px) {
-  .filter-field {
-    margin-bottom: 16px;
-  }
-  .filter-field:last-of-type {
-    margin-bottom: 0;
-  }
-  .nav-tabs.nav-justified > li {
-    display: table-cell;
-    width: 1%;
-  }
-  .nav-tabs.nav-justified > li > a {
-    border-bottom: 1px solid #ddd;
-    border-radius: 4px 4px 0 0;
-    margin-bottom: 0;
-  }
-  .nav-tabs.nav-justified > li:first-child > a,
-  .nav-tabs.nav-justified > .active:first-child > a,
-  .nav-tabs.nav-justified > .active:first-child > a:hover,
-  .nav-tabs.nav-justified > .active:first-child > a:focus {
-    border-left-color: #fff;
-    border-top-left-radius: 0;
-  }
-  .nav-tabs.nav-justified > li:last-child > a,
-  .nav-tabs.nav-justified > .active:last-child > a,
-  .nav-tabs.nav-justified > .active:last-child > a:hover,
-  .nav-tabs.nav-justified > .active:last-child > a:focus {
-    border-right-color: #fff;
-    border-top-right-radius: 0;
-  }
-  .nav-tabs.nav-justified > .active > a,
-  .nav-tabs.nav-justified > .active > a:hover,
-  .nav-tabs.nav-justified > .active > a:focus {
-    border-bottom-color: #fff;
-  }
-  .tabs-container .tabs {
-    padding: 0;
-  }
-  .queue {
-    border-left-color: #fff;
-    border-bottom-left-radius: 0;
-    border-right-color: #fff;
-    border-bottom-right-radius: 0;
-  }
-}
-
-@media (max-width: 767px) {
-  .pull-left {
-    max-width: calc(100% - 88px);
-    min-width: 0;
-  }
-}
-
-.route-transition-group {
+/* A button showing it's busy: a spinner in place of its text. */
+.btn.is-loading {
   position: relative;
-}
-.route-transition-group > * {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-}
-.fade-in-enter,
-.fade-in-appear {
-  opacity: 0.001;
-  transform: translate3d(0, -5%, 0);
-}
-.fade-in-enter.fade-in-enter-active,
-.fade-in-appear.fade-in-appear-active {
-  opacity: 1;
-  transform: translate3d(0%, 0, 0);
-  transition: all 250ms ease-out;
-}
-.fade-in-exit {
-  opacity: 1;
-  transform: translate3d(0%, 0, 0);
-}
-.fade-in-exit.fade-in-exit-active {
-  opacity: 0.001;
-  transform: translate3d(0, 10%, 0);
-  transition: all 250ms ease-out;
+  color: transparent !important;
 }
 
-.spinner-loading {
-  display: inline-block;
-  width: 1em;
-  height: 1em;
-
-  margin: 0;
-  padding: 0;
-}
-.spinner-loading:after {
-  display: inline-block;
-
+.btn.is-loading::after {
   content: " ";
-  width: 1em;
-  height: 1em;
-
-  margin: 0;
-  padding: 0;
-
-  border-radius: 50%;
-  border: 2px solid #fff;
-  border-color: #7c6d1f transparent #7c6d1f transparent;
-  animation: spinner-loading 1s linear infinite;
-}
-
-.toggle label.btn-xs {
-  transition: color 250ms;
-}
-.toggle label.btn-xs:after {
-  opacity: 0;
-  transition: opacity 250ms ease-out;
-}
-.toggle.is-loading label.btn-xs {
-  color: transparent;
-  font-size: 0;
-}
-.toggle.is-loading label.btn-xs:after {
-  display: inline-block;
   position: absolute;
   top: 50%;
   left: 50%;
-
-  content: " ";
-  width: 12px;
-  height: 12px;
-
-  margin: 0;
-  margin-top: -6px;
-  margin-left: -6px;
-
-  opacity: 1;
-  transition: opacity 500ms ease-out;
-
-  border-radius: 50%;
-  border: 2px solid #fff;
-  border-color: #fff transparent #fff transparent;
-  animation: spinner-loading 1s linear infinite;
-}
-.toggle.is-loading label.btn-xs.toggle-off:after {
-  border-color: #000 transparent #000 transparent;
-  margin-left: -3px;
-}
-.toggle.is-loading label.btn-xs.toggle-on:after {
-  margin-left: -9px;
-}
-.btn.is-loading {
-  color: transparent;
-}
-.btn.is-loading:after {
-  display: inline-block;
-  position: relative;
-  left: -0.6em;
-  top: 0.1em;
-
-  content: " ";
   width: 1em;
   height: 1em;
-
-  margin: 0;
-  margin-top: -1em;
-  margin-left: -1em;
-
-  opacity: 1;
-  transition: opacity 500ms ease-out;
-
+  margin: -0.5em 0 0 -0.5em;
+  border: 0.15em solid var(--bs-body-color);
+  border-color: var(--bs-body-color) transparent;
   border-radius: 50%;
-  border: 0.2em solid #000;
-  border-color: #000 transparent #000 transparent;
-  animation: spinner-loading 1s linear infinite;
+  animation: spin 1s linear infinite;
 }
-@-webkit-keyframes spinner-loading {
-  0% {
-    -webkit-transform: rotate(0deg);
-    transform: rotate(0deg);
-  }
-  100% {
-    -webkit-transform: rotate(360deg);
-    transform: rotate(360deg);
-  }
-}
-@keyframes spinner-loading {
-  0% {
-    -webkit-transform: rotate(0deg);
-    transform: rotate(0deg);
-  }
-  100% {
-    -webkit-transform: rotate(360deg);
+
+@keyframes spin {
+  to {
     transform: rotate(360deg);
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .offline-down::after,
+  .btn.is-loading::after {
+    animation-duration: 3s;
+  }
+}
+
+/* Party groups, and a group's members. */
 .card-holder {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  grid-gap: 10px;
-  justify-content: space-between;
+  gap: 10px;
 }
 
-.panel-heading {
-  position: relative;
+.admin-add-button {
+  width: 1%;
 }
 
-.panel {
+.activity-buttons {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
-.panel .list-group {
-  flex-grow: 1;
-}
-
-.panel-heading .badge {
-  float: right;
-}
-
-h4.list-group-item-heading.list-group-item-heading {
-  color: #337ab7;
-}
-
-h3.panel-title::before {
-  height: 0;
-  margin-top: 0;
-}
-
-h4.list-group-item-heading::before {
-  height: 0;
-  margin-top: 0;
-}
-
-.panel {
-  border-top: none;
-}
-
-.panel.panel-default {
-  border-top: 1px solid #ddd;
-}
-
-.tooltip + .btn-block {
-  margin-top: 5px;
-}
-
-.activity-search {
-  display: flex;
-}
-
-.activity-search .input-group-btn {
-  width: unset;
-}
+/* Chat */
 
 .chat-bubble,
 .my-chat-bubble {
@@ -808,33 +360,32 @@ h4.list-group-item-heading::before {
 }
 
 .chat-icon {
+  display: inline-block;
   width: 30px;
   height: 30px;
-  background: #b9b8b8;
+  padding: 3px;
   border-radius: 50%;
-  display: inline-block;
-  padding: 5px;
-  color: white;
+  background: var(--bs-secondary);
+  color: #fff;
   text-align: center;
 }
 
-.my-chat-bubble .chat-text {
-  background: rgb(0, 153, 255);
-  color: white;
-}
-
-.none {
+.chat-icon.none {
   visibility: hidden;
 }
 
 .chat-text {
   display: inline-block;
   max-width: calc(100% - 50px);
-  padding: 5px 10px 5px 10px;
-  margin-left: 5px;
-  margin-right: 5px;
+  margin: 0 5px;
+  padding: 5px 10px;
   border-radius: 2em;
-  background: #f1f0f0;
+  background: var(--bs-secondary-bg);
+}
+
+.my-chat-bubble .chat-text {
+  background: var(--bs-primary);
+  color: #fff;
 }
 
 .chat-history {
@@ -842,41 +393,11 @@ h4.list-group-item-heading::before {
   overflow-y: auto;
 }
 
-.chat-input {
-  border-radius: 2em;
+.chat-input .form-control {
+  border-top-left-radius: 2em;
+  border-bottom-left-radius: 2em;
 }
 
 .swal2-popup {
-  font-size: 16px !important;
-}
-
-.activity-buttons .btn {
-  width: initial;
-}
-
-.activity-buttons {
-  margin-bottom: 10px;
-}
-
-.activity-buttons > .btn {
-  margin-right: 10px;
-}
-
-/* The navbar's Log out is a form button, styled like the menu's links */
-.dropdown-menu .dropdown-form-button {
-  display: block;
-  width: 100%;
-  padding: 3px 20px;
-  border: 0;
-  background: none;
-  color: #333;
-  line-height: 1.42857143;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.dropdown-menu .dropdown-form-button:hover,
-.dropdown-menu .dropdown-form-button:focus {
-  background-color: #f5f5f5;
-  color: #262626;
+  font-size: 1rem !important;
 }

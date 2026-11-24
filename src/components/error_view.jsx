@@ -8,18 +8,20 @@ export function ErrorView({ state, message }) {
   return (
     <div>
       <Navbar state={state} mode="error" />
-      <div className="container error-view">
-        <div className="row">
-          <div className="col-xs-12">
-            <div className="alert alert-danger">
-              <p>{text}</p>
+      <main>
+        <div className="container error-view">
+          <div className="row">
+            <div className="col-12">
+              <div className="alert alert-danger">
+                <p>{text}</p>
+              </div>
+              <Link className="btn btn-primary" to="/">
+                Home
+              </Link>
             </div>
-            <Link className="btn btn-primary" to="/">
-              Home
-            </Link>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

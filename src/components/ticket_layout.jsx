@@ -27,11 +27,13 @@ export function TicketLayout({ loadTicket, state, socket }) {
   let id = +useParams().id;
   let ticket = getTicket(state, id);
 
+  // Load the ticket if it isn't known, also when a link goes from one ticket to another.
+  const missing = ticket == null;
   React.useEffect(() => {
-    if (ticket == null) {
+    if (missing) {
       loadTicket(id);
     }
-  }, []);
+  }, [id, missing, loadTicket]);
 
   // The description being edited, reset whenever the ticket's saved one changes.
   const [description, setDescription] = React.useState("");
@@ -74,97 +76,99 @@ export function TicketLayout({ loadTicket, state, socket }) {
   return (
     <div>
       <Navbar state={state} mode="queue" />
-      <div className="container">
-        <Messages messages={state.messages} />
-        {isStaff(state) &&
-          ticket.status === "assigned" &&
-          !isTicketHelper(state, ticket) && (
-            <div className="alert alert-warning text-center">
-              This ticket is being helped by{" "}
-              <strong>{ticket.helper.name}</strong>.
+      <main>
+        <div className="container">
+          <Messages messages={state.messages} />
+          {isStaff(state) &&
+            ticket.status === "assigned" &&
+            !isTicketHelper(state, ticket) && (
+              <div className="alert alert-warning text-center">
+                This ticket is being helped by{" "}
+                <strong>{ticket.helper.name}</strong>.
+              </div>
+            )}
+          <div className="row ticket">
+            <div className="col-12">
+              <h2 className="ticket-view-name text-center">
+                {group
+                  ? `${group.attendees[0].user.shortName}'s Group`
+                  : ticket.status === "pending" && isStaff(state)
+                    ? "Help to View Name"
+                    : ticket.user.name}
+                <small className="d-block text-body-secondary mt-1">
+                  {assignment.name} {question} &middot; {location.name}
+                  {location.link && ticket.call_url && ` (${ticket.call_url})`}
+                </small>
+              </h2>
+              <p className="ticket-view-text text-center">
+                {" "}
+                {ticketStatus(state, ticket)}{" "}
+              </p>
             </div>
-          )}
-        <div className="row ticket">
-          <div className="col-xs-12">
-            <h2 className="ticket-view-name text-center">
-              {group
-                ? `${group.attendees[0].user.shortName}'s Group`
-                : ticket.status === "pending" && isStaff(state)
-                  ? "Help to View Name"
-                  : ticket.user.name}
-              <small className="clearfix">
-                {assignment.name} {question} &middot; {location.name}
-                {location.link && ticket.call_url && ` (${ticket.call_url})`}
-              </small>
-            </h2>
-            <p className="ticket-view-text text-center">
-              {" "}
-              {ticketStatus(state, ticket)}{" "}
-            </p>
           </div>
-        </div>
-        <div className="row">
-          <div className="col-xs-12 col-md-6 col-md-offset-3">
-            <hr />
-            <DescriptionBox
-              locked={!!ticket.group_id}
-              state={state}
-              ticket={ticket}
-              prompt="Please describe your issue below:"
-              placeholder={
-                state.config.default_description ||
-                "It would be helpful if you could describe your issue. For example," +
-                  ' "I have a SyntaxError in my ___ function. I&apos;ve tried using ____ and ____."'
-              }
-              description={description}
-              onChange={setDescription}
-              onSubmit={handleDescriptionSubmit}
-            />
-          </div>
-        </div>
-        {!ticket.group_id && (
           <div className="row">
-            <div className="col-xs-12 col-md-6 col-md-offset-3">
+            <div className="col-12 col-md-6 offset-md-3">
               <hr />
-              <UpdateAssignmentBox
+              <DescriptionBox
+                locked={!!ticket.group_id}
                 state={state}
-                elem={ticket}
-                onSubmit={handleAssignmentSubmit}
+                ticket={ticket}
+                prompt="Please describe your issue below:"
+                placeholder={
+                  state.config.default_description ||
+                  "It would be helpful if you could describe your issue. For example," +
+                    ' "I have a SyntaxError in my ___ function. I’ve tried using ____ and ____."'
+                }
+                description={description}
+                onChange={setDescription}
+                onSubmit={handleDescriptionSubmit}
               />
             </div>
           </div>
-        )}
-        {!ticket.group_id && (
+          {!ticket.group_id && (
+            <div className="row">
+              <div className="col-12 col-md-6 offset-md-3">
+                <hr />
+                <UpdateAssignmentBox
+                  state={state}
+                  elem={ticket}
+                  onSubmit={handleAssignmentSubmit}
+                />
+              </div>
+            </div>
+          )}
+          {!ticket.group_id && (
+            <div className="row">
+              <div className="col-12 col-md-6 offset-md-3">
+                <hr />
+                <UpdateLocationBox state={state} ticket={ticket} />
+              </div>
+            </div>
+          )}
+          <TicketButtons state={state} ticket={ticket} />
           <div className="row">
-            <div className="col-xs-12 col-md-6 col-md-offset-3">
+            <div className="col-12 col-md-6 offset-md-3">
               <hr />
-              <UpdateLocationBox state={state} ticket={ticket} />
+              <ChatBox
+                key={id}
+                currentUser={state.currentUser}
+                socket={socket}
+                mode={group ? "group" : "ticket"}
+                messages={group ? group.messages : ticket.messages}
+                id={group ? group.id : id}
+              />
             </div>
           </div>
-        )}
-        <TicketButtons state={state} ticket={ticket} />
-        <div className="row">
-          <div className="col-xs-12 col-md-6 col-md-offset-3">
-            <hr />
-            <ChatBox
-              key={id}
-              currentUser={state.currentUser}
-              socket={socket}
-              mode={group ? "group" : "ticket"}
-              messages={group ? group.messages : ticket.messages}
-              id={group ? group.id : id}
-            />
-          </div>
+          {state.config.ticket_prompt && (
+            <div className="row">
+              <div className="col-12 col-md-6 offset-md-3">
+                <hr />
+                <Markdown>{state.config.ticket_prompt}</Markdown>
+              </div>
+            </div>
+          )}
         </div>
-        {state.config.ticket_prompt && (
-          <div className="row">
-            <div className="col-xs-12 col-md-6 col-md-offset-3">
-              <hr />
-              <Markdown>{state.config.ticket_prompt}</Markdown>
-            </div>
-          </div>
-        )}
-      </div>
+      </main>
     </div>
   );
 }

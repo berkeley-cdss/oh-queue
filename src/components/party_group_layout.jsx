@@ -134,10 +134,8 @@ export function PartyGroupLayout({ state, loadGroup, socket }) {
           <hr />
         </React.Fragment>
       )}
-      <Link to="/">
-        <PartyGroupLayoutButton color="default" onClick={() => null}>
-          Return to Home
-        </PartyGroupLayoutButton>
+      <Link to="/" className="btn btn-outline-secondary btn-lg w-100">
+        Return to Home
       </Link>
     </React.Fragment>
   );
@@ -180,106 +178,106 @@ export function PartyGroupLayout({ state, loadGroup, socket }) {
   return (
     <div>
       <Navbar state={state} mode="party" />
-      <div className="container">
-        <Messages messages={state.messages} />
-        <br />
-        <h2 className="list-group-item-heading text-center">
-          {state.assignments[group.assignment_id].name}{" "}
-          {ticketQuestion(state, group)}
-          <small className="clearfix">
-            {group.group_status[0].toUpperCase() + group.group_status.slice(1)}{" "}
-            &middot; {location.name}
-            {location.link && group.call_url && ` (${group.call_url})`}
-          </small>
-          <p className="ticket-view-text text-center">
-            Created {ticketTimeAgo(group)}.
-          </p>
-        </h2>
-        <div className="row">
-          <div className="col-xs-12 col-md-6 col-md-offset-3">
-            <hr />
-            <DescriptionBox
-              editable
-              locked={!inGroup}
-              state={state}
-              ticket={group}
-              description={description}
-              prompt="Encourage others to join the group!"
-              placeholder="Hi! Anyone else want to work on this problem with me?"
-              onChange={setDescription}
-              onSubmit={handleDescriptionSubmit}
-            />
+      <main>
+        <div className="container">
+          <Messages messages={state.messages} />
+          <div className="text-center">
+            <h2 className="ticket-view-name">
+              {state.assignments[group.assignment_id].name}{" "}
+              {ticketQuestion(state, group)}
+              <small className="d-block text-body-secondary mt-1">
+                {group.group_status[0].toUpperCase() +
+                  group.group_status.slice(1)}{" "}
+                &middot; {location.name}
+                {location.link && group.call_url && ` (${group.call_url})`}
+              </small>
+            </h2>
+            <p className="ticket-view-text">Created {ticketTimeAgo(group)}.</p>
           </div>
-        </div>
-        <div className="row">
-          <div className="col-xs-12 col-md-6 col-md-offset-3">
-            <UpdateAssignmentBox
-              state={state}
-              elem={group}
-              onSubmit={handleAssignmentSubmit}
-            />
-          </div>
-        </div>
-        <hr />
-        {(onlineButtons || actionButton) && (
           <div className="row">
-            <div className="col-xs-12 col-md-6 col-md-offset-3">
-              <div className="well">
-                {onlineButtons}
-                {actionButton}
-              </div>
+            <div className="col-12 col-md-6 offset-md-3">
+              <hr />
+              <DescriptionBox
+                editable
+                locked={!inGroup}
+                state={state}
+                ticket={group}
+                description={description}
+                prompt="Encourage others to join the group!"
+                placeholder="Hi! Anyone else want to work on this problem with me?"
+                onChange={setDescription}
+                onSubmit={handleDescriptionSubmit}
+              />
             </div>
           </div>
-        )}
-        <div className="card-holder">
-          {ticketActive && (
-            <div>
-              <div className="panel panel-primary">
-                <div className="panel-heading">
-                  <h3 className="panel-title">Your Ticket</h3>
-                </div>
-                <div className="panel-body">
-                  <p className="ticket-view-text text-center">
-                    {" "}
-                    {ticketStatus(state, ticket)}{" "}
-                  </p>
-                  <hr />
-                  <TicketButtons embedded state={state} ticket={ticket} />
+          <div className="row">
+            <div className="col-12 col-md-6 offset-md-3">
+              <UpdateAssignmentBox
+                state={state}
+                elem={group}
+                onSubmit={handleAssignmentSubmit}
+              />
+            </div>
+          </div>
+          <hr />
+          {(onlineButtons || actionButton) && (
+            <div className="row">
+              <div className="col-12 col-md-6 offset-md-3">
+                <div className="card card-body bg-body-tertiary d-grid gap-2">
+                  {onlineButtons}
+                  {actionButton}
                 </div>
               </div>
             </div>
           )}
-          <div>
-            {group.attendees.map((attendance) => (
-              <div className="panel panel-default">
-                <div className="panel-heading">
-                  <h3 className="panel-title">
-                    {attendance.user.isStaff ? "Staff" : "Student"}
-                  </h3>
+          <div className="card-holder">
+            {ticketActive && (
+              <div>
+                <div className="card border-primary">
+                  <h2 className="card-header text-bg-primary h6">
+                    Your Ticket
+                  </h2>
+                  <div className="card-body">
+                    <p className="ticket-view-text text-center">
+                      {" "}
+                      {ticketStatus(state, ticket)}{" "}
+                    </p>
+                    <hr />
+                    <TicketButtons embedded state={state} ticket={ticket} />
+                  </div>
                 </div>
-                <div className="panel-body">{attendance.user.name}</div>
               </div>
-            ))}
-          </div>
-          <ChatBox
-            key={group.id}
-            currentUser={state.currentUser}
-            socket={socket}
-            id={group.id}
-            messages={group.messages}
-            mode="group"
-          />
-        </div>
-
-        {state.config.ticket_prompt && (
-          <div className="row">
-            <div className="col-xs-12 col-md-6 col-md-offset-3 text-center">
-              <hr />
-              <Markdown>{state.config.ticket_prompt}</Markdown>
+            )}
+            <div>
+              {group.attendees.map((attendance) => (
+                <div className="card mb-2" key={attendance.id}>
+                  <h2 className="card-header h6">
+                    {attendance.user.isStaff ? "Staff" : "Student"}
+                  </h2>
+                  <div className="card-body">{attendance.user.name}</div>
+                </div>
+              ))}
             </div>
+            <ChatBox
+              key={group.id}
+              currentUser={state.currentUser}
+              socket={socket}
+              id={group.id}
+              messages={group.messages}
+              mode="group"
+            />
           </div>
-        )}
-      </div>
+
+          {state.config.ticket_prompt && (
+            <div className="row">
+              <div className="col-12 col-md-6 offset-md-3 text-center">
+                <hr />
+                <Markdown>{state.config.ticket_prompt}</Markdown>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 }
@@ -287,7 +285,8 @@ export function PartyGroupLayout({ state, loadGroup, socket }) {
 export function PartyGroupLayoutButton({ color, children, disabled, onClick }) {
   return (
     <button
-      className={`btn btn-${color} btn-lg btn-block`}
+      type="button"
+      className={`btn btn-${color === "default" ? "outline-secondary" : color} btn-lg w-100`}
       disabled={disabled}
       onClick={onClick}
     >

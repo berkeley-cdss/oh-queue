@@ -66,25 +66,27 @@ export let Queue = ({ state }) => {
   let signInToSee = (
     <div className="queue">
       <div className="no-results">
-        <h4>
+        <p className="h5">
           <a href={loginPath()}>Sign in</a> to see the queue
-        </h4>
+        </p>
       </div>
     </div>
   );
   let selectTab = (index) => app.selectQueueTab(index);
   let containerClass = classNames({
     container: true,
-    "stub-jumbotron": !showJumbotron,
+    "mt-4": !showJumbotron,
   });
   return (
     <div>
       {showJumbotron && <Jumbotron state={state} />}
       <div className={containerClass}>
         {!showJumbotron && canAddTicket && (
-          <div className="col-xs-8 col-xs-offset-2">
-            <div className="request-form">
-              <RequestForm state={state} forceTicket />
+          <div className="row">
+            <div className="col-md-8 offset-md-2">
+              <div className="request-form">
+                <RequestForm state={state} forceTicket />
+              </div>
             </div>
           </div>
         )}
@@ -95,7 +97,7 @@ export let Queue = ({ state }) => {
         />
         <MyAssignedTickets state={state} tickets={myAssignedTickets} />
         {!!myAssignedTickets.length && <hr />}
-        {staff && <FilterControls state={state} filter={state.filter} />}
+        {staff && <FilterControls state={state} />}
         {staff && <hr />}
         <Tabs selectedIndex={state.queueTabIndex} onSelect={selectTab}>
           <Tab label={`Waiting (${pendingCount})`}>
@@ -143,13 +145,13 @@ export let TicketList = ({ tickets, state, status }) => {
   if (tickets.length === 0) {
     body = (
       <div className="no-results">
-        <h4>No help requests</h4>
+        <p className="h5">No help requests</p>
       </div>
     );
   } else if (items.length === 0) {
     body = (
       <div className="no-results">
-        <h4>No help requests matched your search</h4>
+        <p className="h5">No help requests matched your search</p>
       </div>
     );
   } else {

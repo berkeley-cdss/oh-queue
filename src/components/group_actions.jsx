@@ -27,14 +27,14 @@ export let GroupActions = ({ state, status, tickets }) => {
             return;
           app.makeRequest("delete", ticket_ids);
         }}
-        className="btn btn-danger pull-right"
+        className="btn btn-danger"
       >
         Delete all
       </button>,
       <button
         key="help-all"
         onClick={() => app.makeRequest("assign", ticket_ids, true)}
-        className="btn btn-primary pull-right"
+        className="btn btn-primary"
       >
         Help all
       </button>,
@@ -52,7 +52,7 @@ export let GroupActions = ({ state, status, tickets }) => {
               ticket_ids: myHeldTickets.map((t) => t.id),
             });
           }}
-          className="btn btn-warning pull-right"
+          className="btn btn-warning"
         >
           Release my holds
         </button>
@@ -61,7 +61,7 @@ export let GroupActions = ({ state, status, tickets }) => {
         <button
           key="unshuffle"
           onClick={() => app.makeRequest("unshuffle_tickets", ticket_ids)}
-          className="btn btn-info pull-right"
+          className="btn btn-info"
         >
           Unshuffle
         </button>
@@ -70,7 +70,7 @@ export let GroupActions = ({ state, status, tickets }) => {
         <button
           key="shuffle"
           onClick={() => app.makeRequest("shuffle_tickets", ticket_ids)}
-          className="btn btn-warning pull-right"
+          className="btn btn-warning"
         >
           Shuffle
         </button>
@@ -81,14 +81,14 @@ export let GroupActions = ({ state, status, tickets }) => {
       <button
         key="requeue-all"
         onClick={() => app.makeRequest("unassign", ticket_ids)}
-        className="btn btn-warning pull-right"
+        className="btn btn-warning"
       >
         Requeue all
       </button>,
       <button
         key="resolve-all"
         onClick={() => app.makeRequest("resolve", { ticket_ids: ticket_ids })}
-        className="btn btn-primary pull-right"
+        className="btn btn-primary"
       >
         Resolve all
       </button>,
@@ -108,7 +108,7 @@ export let GroupActions = ({ state, status, tickets }) => {
             ticket_ids: heldTickets.map((t) => t.id),
           });
         }}
-        className="btn btn-danger pull-right"
+        className="btn btn-danger"
       >
         Release all holds
       </button>,
@@ -126,7 +126,7 @@ export let GroupActions = ({ state, status, tickets }) => {
               ticket_ids: myHeldTickets.map((t) => t.id),
             });
           }}
-          className="btn btn-warning pull-right"
+          className="btn btn-warning"
         >
           Release my holds
         </button>
@@ -134,10 +134,11 @@ export let GroupActions = ({ state, status, tickets }) => {
     ];
   }
 
+  // Right-aligned, with the count first and the first button last, as before.
   return (
-    <div className="group-actions clearfix">
-      {buttons}
-      <p className="pull-right">{tickets.length} selected</p>
+    <div className="group-actions">
+      <p>{tickets.length} selected</p>
+      {buttons.filter(Boolean).reverse()}
     </div>
   );
 };

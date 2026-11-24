@@ -3,68 +3,45 @@ import { app } from "../app_instance";
 import { SelectPicker } from "./select_picker";
 import { isStaff } from "../state";
 
-export class UpdateLocationBox extends React.Component {
-  constructor(props) {
-    super(props);
-    this.handleChange = this.handleChange.bind(this);
-    this.submit = this.submit.bind(this);
+// For a student who has moved: changes their ticket's location.
+export function UpdateLocationBox({ state, ticket }) {
+  const id = React.useId();
+  const [locationId, setLocationId] = React.useState("");
+  let filteredLocations = Object.values(state.locations)
+    .filter((location) => location.visible)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  if (isStaff(state)) {
+    return null;
   }
-
-  handleChange(event) {
-    let { state } = this.props;
-    this.newLocationId = event.target.value;
-    this.setState(state); //force a re-render
-  }
-
-  submit() {
-    let { state, ticket } = this.props;
+  const submit = () => {
     app.makeRequest("update_ticket", {
       id: ticket.id,
-      location_id: this.newLocationId,
+      location_id: locationId,
     });
-    this.setState(state); //force a render
-  }
-
-  render() {
-    let { state, ticket } = this.props;
-    let { locations } = state;
-    let filteredLocations = Object.values(locations)
-      .filter((locations) => locations.visible)
-      .sort((a, b) => a.name.localeCompare(b.name));
-    let staff = isStaff(state);
-    if (staff) {
-      return null;
-    }
-    return (
-      <div>
-        <h4> If you have moved, please update your new location here:</h4>
-        <div className="form-group form-group-lg">
-          <div className="input-group">
-            <SelectPicker
-              onChange={this.handleChange}
-              options={filteredLocations}
-              className="selectpicker form-control"
-              id="location"
-              data-width="80%"
-              data-style="btn-lg btn-default"
-              name="location"
-              title="Location"
-            />
-            <div className="input-group-btn form-right pull-left">
-              <button
-                className="btn btn-lg btn-default"
-                onClick={this.submit}
-                disabled={
-                  this.newLocationId == undefined ||
-                  this.newLocationId == ticket.location_id
-                }
-              >
-                Update
-              </button>
-            </div>
-          </div>
-        </div>
+  };
+  return (
+    <div>
+      <label htmlFor={id} className="form-label h5">
+        If you have moved, please update your new location here:
+      </label>
+      <div className="input-group input-group-lg">
+        <SelectPicker
+          id={id}
+          options={filteredLocations}
+          placeholder="Location"
+          name="location"
+          value={locationId}
+          onChange={(e) => setLocationId(e.target.value)}
+        />
+        <button
+          type="button"
+          className="btn btn-outline-primary"
+          onClick={submit}
+          disabled={!locationId || locationId == ticket.location_id}
+        >
+          Update
+        </button>
       </div>
-    );
-  }
+    </div>
+  );
 }

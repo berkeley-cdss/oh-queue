@@ -5,6 +5,7 @@ import { FancyToggle } from "./fancy_toggle";
 export function ConfigLinkedToggle({
   config,
   configKey,
+  label,
   offText = "No",
   onText = "Yes",
 }) {
@@ -18,6 +19,7 @@ export function ConfigLinkedToggle({
       render={({ onSubmit, value }) => (
         <FancyToggle
           checked={value === "true" || value === true}
+          label={label}
           offText={offText}
           onText={onText}
           onChange={(x) => onSubmit(x ? "true" : "false")}
