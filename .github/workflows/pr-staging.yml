@@ -101,7 +101,7 @@ jobs:
             --role="roles/run.invoker"
 
       - name: Comment PR with Preview URL
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           PREVIEW_URL: https://preview-oh-pr-${{ github.event.number }}-137456085712.us-west1.run.app
         with:
