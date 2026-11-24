@@ -2,6 +2,7 @@
 tests. They need Chrome and the frontend build (`yarn build`), so `pytest` leaves them
 out (pytest.ini); run them with `pytest tests/e2e`."""
 
+import json
 import threading
 import time
 from pathlib import Path
@@ -26,6 +27,8 @@ class Site:
     def __init__(self, driver, base_url):
         self.driver = driver
         self.base_url = base_url
+        # scripts that run on every page, added by watch_requests
+        self.scripts = []
 
     def log_in(self, email, name, is_staff):
         """Sign in through the development login, as a TA or a student in every offering."""
@@ -56,6 +59,33 @@ class Site:
         xpath = f'//*[(self::button or self::a) and normalize-space()="{text}"]'
         return self.wait(lambda: next((e for e in self.driver.find_elements(By.XPATH, xpath) if e.is_displayed()),
                                       None))
+
+    def watch_requests(self, fail=None):
+        """From the next page opened: count the page's API requests by endpoint, in
+        window.requests, and make requests to the endpoints in fail, a dict of
+        endpoint to how many of its first requests fail, fail as if the server were
+        unreachable."""
+        # in a function, so its names don't become globals the page's scripts see
+        script = """(() => {
+            window.requests = {};
+            const fail = %s;
+            const fetch = window.fetch;
+            window.fetch = (url, ...rest) => {
+              const endpoint = String(url).split("/api/")[1];
+              if (endpoint) {
+                window.requests[endpoint] = (window.requests[endpoint] || 0) + 1;
+                if (window.requests[endpoint] <= (fail[endpoint] || 0)) {
+                  return Promise.reject(new TypeError("Failed to fetch"));
+                }
+              }
+              return fetch(url, ...rest);
+            };
+        })();""" % json.dumps(fail or {})
+        added = self.driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": script})
+        self.scripts.append(added["identifier"])
+
+    def requests(self, endpoint):
+        return self.driver.execute_script("return window.requests[arguments[0]] || 0", endpoint)
 
     def text(self):
         return self.driver.find_element(By.TAG_NAME, "body").text
@@ -104,6 +134,9 @@ def site(app, live):
     live.driver.delete_all_cookies()
     live.console_errors()
     yield live
+    for script in live.scripts:
+        live.driver.execute_cdp_cmd("Page.removeScriptToEvaluateOnNewDocument", {"identifier": script})
+    live.scripts.clear()
 
 
 @pytest.hookimpl(hookwrapper=True)

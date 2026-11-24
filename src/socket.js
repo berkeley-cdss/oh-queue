@@ -83,19 +83,25 @@ export class Socket {
     this.handlers.delete(eventType);
   }
 
+  // Sends requests one at a time, in order. Returns a promise of whether this
+  // one succeeded, settled once it's done (after its callback, if it has one),
+  // since a failed request doesn't call its callback.
   emit(...args) {
-    const processQueue = () => {
-      if (this.jobs.length > 0) {
-        const args = this.jobs[0];
-        this.actuallyEmit(...args)
-          .finally(this.jobs.shift.bind(this.jobs))
-          .then(processQueue);
+    return new Promise((resolve) => {
+      const processQueue = () => {
+        if (this.jobs.length > 0) {
+          const [args, done] = this.jobs[0];
+          this.actuallyEmit(...args)
+            .then(done)
+            .finally(this.jobs.shift.bind(this.jobs))
+            .then(processQueue);
+        }
+      };
+      this.jobs.push([args, resolve]);
+      if (this.jobs.length === 1) {
+        processQueue();
       }
-    };
-    this.jobs.push(args);
-    if (this.jobs.length === 1) {
-      processQueue();
-    }
+    });
   }
 
   actuallyEmit(event, params = {}, callback = null) {
@@ -112,10 +118,12 @@ export class Socket {
         if (callback != null) {
           callback(action);
         }
+        return true;
       })
       .catch((e) => {
         console.error(e);
         this.trigger("disconnect");
+        return false;
       });
   }
 }

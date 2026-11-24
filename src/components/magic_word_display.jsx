@@ -2,86 +2,48 @@ import React from "react";
 import { app } from "../app_instance";
 import { isStaff } from "../state";
 
-export class MagicWordDisplay extends React.Component {
-  constructor(...args) {
-    super(...args);
+// How often a timed magic word is fetched again, since it changes.
+const REFRESH_MS = 10000;
 
-    this.state = {
-      loaded: false,
-      oldMagicWord: undefined,
-      magicWord: undefined,
-      refreshInterval: null,
-    };
+// For staff, the current magic word when it's a timed one, which they can't
+// otherwise know. (Staff set a text magic word themselves.)
+export function MagicWordDisplay({ state }) {
+  const [magicWord, setMagicWord] = React.useState(undefined);
+  const timed =
+    state.loaded &&
+    isStaff(state) &&
+    state.config.queue_magic_word_mode === "timed_numeric";
 
-    this.loadState = this.loadState.bind(this);
-
-    this.loadState();
-  }
-
-  loadState() {
-    if (this.state.loaded) return;
-    var config = this.props.state.config;
-    if (!this.props.state.loaded || !config) {
-      setTimeout(this.loadState, 100);
+  React.useEffect(() => {
+    if (!timed) {
       return;
     }
-    if (isStaff(this.props.state) && config.queue_magic_word_mode !== "none") {
-      if (this.state.refreshInterval) {
-        clearInterval(this.state.refreshInterval);
-        this.state.refreshInterval = null;
-      }
-      this.setState({
-        refreshInterval: setInterval(() => {
-          let mode = this.props.state.config.queue_magic_word_mode;
-          if (
-            mode !== "timed_numeric" &&
-            (mode !== "none" || this.state.magicWord !== undefined)
-          )
-            return;
-          app.makeRequest("refresh_magic_word", (res) => {
-            let magicWord = res.magic_word || null;
-            this.setState({
-              oldMagicWord: this.state.magicWord,
-              magicWord: magicWord,
-            });
-          });
-        }, 10000),
+    let stopped = false;
+    const refresh = () =>
+      app.makeRequest("refresh_magic_word", (res) => {
+        if (!stopped && res) {
+          setMagicWord(res.magic_word || null);
+        }
       });
-    }
-    this.setState({
-      loaded: true,
-    });
+    refresh();
+    const interval = setInterval(refresh, REFRESH_MS);
+    return () => {
+      stopped = true;
+      clearInterval(interval);
+      // so an old word isn't shown if the timed mode comes back
+      setMagicWord(undefined);
+    };
+  }, [timed]);
+
+  if (!timed || magicWord === undefined) {
+    return false;
   }
 
-  componentWillUnmount() {
-    if (this.state.refreshInterval) {
-      clearInterval(this.state.refreshInterval);
-      this.state.refreshInterval = null;
-    }
-  }
-
-  render() {
-    if (!this.state.loaded) {
-      this.loadState();
-      return false;
-    }
-    if (
-      this.props.state.config.queue_magic_word_mode === "none" ||
-      this.state.magicWord === undefined
-    ) {
-      return false;
-    }
-
-    let magicWordElem = <i>Loading...</i>;
-    if (this.state.magicWord) {
-      let magicWord = this.state.magicWord;
-      magicWordElem = <code>{magicWord}</code>;
-    }
-
-    return (
-      <div>
-        <h4>Magic word: {magicWordElem}</h4>
-      </div>
-    );
-  }
+  return (
+    <div>
+      <h4>
+        Magic word: {magicWord ? <code>{magicWord}</code> : <i>Loading...</i>}
+      </h4>
+    </div>
+  );
 }

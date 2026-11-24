@@ -44,11 +44,11 @@ export function ConfigLinked({ configKey, configKeys = [], config, render }) {
       ? { key: configKey, value: e.target ? value : e }
       : { keys: configKeys, values };
 
-    app.makeRequest(`update_config`, requestBody, (isSuccess) => {
-      if (isSuccess) {
-        minimumTime.then(() => setSaving(false));
-      }
-    });
+    // Whether or not it worked: a failed save shows the offline banner, and can be tried again.
+    app
+      .makeRequest(`update_config`, requestBody)
+      .then(() => minimumTime)
+      .then(() => setSaving(false));
 
     return false;
   };

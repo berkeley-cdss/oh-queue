@@ -1,5 +1,11 @@
 import React from "react";
-import { BrowserRouter, Route, Routes, useNavigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Route,
+  Routes,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import { setApp } from "../app_instance";
 import { isPartyRoot } from "../common";
 import { ActivityLogLayout } from "./activity_log_layout";
@@ -19,6 +25,7 @@ import {
   initialState,
   isStaff,
   loadTicket,
+  receiveGroup,
   receiveTicket,
   setGroup,
   setTicket,
@@ -120,7 +127,7 @@ export class App extends React.Component {
       this.state.currentUser = data.current_user;
     }
     if (Object.hasOwn(data, "groups")) {
-      this.state.groups = Array.from(data.groups).sort((x) => x.id);
+      this.state.groups = Array.from(data.groups).sort((a, b) => a.id - b.id);
     }
     if (Object.hasOwn(data, "presence")) {
       this.state.presence = data.presence;
@@ -155,7 +162,7 @@ export class App extends React.Component {
   loadGroup(id) {
     if (isStaff(this.state)) {
       this.socket.emit("load_group", id, (group) => {
-        setGroup(this.state, group);
+        receiveGroup(this.state, id, group);
         this.refresh();
       });
     }
@@ -213,10 +220,11 @@ export class App extends React.Component {
       }
       if (callback) callback(response);
     };
+    // A promise of whether the request succeeded (see Socket.emit).
     if (request !== undefined) {
-      this.socket.emit(eventType, request, cb);
+      return this.socket.emit(eventType, request, cb);
     } else {
-      this.socket.emit(eventType, cb);
+      return this.socket.emit(eventType, cb);
     }
   }
 
@@ -250,7 +258,8 @@ export class App extends React.Component {
             <Route
               path="/tickets/:id/*"
               element={
-                <TicketLayout
+                <ByID
+                  page={TicketLayout}
                   state={state}
                   socket={this.socket}
                   loadTicket={this.loadTicket}
@@ -260,7 +269,8 @@ export class App extends React.Component {
             <Route
               path="/groups/:id/*"
               element={
-                <PartyGroupLayout
+                <ByID
+                  page={PartyGroupLayout}
                   state={state}
                   socket={this.socket}
                   loadGroup={this.loadGroup}
@@ -277,6 +287,13 @@ export class App extends React.Component {
       </BrowserRouter>
     );
   }
+}
+
+// A new page for each ticket or group, so nothing typed into or loaded for one
+// (a description, an assignment) carries over to the next, as after Next Ticket.
+function ByID({ page: Page, ...props }) {
+  const { id } = useParams();
+  return <Page key={id} {...props} />;
 }
 
 // Gives App the router's navigate function, for following the server's redirects.
