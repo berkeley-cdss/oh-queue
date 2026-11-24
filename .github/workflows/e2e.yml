@@ -28,7 +28,7 @@ jobs:
       - name: Run end to end tests
         run: pytest tests/e2e
       - name: Keep screenshots of failed tests
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: e2e-screenshots
