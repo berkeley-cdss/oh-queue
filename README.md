@@ -59,4 +59,6 @@ yarn build
 pytest tests/e2e
 ```
 
-CI runs all of these on every pull request, the server tests with coverage (`.github/workflows/test.yml`, `e2e.yml`), along with flake8, a dependency audit, and CodeQL.
+The accessibility audit checks every page against WCAG 2.1 AA with axe-core, also in headless Chrome: `pytest tests/a11y`, after `yarn build`. See [docs/a11y.md](docs/a11y.md).
+
+CI runs all of these on every pull request, the server tests with coverage (`.github/workflows/test.yml`, `e2e.yml`, `a11y.yml`), along with flake8, a dependency audit, and CodeQL.
