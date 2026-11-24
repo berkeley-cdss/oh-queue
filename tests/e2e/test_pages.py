@@ -223,16 +223,35 @@ def test_group_that_does_not_exist(site):
     assert site.console_errors() == []
 
 
+def test_group_page_with_an_id_that_is_not_a_number(site):
+    site.log_in(*STAFF)
+    site.visit(f"{COURSE}/groups/abc")
+    site.wait(lambda: "Not found" in site.text())
+
+
+def test_group_page_asks_again_after_a_failed_request(site):
+    """A group that doesn't exist: the first request fails, as if the network were down,
+    and the page asks again once it's back online."""
+    site.watch_requests(fail={"load_group": 1})
+    site.log_in(*STAFF)
+    site.visit(f"{COURSE}/groups/12345")
+    # the page polls every ten seconds, which brings it back online
+    site.wait(lambda: "Not found" in site.text(), timeout=25)
+    assert site.requests("load_group") == 2
+
+
 def test_group_without_a_question(site, app):
     add_group(app, question="")
     site.log_in(*STAFF)
     site.visit(COURSE + "/party")
-    site.wait(lambda: "Return to group" in site.text() or "Join" in site.text())
-    assert "QNaN" not in site.text()
+    # the group's card, which shows its assignment, question and location
+    card = site.wait(lambda: next(iter(site.driver.find_elements(By.CSS_SELECTOR, ".card-holder .panel")), None))
+    site.wait(lambda: "Hog" in card.text and "Cory 247" in card.text)
+    assert "QNaN" not in card.text
 
 
 def test_failed_setting_save_can_be_tried_again(site):
-    site.watch_requests(fail=["update_config"])
+    site.watch_requests(fail={"update_config": 1})
     site.log_in(*STAFF)
     site.visit(COURSE + "/admin")
     delay = site.driver.find_element(By.CSS_SELECTOR, "input[type=number]")

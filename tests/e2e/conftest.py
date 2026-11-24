@@ -60,10 +60,11 @@ class Site:
         return self.wait(lambda: next((e for e in self.driver.find_elements(By.XPATH, xpath) if e.is_displayed()),
                                       None))
 
-    def watch_requests(self, fail=()):
+    def watch_requests(self, fail=None):
         """From the next page opened: count the page's API requests by endpoint, in
-        window.requests, and make those to the endpoints in fail fail, as if the
-        server were unreachable."""
+        window.requests, and make requests to the endpoints in fail, a dict of
+        endpoint to how many of its first requests fail, fail as if the server were
+        unreachable."""
         # in a function, so its names don't become globals the page's scripts see
         script = """(() => {
             window.requests = {};
@@ -73,13 +74,13 @@ class Site:
               const endpoint = String(url).split("/api/")[1];
               if (endpoint) {
                 window.requests[endpoint] = (window.requests[endpoint] || 0) + 1;
-                if (fail.includes(endpoint)) {
+                if (window.requests[endpoint] <= (fail[endpoint] || 0)) {
                   return Promise.reject(new TypeError("Failed to fetch"));
                 }
               }
               return fetch(url, ...rest);
             };
-        })();""" % json.dumps(list(fail))
+        })();""" % json.dumps(fail or {})
         added = self.driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": script})
         self.scripts.append(added["identifier"])
 

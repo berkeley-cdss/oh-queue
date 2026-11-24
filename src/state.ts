@@ -179,8 +179,8 @@ export function ticketLocation(state: State, ticket: Ticket): TicketLocation {
 export function ticketQuestion(state: State, ticket: Ticket | Group): string {
   // A question number, such as "3", is shown as "Q3"; anything else as it is.
   const question = (ticket.question ?? "").trim();
-  if (question !== "" && !isNaN(Number(question))) {
-    return "Q" + parseInt(question);
+  if (/^\d+$/.test(question)) {
+    return "Q" + parseInt(question, 10);
   }
   return question;
 }
@@ -411,9 +411,10 @@ export function setGroup(state: State, group: Group): void {
   state.groups.sort((a, b) => a.id - b.id);
 }
 
-/* A group loaded by ID, or null if there's no such group. */
+/* The server's answer to loading a group by ID: the group, or else nothing or
+ * an error (for an ID that isn't one), so there's no such group. */
 export function receiveGroup(state: State, id: number, group: Group | null) {
-  if (group != null) {
+  if (group != null && group.id === id) {
     setGroup(state, group);
   } else {
     state.missingGroups.add(id);

@@ -36,14 +36,18 @@ export function PartyGroupLayout({ state, loadGroup, socket }) {
   }
 
   // Staff can open any group's page, so load it if it isn't one of the active
-  // groups the page already has. Once: a group that doesn't exist stays missing.
+  // groups the page already has: once, and again whenever the connection comes
+  // back, since a failed request leaves the page offline. A group that doesn't
+  // exist stays missing.
   const staff = isStaff(state);
   const hasGroup = group != null;
+  const missing = isGroupMissing(state, groupID);
+  const online = !state.offline;
   React.useEffect(() => {
-    if (staff && !hasGroup) {
+    if (staff && online && !hasGroup && !missing) {
       loadGroup(groupID);
     }
-  }, [staff, hasGroup, groupID, loadGroup]);
+  }, [staff, online, hasGroup, missing, groupID, loadGroup]);
 
   // Signed-out visitors get no groups; the home page asks them to sign in.
   if (state.loaded && !state.currentUser) {
@@ -53,7 +57,7 @@ export function PartyGroupLayout({ state, loadGroup, socket }) {
   if (!group) {
     // Only staff can load a group that isn't active; students get its page
     // only for an active group, or their own.
-    if (state.loaded && (!staff || isGroupMissing(state, groupID))) {
+    if (state.loaded && (!staff || missing)) {
       return <NotFound />;
     }
     return "loading...";

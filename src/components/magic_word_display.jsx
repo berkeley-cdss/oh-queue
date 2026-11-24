@@ -30,6 +30,8 @@ export function MagicWordDisplay({ state }) {
     return () => {
       stopped = true;
       clearInterval(interval);
+      // so an old word isn't shown if the timed mode comes back
+      setMagicWord(undefined);
     };
   }, [timed]);
 
