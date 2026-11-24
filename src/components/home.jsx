@@ -16,7 +16,9 @@ export let Home = ({ state }) => {
     <div>
       <Navbar state={state} mode="queue" />
       <OfflineIndicator offline={state.offline && state.loaded} />
-      <Queue state={state} />
+      <main>
+        <Queue state={state} />
+      </main>
     </div>
   );
 };

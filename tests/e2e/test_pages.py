@@ -5,6 +5,7 @@ import time
 
 import pytest
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.select import Select
 
 from oh_queue.models import (Assignment, ConfigEntry, Group, GroupAttendance, GroupAttendanceStatus, GroupStatus, Ticket,
                              TicketStatus, User, db)
@@ -93,11 +94,8 @@ def test_request_and_resolve_ticket(site, app):
     # The student asks for help with Hog question 3 in Cory 247...
     site.log_in(*STUDENT)
     site.visit(COURSE + "/")
-    # bootstrap-select hides the selects behind its own menus
-    site.driver.execute_script("""
-        $("#assignment_id").val("1").selectpicker("refresh");
-        $("#location_id").val("1").selectpicker("refresh");
-    """)
+    Select(site.driver.find_element(By.ID, "assignment_id")).select_by_visible_text("Hog")
+    Select(site.driver.find_element(By.ID, "location_id")).select_by_visible_text("Cory 247")
     site.driver.find_element(By.ID, "question").send_keys("3")
     site.button("Request").click()
     # ...and lands on the ticket's page.
@@ -138,9 +136,11 @@ def test_admin_saves_settings(site, app):
     site.wait(lambda: site.driver.find_elements(By.CSS_SELECTOR, "button[name=btn-submit]")[0].is_enabled())
 
     # a switch: whether the queue is open
-    site.driver.find_element(By.CSS_SELECTOR, ".toggle").click()
+    switch = site.driver.find_element(By.CSS_SELECTOR, "input[role=switch]")
+    switch.click()
     site.wait(lambda: config_value(app, "is_queue_open") == "false")
-    site.driver.find_element(By.CSS_SELECTOR, ".toggle").click()
+    assert site.driver.find_element(By.CSS_SELECTOR, f"label[for='{switch.get_attribute('id')}']").text == "Closed"
+    switch.click()
     site.wait(lambda: config_value(app, "is_queue_open") == "true")
     assert site.console_errors() == []
 
@@ -245,7 +245,7 @@ def test_group_without_a_question(site, app):
     site.log_in(*STAFF)
     site.visit(COURSE + "/party")
     # the group's card, which shows its assignment, question and location
-    card = site.wait(lambda: next(iter(site.driver.find_elements(By.CSS_SELECTOR, ".card-holder .panel")), None))
+    card = site.wait(lambda: next(iter(site.driver.find_elements(By.CSS_SELECTOR, ".card-holder .card")), None))
     site.wait(lambda: "Hog" in card.text and "Cory 247" in card.text)
     assert "QNaN" not in card.text
 
@@ -279,7 +279,6 @@ def test_next_ticket_shows_the_next_tickets_assignment(site, app):
             db.session.flush()
             tickets.append(ticket.id)
         db.session.commit()
-        maps_id = maps.id
     first, second = tickets
 
     site.log_in(*STAFF)
@@ -291,9 +290,7 @@ def test_next_ticket_shows_the_next_tickets_assignment(site, app):
     site.button("Next Ticket").click()
     site.wait(lambda: site.driver.current_url.rstrip("/").endswith(f"/tickets/{second}"))
     site.wait(lambda: site.driver.find_element(By.ID, "question").get_attribute("value") == "7")
-    # the menu bootstrap-select shows, not just the select it hides
-    assert site.driver.execute_script('return $("#assignment_id").val()') == str(maps_id)
-    assert "Maps" in site.driver.find_element(By.CSS_SELECTOR, "button[data-id=assignment_id]").text
+    assert Select(site.driver.find_element(By.ID, "assignment_id")).first_selected_option.text == "Maps"
 
     assert "Update Assignment" not in site.text()
     assert site.console_errors() == []
@@ -311,3 +308,42 @@ def test_staff_see_a_timed_magic_word(site, app):
     # right away, not after the first ten-second refresh
     site.wait(lambda: "Magic word:" in site.text(), timeout=5)
     assert site.console_errors() == []
+
+
+def test_description_is_asked_for_when_required(site, app):
+    """When the course requires a description, the Request button asks for one in a dialog."""
+    site.visit(COURSE + "/")  # sets up the course's settings
+    with app.app_context():
+        ConfigEntry.query.filter_by(course="cs61a", key="description_required").one().value = "true"
+        db.session.commit()
+    site.log_in(*STUDENT)
+    site.visit(COURSE + "/")
+    Select(site.driver.find_element(By.ID, "assignment_id")).select_by_visible_text("Hog")
+    Select(site.driver.find_element(By.ID, "location_id")).select_by_visible_text("Cory 247")
+    site.driver.find_element(By.ID, "question").send_keys("3")
+    site.button("Request").click()
+    dialog = site.wait(lambda: site.driver.find_element(By.CSS_SELECTOR, "[role=dialog]"))
+    box = dialog.find_element(By.ID, "description-box")
+    # the dialog takes the focus, so it can be used from the keyboard
+    site.wait(lambda: site.driver.execute_script("return arguments[0].contains(document.activeElement)", dialog))
+    box.clear()
+    box.send_keys("My tests time out")
+    dialog.find_element(By.CSS_SELECTOR, "button[type=submit]").click()
+    site.wait(lambda: "/tickets/" in site.driver.current_url)
+    with app.app_context():
+        assert Ticket.query.one().description == "My tests time out"
+    assert site.console_errors() == []
+
+
+def test_account_menu_signs_out(site):
+    site.log_in(*STAFF)
+    site.visit(COURSE + "/")
+    menu = site.driver.find_element(By.ID, "account-menu")
+    assert menu.get_attribute("aria-expanded") == "false"
+    menu.click()
+    site.wait(lambda: menu.get_attribute("aria-expanded") == "true")
+    site.button("Log Out").click()
+    # the landing page, signed out
+    site.wait(lambda: site.driver.current_url == site.base_url + "/")
+    site.visit(COURSE + "/")
+    assert "Hi! Please sign in" in site.text()

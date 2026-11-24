@@ -10,7 +10,11 @@ export function AdminPartyManager({ state }) {
         <tr>
           <td>What should {state.config.party_name} mode be called?</td>
           <td className="col-md-1">
-            <ConfigLinkedText config={state.config} configKey="party_name" />
+            <ConfigLinkedText
+              config={state.config}
+              configKey="party_name"
+              label="Name of the party queue"
+            />
           </td>
         </tr>
         <tr>

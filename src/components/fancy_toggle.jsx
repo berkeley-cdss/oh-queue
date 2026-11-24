@@ -1,35 +1,29 @@
 import React from "react";
+import Form from "react-bootstrap/Form";
 
-// A checkbox shown as an on/off switch by the bootstrap-toggle jQuery plugin.
+// A Bootstrap switch, labeled with onText/offText for its current state, as in
+// sections' ToggleSwitch.
 export function FancyToggle({ checked, onChange, offText, onText }) {
-  const inputRef = React.useRef(null);
-  // The latest onChange, for the plugin's change handler.
-  const onChangeRef = React.useRef(onChange);
-  React.useEffect(() => {
-    onChangeRef.current = onChange;
-  });
-
-  React.useEffect(() => {
-    $(inputRef.current).bootstrapToggle();
-  }, []);
-
-  // Show checked without reporting it as a change, then listen for the person's.
-  React.useEffect(() => {
-    const toggle = inputRef.current;
-    $(toggle).off("change");
-    $(toggle).bootstrapToggle(checked ? "on" : "off");
-    $(toggle).change(() => onChangeRef.current(toggle.checked));
-  }, [checked]);
+  const id = React.useId();
+  const [on, setOn] = React.useState(checked);
+  // Follow checked when it changes, e.g. after the server's config reloads.
+  const [prevChecked, setPrevChecked] = React.useState(checked);
+  if (checked !== prevChecked) {
+    setPrevChecked(checked);
+    setOn(checked);
+  }
 
   return (
-    <input
-      ref={inputRef}
-      type="checkbox"
-      defaultChecked={checked}
-      data-off={offText}
-      data-on={onText}
-      data-size="mini"
-      data-toggle="toggle"
+    <Form.Check
+      type="switch"
+      role="switch"
+      id={id}
+      checked={on}
+      label={on ? onText : offText}
+      onChange={(e) => {
+        setOn(e.target.checked);
+        onChange(e.target.checked);
+      }}
     />
   );
 }

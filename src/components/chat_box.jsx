@@ -1,5 +1,6 @@
 import moment from "moment";
 import React from "react";
+import { SendFill } from "react-bootstrap-icons";
 import { app } from "../app_instance";
 import { notifyUser } from "../common";
 
@@ -10,12 +11,6 @@ export function ChatBox({ currentUser, id, mode, messages }) {
 
   const handleChange = (e) => {
     setTyped(e.target.value);
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      postMessage();
-    }
   };
 
   const postMessage = () => {
@@ -31,7 +26,6 @@ export function ChatBox({ currentUser, id, mode, messages }) {
   };
 
   const scrollDown = () => {
-    $('[data-toggle="tooltip"]').tooltip();
     historyRef.current.scrollTop = historyRef.current.scrollHeight;
   };
 
@@ -56,79 +50,74 @@ export function ChatBox({ currentUser, id, mode, messages }) {
     setNumMessages(messages.length);
   }
 
-  const body = messages.map((message, i) => {
+  // Who sent each message and when: shown on hover, and read before it by screen readers.
+  const bubble = (message, index, { mine, showIcon }) => {
     const { user, body } = message;
-    if (user.id === currentUser.id) {
-      return (
-        <div className="my-chat-bubble">
+    const sender = mine ? "You" : user.name;
+    return (
+      <div key={index} className={mine ? "my-chat-bubble" : "chat-bubble"}>
+        {!mine && (
           <div
-            className="chat-text"
-            data-toggle="tooltip"
-            data-placement="right"
-            title={formatTooltip(message, true)}
+            className={showIcon ? "chat-icon" : "chat-icon none"}
+            aria-hidden="true"
           >
-            {body}
+            {user.shortName[0]}
           </div>
-        </div>
-      );
-    } else if (messages[i + 1] && user.id === messages[i + 1].user.id) {
-      return (
-        <div className="chat-bubble">
-          <div className="chat-icon none">{user.shortName[0]}</div>
-          <div
-            className="chat-text"
-            data-toggle="tooltip"
-            data-placement="right"
-            title={formatTooltip(message)}
-          >
-            {body}
-          </div>
-        </div>
-      );
-    } else {
-      return (
-        <div className="chat-bubble">
-          <div className="chat-icon">{user.shortName[0]}</div>
-          <div
-            className="chat-text"
-            data-toggle="tooltip"
-            data-placement="right"
-            title={formatTooltip(message)}
-          >
-            {body}
-          </div>
-        </div>
-      );
-    }
-  });
-
-  return (
-    <div className="panel panel-default">
-      <div className="panel-heading">Chat️</div>
-      <div className="panel-body">
-        <div className="chat-history" ref={historyRef}>
+        )}
+        <div className="chat-text" title={formatTooltip(message, mine)}>
+          <span className="visually-hidden">
+            {message.created
+              ? `${sender}, ${formatTooltip(message, true)}: `
+              : `${sender}: `}
+          </span>
           {body}
         </div>
-        <div className="input-group chat-input">
+      </div>
+    );
+  };
+
+  const body = messages.map((message, i) =>
+    bubble(message, i, {
+      mine: message.user.id === currentUser.id,
+      showIcon: !(
+        messages[i + 1] && message.user.id === messages[i + 1].user.id
+      ),
+    }),
+  );
+
+  return (
+    <section className="card chat-box" aria-labelledby={`chat-${mode}-${id}`}>
+      <h2 className="card-header h6" id={`chat-${mode}-${id}`}>
+        Chat
+      </h2>
+      <div className="card-body">
+        <div className="chat-history" ref={historyRef} role="log">
+          {body}
+        </div>
+        <form
+          className="input-group chat-input"
+          onSubmit={(e) => {
+            e.preventDefault();
+            postMessage();
+          }}
+        >
           <input
             type="text"
             className="form-control"
+            aria-label="Message"
             placeholder="Type a message..."
             onChange={handleChange}
-            onKeyPress={handleKeyPress}
             value={typed}
           />
-          <div className="input-group-btn">
-            <button
-              className="btn btn-default"
-              type="button"
-              onClick={postMessage}
-            >
-              <span className="glyphicon glyphicon-play" />
-            </button>
-          </div>
-        </div>
+          <button
+            className="btn btn-outline-secondary"
+            type="submit"
+            aria-label="Send"
+          >
+            <SendFill aria-hidden="true" />
+          </button>
+        </form>
       </div>
-    </div>
+    </section>
   );
 }

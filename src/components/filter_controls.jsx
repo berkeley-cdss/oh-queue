@@ -2,75 +2,65 @@ import React from "react";
 import { app } from "../app_instance";
 import { SelectPicker } from "./select_picker";
 
-export class FilterControls extends React.Component {
-  constructor(props) {
-    super(props);
+// Staff narrow the queue to an assignment, a question and a location.
+export function FilterControls({ state }) {
+  const [filter, setFilter] = React.useState({
+    assignment_id: "",
+    question: "",
+    location_id: "",
+  });
+  const update = (key) => (e) => {
+    const next = { ...filter, [key]: e.target.value };
+    setFilter(next);
+    app.setFilter({ ...next });
+  };
 
-    this.updateFilter = this.updateFilter.bind(this);
-  }
+  let { assignments, locations } = state;
+  let sortedAssignments = Object.values(assignments).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
+  let sortedLocations = Object.values(locations).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
 
-  updateFilter() {
-    app.setFilter({
-      assignment_id: $("#assignment").val(),
-      location_id: $("#location").val(),
-      question: $("#question").val(),
-    });
-  }
-
-  render() {
-    let { state } = this.props;
-    let { assignments, locations } = state;
-
-    let filteredAssignments = Object.values(assignments).sort((a, b) =>
-      a.name.localeCompare(b.name),
-    );
-    let filteredLocations = Object.values(locations).sort((a, b) =>
-      a.name.localeCompare(b.name),
-    );
-
-    return (
-      <div className="row form-group form-group-lg">
-        <div className="col-xs-12 col-sm-4 filter-field">
-          <SelectPicker
-            options={filteredAssignments}
-            emptyOption="Any Assignment"
-            className="selectpicker form-control"
-            data-live-search="true"
-            data-size="8"
-            data-width="100%"
-            data-style="btn-lg btn-default"
-            id="assignment"
-            name="assignment"
-            title="Assignment"
-            onChange={this.updateFilter}
-          />
-        </div>
-        <div className="col-xs-12 col-sm-4 filter-field">
-          <input
-            className="form-control"
-            type="text"
-            id="question"
-            name="question"
-            title="Question"
-            placeholder="Question"
-            onChange={this.updateFilter}
-          />
-        </div>
-        <div className="col-xs-12 col-sm-4 filter-field">
-          <SelectPicker
-            options={filteredLocations}
-            emptyOption="Any Location"
-            className="selectpicker form-control"
-            id="location"
-            data-width="100%"
-            data-style="btn-lg btn-default"
-            name="location"
-            title="Location"
-            onChange={this.updateFilter}
-          />
-        </div>
-        <hr></hr>
+  return (
+    <div className="row g-3 filter-controls">
+      <div className="col-12 col-sm-4">
+        <SelectPicker
+          options={sortedAssignments}
+          emptyOption="Any Assignment"
+          size="lg"
+          id="assignment"
+          name="assignment"
+          title="Filter by assignment"
+          value={filter.assignment_id}
+          onChange={update("assignment_id")}
+        />
       </div>
-    );
-  }
+      <div className="col-12 col-sm-4">
+        <input
+          className="form-control form-control-lg"
+          type="text"
+          id="question"
+          name="question"
+          aria-label="Filter by question"
+          placeholder="Question"
+          value={filter.question}
+          onChange={update("question")}
+        />
+      </div>
+      <div className="col-12 col-sm-4">
+        <SelectPicker
+          options={sortedLocations}
+          emptyOption="Any Location"
+          size="lg"
+          id="location"
+          name="location"
+          title="Filter by location"
+          value={filter.location_id}
+          onChange={update("location_id")}
+        />
+      </div>
+    </div>
+  );
 }

@@ -1,8 +1,14 @@
-import { Link } from "react-router-dom";
+import Container from "react-bootstrap/Container";
+import Nav from "react-bootstrap/Nav";
+import BootstrapNavbar from "react-bootstrap/Navbar";
+import NavDropdown from "react-bootstrap/NavDropdown";
+import { Link, NavLink } from "react-router-dom";
 import { isPartyRoot, loginPath } from "../common";
 import { getMyGroup, getMyTicket } from "../state";
 
-/* React Components */
+// The site header, as on the pages outside a course (oh_queue/templates/pages/base.html)
+// and in sections and seating: the course and page as its heading, and links to the
+// course's pages.
 export let Navbar = ({ state, mode }) => {
   var { currentUser } = state;
   var myTicket = getMyTicket(state);
@@ -25,107 +31,84 @@ export let Navbar = ({ state, mode }) => {
   const defaultMode = partyAsRoot ? "party" : "queue";
 
   return (
-    <nav className="navbar navbar-default navbar-fixed-top">
-      <div className="container">
-        <div className="navbar-header">
-          <button
-            type="button"
-            className="navbar-toggle collapsed"
-            data-toggle="collapse"
-            data-target="#navbar-collapse-section"
-          >
-            <span className="icon-bar"></span>
-            <span className="icon-bar"></span>
-            <span className="icon-bar"></span>
-          </button>
-          <Link
-            className="navbar-brand"
+    <BootstrapNavbar
+      expand="lg"
+      bg="primary"
+      data-bs-theme="dark"
+      className="site-header"
+    >
+      <Container fluid>
+        {/* the page this is; its top-level heading */}
+        <h1 className="site-title">
+          <BootstrapNavbar.Brand
+            as={Link}
             to={"/" + (mode === defaultMode ? "" : mode)}
           >
-            <strong>{window.courseName} |</strong>
-            {" " + title}
-          </Link>
-        </div>
-        <div className="collapse navbar-collapse" id="navbar-collapse-section">
-          <ul className="nav navbar-nav navbar-right">
+            {window.courseName} | {title}
+          </BootstrapNavbar.Brand>
+        </h1>
+        <BootstrapNavbar.Toggle aria-controls="site-nav" />
+        <BootstrapNavbar.Collapse id="site-nav">
+          <Nav className="ms-auto">
             {!!myGroup && (
-              <li>
-                <Link to={`/groups/${myGroup.id}/`}>My Group</Link>
-              </li>
+              <Nav.Link as={NavLink} to={`/groups/${myGroup.id}/`}>
+                My Group
+              </Nav.Link>
             )}
-
             {!!myTicket && (
-              <li>
-                <Link to={`/tickets/${myTicket.id}/`}>My Request</Link>
-              </li>
+              <Nav.Link as={NavLink} to={`/tickets/${myTicket.id}/`}>
+                My Request
+              </Nav.Link>
             )}
-
             {currentUser && state.config.party_enabled && (
-              <li>
-                <Link to={partyAsRoot ? "/" : "/party"}>
-                  {state.config.party_name}
-                </Link>
-              </li>
+              <Nav.Link as={NavLink} to={partyAsRoot ? "/" : "/party"} end>
+                {state.config.party_name}
+              </Nav.Link>
             )}
-
             {currentUser && (
-              <li>
-                <Link to={partyAsRoot ? "/queue" : "/"}>Queue</Link>
-              </li>
+              <Nav.Link as={NavLink} to={partyAsRoot ? "/queue" : "/"} end>
+                Queue
+              </Nav.Link>
             )}
-
             {currentUser && currentUser.isStaff && (
-              <li>
-                <Link to="/activity_log">Activity Log</Link>
-              </li>
+              <Nav.Link as={NavLink} to="/activity_log">
+                Activity Log
+              </Nav.Link>
             )}
-
             {currentUser && currentUser.isStaff && (
-              <li>
-                <Link to="/admin">Admin</Link>
-              </li>
+              <Nav.Link as={NavLink} to="/admin">
+                Admin
+              </Nav.Link>
             )}
-
             {currentUser ? (
-              <li className="dropdown">
-                <a
-                  href="#"
-                  className="dropdown-toggle"
-                  data-toggle="dropdown"
-                  role="button"
-                >
-                  {currentUser.name} <span className="caret" />
-                </a>
-                <ul className="dropdown-menu">
-                  {state.config.online_active && currentUser.isStaff && (
-                    <li>
-                      <Link to="/online_setup">Online Setup</Link>
-                    </li>
-                  )}
-                  <li>
-                    <Link to={`/user/${currentUser.id}`}>Ticket History</Link>
-                  </li>
-                  <li>
-                    <a href="/offerings">Offerings</a>
-                  </li>
-                  <li>
-                    {/* A POST, so other sites can't sign people out. */}
-                    <form method="post" action="/logout/">
-                      <button type="submit" className="dropdown-form-button">
-                        Log out
-                      </button>
-                    </form>
-                  </li>
-                </ul>
-              </li>
+              <NavDropdown
+                title={currentUser.name}
+                id="account-menu"
+                align="end"
+                data-bs-theme="light"
+              >
+                {state.config.online_active && currentUser.isStaff && (
+                  <NavDropdown.Item as={Link} to="/online_setup">
+                    Online Setup
+                  </NavDropdown.Item>
+                )}
+                <NavDropdown.Item as={Link} to={`/user/${currentUser.id}`}>
+                  Ticket History
+                </NavDropdown.Item>
+                <NavDropdown.Item href="/offerings">Offerings</NavDropdown.Item>
+                {/* A POST, so other sites can't sign people out. */}
+                <form method="post" action="/logout/">
+                  <button type="submit" className="dropdown-item">
+                    Log Out
+                  </button>
+                </form>
+              </NavDropdown>
             ) : (
-              <li>
-                <a href={loginPath()}> Login</a>
-              </li>
+              <Nav.Link href={loginPath()}>Login</Nav.Link>
             )}
-          </ul>
-        </div>
-      </div>
-    </nav>
+          </Nav>
+        </BootstrapNavbar.Collapse>
+      </Container>
+    </BootstrapNavbar>
   );
 };

@@ -29,10 +29,9 @@ export function AdminItemsManager({ children, columns, itemType, items }) {
     });
   };
 
-  const formGroupClassNames = classNames({
-    "form-group": true,
-    "has-error": isValidInput === false,
-    "has-success": isValidInput === true,
+  const inputClassNames = classNames("form-control", {
+    "is-invalid": isValidInput === false,
+    "is-valid": isValidInput === true,
   });
 
   return (
@@ -61,11 +60,12 @@ export function AdminItemsManager({ children, columns, itemType, items }) {
         <tbody>
           <tr key="new">
             <td>
-              <div className={formGroupClassNames}>
+              <div>
                 <input
-                  className={`form-control`}
+                  className={inputClassNames}
                   type="text"
                   minLength="1"
+                  aria-label={`Name of a new ${itemType}`}
                   placeholder="Add new entry"
                   disabled={isLoading}
                   value={input}
@@ -73,14 +73,22 @@ export function AdminItemsManager({ children, columns, itemType, items }) {
                 />
               </div>
             </td>
-            <td className="col-md-1">
+            <td className="admin-add-button">
               <button
                 type="button"
-                className="btn btn-default"
+                className="btn btn-outline-secondary"
                 disabled={!isValidInput || isLoading}
                 onClick={addItemInput}
               >
-                {isLoading ? <div className="spinner-loading" /> : "Add"}
+                {isLoading ? (
+                  <span
+                    className="spinner-border spinner-border-sm"
+                    role="status"
+                    aria-label="Adding"
+                  />
+                ) : (
+                  "Add"
+                )}
               </button>
             </td>
           </tr>

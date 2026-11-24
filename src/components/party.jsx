@@ -19,33 +19,33 @@ export let Party = ({ state }) => {
 
   let containerClass = classNames({
     container: true,
-    "stub-jumbotron": !showJumbotron,
+    "mt-4": !showJumbotron,
   });
 
   return (
     <div>
       <Navbar state={state} mode="party" />
       <OfflineIndicator offline={state.offline && state.loaded} />
-      <div>
-        {showJumbotron && <Jumbotron state={state} />}
-        {!showJumbotron && <Messages messages={state.messages} />}
-      </div>
-      <div className={containerClass}>
-        <div className="row">
-          <PresenceIndicator state={state} hideWaitTime />
-        </div>
-        <div className="row">
-          <div className="col-xs-12">
-            <div className="card-holder">
-              {state.groups
-                .filter((group) => group.group_status === "active")
-                .map((group) => (
-                  <GroupCard group={group} state={state} />
-                ))}
+      <main>
+        <div>
+          {showJumbotron && <Jumbotron state={state} />}
+          {!showJumbotron && (
+            <div className="container mt-3">
+              <Messages messages={state.messages} />
             </div>
+          )}
+        </div>
+        <div className={containerClass}>
+          <PresenceIndicator state={state} hideWaitTime />
+          <div className="card-holder">
+            {state.groups
+              .filter((group) => group.group_status === "active")
+              .map((group) => (
+                <GroupCard key={group.id} group={group} state={state} />
+              ))}
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

@@ -1,3 +1,4 @@
+import React from "react";
 import { isStaff } from "../state";
 
 export function DescriptionBox({
@@ -11,6 +12,7 @@ export function DescriptionBox({
   onChange,
   onSubmit,
 }) {
+  const id = React.useId();
   let staff = isStaff(state);
 
   if ((!editable && staff) || locked) {
@@ -22,21 +24,24 @@ export function DescriptionBox({
   } else {
     return (
       <div>
-        <h4>{prompt}</h4>
+        <label htmlFor={id} className="form-label h5">
+          {prompt}
+        </label>
         <textarea
-          className="description-box"
-          value={description}
+          id={id}
+          className="form-control description-box"
+          value={description || ""}
           onChange={(e) => onChange(e.target.value)}
           rows="5"
           placeholder={placeholder}
         />
         {description !== ticket.description ? (
           <button
+            type="button"
             onClick={onSubmit}
-            className="description-button btn btn-default btn-lg btn-block"
+            className="description-button btn btn-primary btn-lg w-100"
           >
-            {" "}
-            Save Description{" "}
+            Save Description
           </button>
         ) : null}
       </div>

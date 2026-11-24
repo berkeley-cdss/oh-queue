@@ -1,31 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <meta charset="utf-8" />
     <meta name="description" content="{{ course_name }} Queue" />
-    <meta
-      name="keywords"
-      content="{{ course_name }}, Computer Science, CS, Office Hours, Project, Homework, Party, Parties, Queue"
-    />
-    <meta name="author" content="{{ course_name }} Course Staff" />
-    <meta name="viewport" content="width=device-width" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     {% include "icons.html" %}
 
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.11.0/css/bootstrap-select.min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-toggle/2.2.2/css/bootstrap-toggle.min.css"
-    />
-
-    {# the app's own stylesheet and script, after Bootstrap's (oh_queue/vite.py) #}
+    {# the app's stylesheet, with Bootstrap's, and its script (oh_queue/vite.py) #}
     {{ vite_tags() }}
 
     <title>{{ course_name }} Queue</title>
@@ -38,14 +20,5 @@
   </head>
   <body>
     {% block header %}{% endblock %} {% block body %}{% endblock %}
-
-    {# jQuery and the Bootstrap 3 plugins the app uses, until it moves to Bootstrap 5 #}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.11.0/js/bootstrap-select.min.js"></script>
-    <script
-      type="text/javascript"
-      src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"
-    ></script>
   </body>
 </html>

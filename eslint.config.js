@@ -27,12 +27,7 @@ export default tseslint.config(
       ecmaVersion: 2022,
       sourceType: "module",
       parserOptions: { ecmaFeatures: { jsx: true } },
-      globals: {
-        ...globals.browser,
-        // jQuery and its Bootstrap 3 plugins still come from the CDN
-        // (oh_queue/templates/default.html), until the move to Bootstrap 5.
-        $: "readonly",
-      },
+      globals: globals.browser,
     },
     ...react,
   },

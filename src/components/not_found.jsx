@@ -1,13 +1,7 @@
-// TODO make this prettier
+// What a page shows in place of something that doesn't exist, or that the person can't see.
 export let NotFound = () => (
-  <div className="container">
-    <div className="row">
-      <div className="col-xs-12">
-        <h1 className="text-center">Not found</h1>
-        <p className="text-center">
-          This request does not exist or you don't have permission to view it
-        </p>
-      </div>
-    </div>
-  </div>
+  <main className="container mt-5 text-center">
+    <h1>Not found</h1>
+    <p>This request does not exist or you don't have permission to view it</p>
+  </main>
 );

@@ -65,6 +65,7 @@ export function AdminConfigManager({ state: { config } }) {
                 <ConfigLinkedNumeric
                   config={config}
                   configKey="juggling_delay"
+                  label="Delay before students can request to be taken off hold, in minutes"
                 />
               </td>
             </tr>

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import classNames from "classnames";
+import { Trash } from "react-bootstrap-icons";
 import Swal from "sweetalert2";
 import { app } from "../app_instance";
 import {
@@ -13,11 +14,8 @@ import {
 export function GroupCard({ group, state }) {
   const inGroup = groupIsMine(state, group);
 
-  const panelColor = inGroup ? "panel-primary" : "panel-default";
-
-  const panelClass = classNames({
-    panel: true,
-    [panelColor]: true,
+  const cardClass = classNames("card", "group-card", {
+    "border-primary": inGroup,
   });
 
   const ownerName = group.attendees[0].user.shortName;
@@ -51,25 +49,35 @@ export function GroupCard({ group, state }) {
     }
   };
 
+  const title = `${state.assignments[group.assignment_id].name} ${ticketQuestion(
+    state,
+    group,
+  )} · ${state.locations[group.location_id].name}`;
+
   return (
-    <div className={panelClass}>
-      <div className="panel-heading">
-        {state.assignments[group.assignment_id].name}{" "}
-        {ticketQuestion(state, group)} &middot;{" "}
-        {state.locations[group.location_id].name}
-        <div className="btn-group" role="group" style={{ float: "right" }}>
-          {isStaff(state) && (
-            <button
-              type="button"
-              className="btn btn-xs btn-default"
-              onClick={() => app.makeRequest("delete_group", group.id)}
-            >
-              <span className="glyphicon glyphicon-trash" aria-hidden="true" />
-            </button>
-          )}
-        </div>
+    <div className={cardClass}>
+      <div
+        className={classNames("card-header d-flex align-items-center", {
+          "text-bg-primary": inGroup,
+        })}
+      >
+        <h2 className="h6 mb-0 me-auto">{title}</h2>
+        {isStaff(state) && (
+          <button
+            type="button"
+            className={classNames("btn btn-sm", {
+              "btn-outline-secondary": !inGroup,
+              "btn-outline-light": inGroup,
+            })}
+            aria-label={`Delete the group for ${title}`}
+            title="Delete group"
+            onClick={() => app.makeRequest("delete_group", group.id)}
+          >
+            <Trash aria-hidden="true" />
+          </button>
+        )}
       </div>
-      <div className="panel-body">
+      <div className="card-body">
         {inGroup ? (
           <p>
             <b>You are in this group.</b>
@@ -81,24 +89,29 @@ export function GroupCard({ group, state }) {
           </p>
         )}
         {group.description ? (
-          <blockquote style={{ fontSize: 15 }}>{group.description}</blockquote>
+          <blockquote className="blockquote fs-6">
+            {group.description}
+          </blockquote>
         ) : (
           <p>
             <i>No description</i>
           </p>
         )}
         <p>Created {ticketTimeAgo(group)}.</p>
-        {state.currentUser && (
-          <Link to={inGroup ? `/groups/${group.id}` : "."}>
+        {state.currentUser &&
+          (inGroup ? (
+            <Link className="btn btn-primary" to={`/groups/${group.id}`}>
+              Return to group
+            </Link>
+          ) : (
             <button
-              className={inGroup ? "btn btn-primary" : "btn btn-default"}
+              className="btn btn-outline-primary"
               type="button"
-              onClick={inGroup ? null : joinGroup}
+              onClick={joinGroup}
             >
-              {inGroup ? "Return to group" : joinText}
+              {joinText}
             </button>
-          </Link>
-        )}
+          ))}
       </div>
     </div>
   );

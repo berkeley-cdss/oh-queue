@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import React from "react";
+import Modal from "react-bootstrap/Modal";
 import { app } from "../app_instance";
 import { SelectPicker } from "./select_picker";
 
@@ -13,44 +14,27 @@ export function RequestForm(props) {
   const disabled = !party_enabled && !is_queue_open;
   let descriptionRequired = state.config.description_required === "true";
 
-  let submit = (e) => {
-    e.preventDefault();
-    let form = $("#request-form");
-    let descriptionBox = $("#description-box");
+  const formRef = React.useRef(null);
+  // Asking for a description, when the course requires one, before sending the request.
+  const [describing, setDescribing] = React.useState(false);
+  const [description, setDescription] = React.useState(
+    state.config.default_description || "",
+  );
 
-    let descriptionDOM = descriptionBox[0];
-    if (descriptionDOM.reportValidity && !descriptionDOM.reportValidity()) {
-      return;
-    }
-
-    let formData = {};
-    form.serializeArray().forEach((input) => {
-      formData[input.name] = input.value;
-    });
-
-    formData["description"] = descriptionBox.val();
-
+  const send = () => {
+    const formData = Object.fromEntries(new FormData(formRef.current));
+    formData["description"] = description;
     app.makeRequest(party_enabled ? "create_group" : "create", formData, true);
-    $("#description-overlay").hide();
+    setDescribing(false);
   };
 
-  let show = (e) => {
+  const onSubmit = (e) => {
     e.preventDefault();
-    let form = $("#request-form");
-    let formDOM = form[0];
-    if (formDOM.reportValidity && !formDOM.reportValidity()) {
-      return;
-    }
-
     if (!descriptionRequired || party_enabled) {
-      return submit(e);
+      send();
+    } else {
+      setDescribing(true);
     }
-
-    let descriptionBox = $("#description-box");
-
-    descriptionBox.prop("required", true);
-
-    $("#description-overlay").show();
   };
 
   const navigate = useNavigate();
@@ -74,19 +58,17 @@ export function RequestForm(props) {
     state.config.queue_magic_word_mode !== "none"
   ) {
     magicWordInput = (
-      <div className="form-group form-group-lg">
-        <div className="input-group">
-          <input
-            className="form-control"
-            type="password"
-            id="magic-word"
-            name="magic_word"
-            title="Magic Word"
-            placeholder="Magic Word"
-            required
-            disabled={disabled}
-          />
-        </div>
+      <div className="mb-3">
+        <input
+          className="form-control form-control-lg"
+          type="password"
+          id="magic-word"
+          name="magic_word"
+          aria-label="Magic Word"
+          placeholder="Magic Word"
+          required
+          disabled={disabled}
+        />
       </div>
     );
   }
@@ -102,46 +84,41 @@ export function RequestForm(props) {
 
   return (
     <div>
-      <form id="request-form">
+      <form id="request-form" ref={formRef} onSubmit={onSubmit}>
         {magicWordInput}
-        <div className="form-group form-group-lg">
-          <div className="input-group">
-            <SelectPicker
-              options={filteredAssignments}
-              className="selectpicker form-control form-left"
-              data-live-search="true"
-              data-size="8"
-              data-width="60%"
-              data-style="btn-lg btn-default"
-              id="assignment_id"
-              name="assignment_id"
-              title="Assignment"
-              required
-              disabled={disabled}
-            />
-            <input
-              className="form-control form-right"
-              type="text"
-              id="question"
-              name="question"
-              title="Question"
-              placeholder="Question"
-              required
-              disabled={disabled}
-            />
-          </div>
+        <div className="input-group input-group-lg mb-3">
+          <SelectPicker
+            options={filteredAssignments}
+            placeholder="Assignment"
+            className="form-left"
+            id="assignment_id"
+            name="assignment_id"
+            title="Assignment"
+            required
+            disabled={disabled}
+          />
+          <input
+            className="form-control form-right"
+            type="text"
+            id="question"
+            name="question"
+            aria-label="Question"
+            placeholder="Question"
+            required
+            disabled={disabled}
+          />
         </div>
         {showOnlineInput && (
           <React.Fragment>
             {(party_enabled ||
               state.locations[locationID].name !== "Online" ||
               JSON.parse(state.config.students_set_online_link)) && (
-              <div className="form-group form-group-lg">
-                <label htmlFor="call-link">
+              <div className="mb-3">
+                <label className="form-label" htmlFor="call-link">
                   {linkKnown ? "Breakout Room (optional)" : "Video Call Link"}
                 </label>
                 <input
-                  className="form-control"
+                  className="form-control form-control-lg"
                   type="text"
                   id="call-link"
                   name="call-link"
@@ -156,12 +133,12 @@ export function RequestForm(props) {
             )}
             {(party_enabled ||
               JSON.parse(state.config.students_set_online_doc)) && (
-              <div className="form-group form-group-lg">
-                <label htmlFor="doc-link">
+              <div className="mb-3">
+                <label className="form-label" htmlFor="doc-link">
                   Shared Document Link (optional)
                 </label>
                 <input
-                  className="form-control"
+                  className="form-control form-control-lg"
                   type="text"
                   id="doc-link"
                   name="doc-link"
@@ -173,69 +150,71 @@ export function RequestForm(props) {
             )}
           </React.Fragment>
         )}
-        <div className="form-group form-group-lg">
-          <div className="input-group">
-            <SelectPicker
-              options={filteredLocations}
-              className="selectpicker form-control form-left"
-              data-live-search="true"
-              data-size="8"
-              data-width="60%"
-              data-style="btn-lg btn-default"
-              id="location_id"
-              name="location_id"
-              title="Location"
-              required
-              onChange={handleLocationChange}
-              disabled={disabled}
-            />
-            <div className="input-group-btn form-right pull-left">
-              <button
-                className="btn btn-lg btn-default"
-                onClick={show}
-                disabled={disabled}
-              >
-                {party_enabled ? "Create" : "Request"}
-              </button>
-            </div>
-          </div>
+        <div className="input-group input-group-lg mb-3">
+          <SelectPicker
+            options={filteredLocations}
+            placeholder="Location"
+            className="form-left"
+            id="location_id"
+            name="location_id"
+            title="Location"
+            required
+            onChange={handleLocationChange}
+            disabled={disabled}
+          />
+          <button
+            type="submit"
+            className="btn btn-primary form-right"
+            disabled={disabled}
+          >
+            {party_enabled ? "Create" : "Request"}
+          </button>
         </div>
         {party_enabled && is_queue_open && (
-          <div className="form-group form-group-lg">
-            <button
-              type="button"
-              className="btn btn-lg btn-default"
-              onClick={openAlternative}
-            >
-              Or ask staff privately
-            </button>
-          </div>
+          <button
+            type="button"
+            className="btn btn-outline-primary btn-lg w-100"
+            onClick={openAlternative}
+          >
+            Or ask staff privately
+          </button>
         )}
       </form>
-      <div id="description-overlay" className="description-overlay">
-        <div id="description-form" className="description-form">
-          <div>
-            <h4> Please describe your issue below: </h4>
+      <Modal show={describing} onHide={() => setDescribing(false)} centered>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            send();
+          }}
+        >
+          <Modal.Header closeButton closeLabel="Cancel">
+            <Modal.Title as="h2" className="h4">
+              <label htmlFor="description-box">
+                Please describe your issue below:
+              </label>
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
             <textarea
               id="description-box"
-              className="description-box"
+              className="form-control description-box"
               rows="5"
-              defaultValue={state.config.default_description}
+              required
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               placeholder={
                 state.config.default_description ||
-                'It would be helpful if you could describe your issue. For example, "I have a SyntaxError in my ___ function. I&apos;ve tried using ____ and ____."'
+                'It would be helpful if you could describe your issue. For example, "I have a SyntaxError in my ___ function. I\'ve tried using ____ and ____."'
               }
             />
-            <button
-              className="btn btn-lg btn-default"
-              onClick={submit}
-              disabled={disabled}
-            >
+          </Modal.Body>
+          <Modal.Footer>
+            <button type="submit" className="btn btn-primary btn-lg">
               Request
             </button>
-          </div>
-        </div>
-      </div>
+          </Modal.Footer>
+        </form>
+      </Modal>
     </div>
   );
 }

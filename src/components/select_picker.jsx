@@ -1,77 +1,70 @@
-import React from "react";
+import classNames from "classnames";
 
-export class SelectPicker extends React.Component {
-  constructor(...args) {
-    super(...args);
-
-    this.selectRef = React.createRef();
-    this.refreshSelect = this.refreshSelect.bind(this);
+// A native select of options: strings, or objects with an id and a name. A native
+// select works with the keyboard and screen readers as people expect, and on phones
+// opens the phone's own picker. It's named by its title, unless it has a label.
+//
+// placeholder: shown, and chosen, until something else is (with `required`, the form
+// can't be sent until then). emptyOption: a choice that means none, such as "Any".
+export function SelectPicker({
+  options,
+  emptyOption,
+  placeholder,
+  size,
+  className,
+  ...props
+}) {
+  if (options && !Array.isArray(options) && typeof options === "object") {
+    options = Object.entries(options).map(([id, option]) => ({
+      id,
+      ...option,
+    }));
   }
-  componentDidMount() {
-    this.refreshSelect();
-  }
-  refreshSelect() {
-    const select = this.selectRef.current;
-    $(select).selectpicker("refresh");
-    // bootstrap-select chooses its title placeholder when it first sets up a
-    // select whose option React chose, so a controlled select's value is
-    // chosen again.
-    const { value } = this.props;
-    if (value != null) {
-      $(select).selectpicker("val", String(value));
-    }
-  }
-  componentDidUpdate() {
-    this.refreshSelect();
-  }
-  render() {
-    var { options, emptyOption } = this.props;
-    if (options && !Array.isArray(options) && typeof options === "object") {
-      options = Object.entries(options).map((entry) =>
-        Object.assign(
-          {},
-          {
-            id: entry[0],
-          },
-          entry[1],
-        ),
+  const optionElements = (options || []).map((option) => {
+    if (typeof option === "string") {
+      return (
+        <option key={option} value={option}>
+          {option}
+        </option>
+      );
+    } else if (option.id !== undefined && option.name !== undefined) {
+      return (
+        <option key={option.id} value={option.id}>
+          {option.name}
+        </option>
+      );
+    } else {
+      const text = JSON.stringify(option);
+      return (
+        <option key={text} value={text}>
+          {text}
+        </option>
       );
     }
-    var optionsElements = null;
-    if (options) {
-      optionsElements = options
-        .map((obj) => {
-          if (typeof obj === "string") {
-            return (
-              <option key={obj} value={obj}>
-                {obj}
-              </option>
-            );
-          } else if (obj.id !== undefined && obj.name !== undefined) {
-            return (
-              <option key={obj.id} value={obj.id}>
-                {obj.name}
-              </option>
-            );
-          } else {
-            let str = JSON.stringify(obj);
-            return (
-              <option key={str} value={str}>
-                {str}
-              </option>
-            );
-          }
-        })
-        .filter((option) => option);
-    }
-    var props = Object.assign({}, this.props);
-    delete props.emptyOption;
-    delete props.options;
-    return (
-      <select ref={this.selectRef} {...props}>
-        {emptyOption && <option value="">{emptyOption}</option>}
-        {optionsElements}
-      </select>
-    );
-  }
+  });
+  // Uncontrolled, a placeholder is chosen to start with.
+  const defaultValue =
+    placeholder && props.value === undefined && props.defaultValue === undefined
+      ? ""
+      : props.defaultValue;
+  return (
+    <select
+      className={classNames(
+        "form-select",
+        size && `form-select-${size}`,
+        className,
+      )}
+      aria-label={props["aria-labelledby"] ? undefined : props.title}
+      {...props}
+      defaultValue={defaultValue}
+    >
+      {placeholder && (
+        <option value="" disabled>
+          {placeholder}
+        </option>
+      )}
+      {emptyOption && <option value="">{emptyOption}</option>}
+      {optionElements}
+    </select>
+  );
 }

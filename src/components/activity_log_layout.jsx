@@ -4,6 +4,7 @@ import { app } from "../app_instance";
 import { Messages } from "./messages";
 import { Navbar } from "./navbar";
 import { OfflineIndicator } from "./offline_indicator";
+import { Pager } from "./pager";
 import { Row } from "./row";
 import { Tab, Tabs } from "./tabs";
 
@@ -34,62 +35,63 @@ export function ActivityLogLayout({ state }) {
     <div>
       <Navbar state={state} mode="activity_log" />
       <OfflineIndicator offline={state.offline && state.loaded} />
-      <div className="jumbotron">
-        <div className="container">
-          <h2> Activity Log </h2>
-          <p>View the activity of any user of the queue.</p>
-          <div className="form-group">
-            <form>
-              <div className="input-group activity-search">
-                <input
-                  className="form-control"
-                  required="required"
-                  placeholder="Search for a student or a member of staff"
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                />
-                <span className="input-group-btn">
-                  <button className="btn btn-default" type="button">
+      <main>
+        <div className="hero">
+          <div className="container">
+            <h2>Activity Log</h2>
+            <p>View the activity of any user of the queue.</p>
+            <div className="mb-3">
+              <form>
+                <div className="input-group activity-search">
+                  <input
+                    className="form-control"
+                    type="search"
+                    aria-label="Search for a student or a member of staff"
+                    placeholder="Search for a student or a member of staff"
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                  />
+                  <button className="btn btn-outline-secondary" type="button">
                     Search
                   </button>
-                </span>
-              </div>
-            </form>
-          </div>
-          <div className="activity-buttons">
-            <Link
-              to={`/user/${state.currentUser && state.currentUser.id}`}
-              className="btn btn-primary"
-            >
-              My activity
-            </Link>
-            <Link to="/activity_log" className="btn btn-warning">
-              Class Overview
-            </Link>
+                </div>
+              </form>
+            </div>
+            <div className="activity-buttons">
+              <Link
+                to={`/user/${state.currentUser && state.currentUser.id}`}
+                className="btn btn-primary"
+              >
+                My activity
+              </Link>
+              <Link to="/activity_log" className="btn btn-warning">
+                Class Overview
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="container">
-        <Messages messages={state.messages} />
+        <div className="container">
+          <Messages messages={state.messages} />
 
-        {searchText ? (
-          <Tabs selectedIndex={0} onClick={() => null}>
-            <Tab label={`Search Results (${foundUsers.length})`}>
-              <UserList users={foundUsers} />
-            </Tab>
-          </Tabs>
-        ) : (
-          <Tabs selectedIndex={activeTab} onSelect={setActiveTab}>
-            <Tab label="Staff">
-              <UserList users={userList.filter(({ isStaff }) => isStaff)} />
-            </Tab>
-            <Tab label="Students">
-              <UserList users={userList.filter(({ isStaff }) => !isStaff)} />
-            </Tab>
-          </Tabs>
-        )}
-      </div>
+          {searchText ? (
+            <Tabs selectedIndex={0} onSelect={() => null}>
+              <Tab label={`Search Results (${foundUsers.length})`}>
+                <UserList users={foundUsers} />
+              </Tab>
+            </Tabs>
+          ) : (
+            <Tabs selectedIndex={activeTab} onSelect={setActiveTab}>
+              <Tab label="Staff">
+                <UserList users={userList.filter(({ isStaff }) => isStaff)} />
+              </Tab>
+              <Tab label="Students">
+                <UserList users={userList.filter(({ isStaff }) => !isStaff)} />
+              </Tab>
+            </Tabs>
+          )}
+        </div>
+      </main>
     </div>
   );
 }
@@ -101,31 +103,10 @@ export function UserList({ users }) {
     <div>
       <div className="queue">
         {users.slice(page * 50, (page + 1) * 50).map((user) => (
-          <User user={user} />
+          <User key={user.id} user={user} />
         ))}
       </div>
-      <nav>
-        <ul className="pager">
-          <li>
-            <button
-              className="btn btn-default"
-              onClick={() => setPage((page) => page - 1)}
-              disabled={page <= 0}
-            >
-              Previous
-            </button>
-          </li>
-          <li>
-            <button
-              className="btn btn-default"
-              onClick={() => setPage((page) => page + 1)}
-              disabled={page >= users.length / 50 - 1}
-            >
-              Next
-            </button>
-          </li>
-        </ul>
-      </nav>
+      <Pager page={page} setPage={setPage} pages={users.length / 50} />
     </div>
   );
 }
