@@ -11,7 +11,15 @@ export class SelectPicker extends React.Component {
     this.refreshSelect();
   }
   refreshSelect() {
-    $(this.selectRef.current).selectpicker("refresh");
+    const select = this.selectRef.current;
+    $(select).selectpicker("refresh");
+    // bootstrap-select chooses its title placeholder when it first sets up a
+    // select whose option React chose, so a controlled select's value is
+    // chosen again.
+    const { value } = this.props;
+    if (value != null) {
+      $(select).selectpicker("val", String(value));
+    }
   }
   componentDidUpdate() {
     this.refreshSelect();

@@ -1,10 +1,12 @@
 """Every page of a course opens without errors, settings and descriptions are saved, and
 a ticket goes from request to resolved."""
 
+import time
+
 import pytest
 from selenium.webdriver.common.by import By
 
-from oh_queue.models import (ConfigEntry, Group, GroupAttendance, GroupAttendanceStatus, GroupStatus, Ticket,
+from oh_queue.models import (Assignment, ConfigEntry, Group, GroupAttendance, GroupAttendanceStatus, GroupStatus, Ticket,
                              TicketStatus, User, db)
 from tests.conftest import COURSE
 
@@ -12,11 +14,11 @@ STAFF = ("staff@example.edu", "Staff Member", True)
 STUDENT = ("student@example.edu", "Student Person", False)
 
 
-def add_group(app):
+def add_group(app, question="3"):
     """An active group of one student, and its id."""
     with app.app_context():
         student = User(email="grouped@example.edu", name="Grouped Student", course="cs61a")
-        group = Group(question="3", description="", assignment_id=1, location_id=1, course="cs61a",
+        group = Group(question=question, description="", assignment_id=1, location_id=1, course="cs61a",
                       group_status=GroupStatus.active)
         db.session.add_all([student, group])
         db.session.flush()
@@ -207,4 +209,86 @@ def test_welcome_message_references_without_semicolons(site, app):
     # but not in links' addresses
     link = site.driver.find_element(By.LINK_TEXT, "Zoom")
     assert link.get_attribute("href") == "https://berkeley.zoom.us/j/1?pwd=x&region=us"
+    assert site.console_errors() == []
+
+
+def test_group_that_does_not_exist(site):
+    """Staff see that it isn't found, after asking for it once."""
+    site.watch_requests()
+    site.log_in(*STAFF)
+    site.visit(f"{COURSE}/groups/12345")
+    site.wait(lambda: "Not found" in site.text())
+    time.sleep(2)
+    assert site.requests("load_group") == 1
+    assert site.console_errors() == []
+
+
+def test_group_without_a_question(site, app):
+    add_group(app, question="")
+    site.log_in(*STAFF)
+    site.visit(COURSE + "/party")
+    site.wait(lambda: "Return to group" in site.text() or "Join" in site.text())
+    assert "QNaN" not in site.text()
+
+
+def test_failed_setting_save_can_be_tried_again(site):
+    site.watch_requests(fail=["update_config"])
+    site.log_in(*STAFF)
+    site.visit(COURSE + "/admin")
+    delay = site.driver.find_element(By.CSS_SELECTOR, "input[type=number]")
+    delay.clear()
+    delay.send_keys("12")
+    save = site.driver.find_elements(By.CSS_SELECTOR, "button[name=btn-submit]")[0]
+    save.click()
+    site.wait(lambda: site.requests("update_config") == 1)
+    site.wait(lambda: save.is_enabled() and "is-loading" not in save.get_attribute("class"))
+
+
+def test_next_ticket_shows_the_next_tickets_assignment(site, app):
+    """Not the previous ticket's, left over from its page."""
+    with app.app_context():
+        maps = Assignment(name="Maps", course="cs61a", visible=True)
+        db.session.add(maps)
+        tickets = []
+        for email, assignment_id, question in (("first@example.edu", 1, "3"), ("second@example.edu", 2, "7")):
+            student = User(email=email, name=email, course="cs61a")
+            db.session.add(student)
+            db.session.flush()
+            ticket = Ticket(user=student, status=TicketStatus.pending, assignment_id=assignment_id, location_id=1,
+                            question=question, description="", course="cs61a")
+            db.session.add(ticket)
+            db.session.flush()
+            tickets.append(ticket.id)
+        db.session.commit()
+        maps_id = maps.id
+    first, second = tickets
+
+    site.log_in(*STAFF)
+    site.visit(f"{COURSE}/tickets/{first}")
+    site.button("Help").click()
+    site.wait(lambda: "Being helped by you" in site.text())
+    site.button("Resolve").click()
+    site.wait(lambda: "Resolved by" in site.text())
+    site.button("Next Ticket").click()
+    site.wait(lambda: site.driver.current_url.rstrip("/").endswith(f"/tickets/{second}"))
+    site.wait(lambda: site.driver.find_element(By.ID, "question").get_attribute("value") == "7")
+    # the menu bootstrap-select shows, not just the select it hides
+    assert site.driver.execute_script('return $("#assignment_id").val()') == str(maps_id)
+    assert "Maps" in site.driver.find_element(By.CSS_SELECTOR, "button[data-id=assignment_id]").text
+
+    assert "Update Assignment" not in site.text()
+    assert site.console_errors() == []
+
+
+def test_staff_see_a_timed_magic_word(site, app):
+    site.visit(COURSE + "/")  # sets up the course's settings
+    with app.app_context():
+        settings = {"queue_magic_word_mode": "timed_numeric", "queue_magic_word_data": "0123456789abcdef:60:1000:9999"}
+        for key, value in settings.items():
+            ConfigEntry.query.filter_by(course="cs61a", key=key).one().value = value
+        db.session.commit()
+    site.log_in(*STAFF)
+    site.visit(COURSE + "/")
+    # right away, not after the first ten-second refresh
+    site.wait(lambda: "Magic word:" in site.text(), timeout=5)
     assert site.console_errors() == []

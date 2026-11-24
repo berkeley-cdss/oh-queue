@@ -106,6 +106,8 @@ export type State = {
   ticketCounts: Record<string, number> | null;
   /* Ticket IDs for any tickets we are currently loading. */
   loadingTickets: Set<number>;
+  /* Group IDs the server has no group for. */
+  missingGroups: Set<number>;
   /* Current ticket filter. */
   filter: Filter;
   /* Selected queue tab. */
@@ -126,6 +128,7 @@ export const initialState: State = {
   tickets: new Map(),
   ticketCounts: null,
   loadingTickets: new Set(),
+  missingGroups: new Set(),
   filter: {
     location_id: null,
     assignment_id: null,
@@ -174,9 +177,10 @@ export function ticketLocation(state: State, ticket: Ticket): TicketLocation {
 }
 
 export function ticketQuestion(state: State, ticket: Ticket | Group): string {
-  let question = ticket.question ?? "";
-  if (!isNaN(Number(question))) {
-    question = "Q" + parseInt(question);
+  // A question number, such as "3", is shown as "Q3"; anything else as it is.
+  const question = (ticket.question ?? "").trim();
+  if (question !== "" && !isNaN(Number(question))) {
+    return "Q" + parseInt(question);
   }
   return question;
 }
@@ -404,7 +408,20 @@ export function setGroup(state: State, group: Group): void {
     state.groups.splice(state.groups.indexOf(oldGroup), 1);
   }
   state.groups.push(group);
-  state.groups.sort((group) => group.id);
+  state.groups.sort((a, b) => a.id - b.id);
+}
+
+/* A group loaded by ID, or null if there's no such group. */
+export function receiveGroup(state: State, id: number, group: Group | null) {
+  if (group != null) {
+    setGroup(state, group);
+  } else {
+    state.missingGroups.add(id);
+  }
+}
+
+export function isGroupMissing(state: State, id: number): boolean {
+  return state.missingGroups.has(id);
 }
 
 export function groupIsActive(group: Group): boolean {

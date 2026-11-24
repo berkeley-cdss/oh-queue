@@ -191,3 +191,11 @@ def test_asking_twice_points_to_the_ticket_already_on_the_queue(client):
     second = client.post(COURSE + "/api/create", json=form).get_json()["action"]
     assert second["messages"][0]["text"] == "You are already on the queue"
     assert second["redirect"] == first
+
+
+def test_loading_a_group_that_does_not_exist(client):
+    """Answers nothing, rather than failing, so the group's page can say it isn't found."""
+    log_in(client)
+    response = client.post(COURSE + "/api/load_group", json=12345)
+    assert response.status_code == 200
+    assert response.get_json()["action"] is None

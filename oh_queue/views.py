@@ -1352,7 +1352,7 @@ def create_group(form):
 def load_group(group_id):
     if not group_id:
         return socket_error("Invalid group ID")
-    group = Group.query.filter_by(id=group_id, course=get_course()).one()
+    group = Group.query.filter_by(id=group_id, course=get_course()).one_or_none()
     if group:
         return group_json(group)
 
