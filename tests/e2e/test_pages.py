@@ -1,10 +1,11 @@
-"""Every page of a course opens without errors, and a ticket goes from request to
-resolved."""
+"""Every page of a course opens without errors, settings and descriptions are saved, and
+a ticket goes from request to resolved."""
 
 import pytest
 from selenium.webdriver.common.by import By
 
-from oh_queue.models import Group, GroupAttendance, GroupAttendanceStatus, GroupStatus, Ticket, User, db
+from oh_queue.models import (ConfigEntry, Group, GroupAttendance, GroupAttendanceStatus, GroupStatus, Ticket,
+                             TicketStatus, User, db)
 from tests.conftest import COURSE
 
 STAFF = ("staff@example.edu", "Staff Member", True)
@@ -113,4 +114,53 @@ def test_request_and_resolve_ticket(site, app):
               or site.driver.current_url.rstrip("/").endswith(COURSE))
     with app.app_context():
         assert Ticket.query.one().status.name == "resolved"
+    assert site.console_errors() == []
+
+
+def config_value(app, key):
+    with app.app_context():
+        return ConfigEntry.query.filter_by(course="cs61a", key=key).one().value
+
+
+def test_admin_saves_settings(site, app):
+    site.log_in(*STAFF)
+    site.visit(COURSE + "/admin")
+
+    # a setting with a Save button: the hold delay
+    delay = site.driver.find_element(By.CSS_SELECTOR, "input[type=number]")
+    delay.clear()
+    delay.send_keys("12")
+    site.driver.find_elements(By.CSS_SELECTOR, "button[name=btn-submit]")[0].click()
+    site.wait(lambda: config_value(app, "juggling_delay") == "12")
+    # the button is disabled while saving, then back
+    site.wait(lambda: site.driver.find_elements(By.CSS_SELECTOR, "button[name=btn-submit]")[0].is_enabled())
+
+    # a switch: whether the queue is open
+    site.driver.find_element(By.CSS_SELECTOR, ".toggle").click()
+    site.wait(lambda: config_value(app, "is_queue_open") == "false")
+    site.driver.find_element(By.CSS_SELECTOR, ".toggle").click()
+    site.wait(lambda: config_value(app, "is_queue_open") == "true")
+    assert site.console_errors() == []
+
+
+def test_ticket_description_is_saved(site, app):
+    with app.app_context():
+        student = User(email=STUDENT[0], name=STUDENT[1], course="cs61a")
+        db.session.add(student)
+        db.session.flush()
+        ticket = Ticket(user=student, status=TicketStatus.pending, assignment_id=1, location_id=1,
+                        question="3", description="Old description", course="cs61a")
+        db.session.add(ticket)
+        db.session.commit()
+        ticket_id = ticket.id
+
+    site.log_in(*STUDENT)
+    site.visit(f"{COURSE}/tickets/{ticket_id}")
+    box = site.wait(lambda: site.driver.find_element(By.CSS_SELECTOR, "textarea.description-box"))
+    assert box.get_attribute("value") == "Old description"
+    box.clear()
+    box.send_keys("New description")
+    site.button("Save Description").click()
+    with app.app_context():
+        site.wait(lambda: Ticket.query.get(ticket_id).description == "New description")
     assert site.console_errors() == []

@@ -33,11 +33,14 @@ export function TicketLayout({ loadTicket, state, socket }) {
     }
   }, []);
 
+  // The description being edited, reset whenever the ticket's saved one changes.
   const [description, setDescription] = React.useState("");
-
-  React.useEffect(() => {
-    if (ticket) setDescription(ticket.description);
-  }, [ticket && ticket.description]);
+  const savedDescription = ticket ? ticket.description : undefined;
+  const [shownDescription, setShownDescription] = React.useState(undefined);
+  if (ticket && savedDescription !== shownDescription) {
+    setShownDescription(savedDescription);
+    setDescription(savedDescription);
+  }
 
   const handleAssignmentSubmit = (args) => {
     app.makeRequest("update_ticket", Object.assign(args, { id }));

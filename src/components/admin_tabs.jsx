@@ -1,8 +1,6 @@
 import { Link } from "react-router-dom";
 export function AdminTabs({ currentTab, partyAlias }) {
-  if (currentTab === "admin") {
-    currentTab = "general";
-  }
+  const activeTab = currentTab === "admin" ? "general" : currentTab;
 
   const links = [
     "general",
@@ -14,7 +12,11 @@ export function AdminTabs({ currentTab, partyAlias }) {
   ];
 
   const body = links.map((link, index) => (
-    <li role="presentation" className={currentTab === link ? "active" : ""}>
+    <li
+      key={link}
+      role="presentation"
+      className={activeTab === link ? "active" : ""}
+    >
       <Link to={index ? "/admin/" + link : "/admin"}>
         {link === "party" ? partyAlias : link[0].toUpperCase() + link.slice(1)}
       </Link>

@@ -1,11 +1,24 @@
 import js from "@eslint/js";
 import prettier from "eslint-config-prettier";
 import reactHooks from "eslint-plugin-react-hooks";
+import reactRefresh from "eslint-plugin-react-refresh";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
+// As in sections (eslint.config.js), plus plain JavaScript: only state.ts is TypeScript yet.
+const react = {
+  plugins: {
+    "react-hooks": reactHooks,
+    "react-refresh": reactRefresh,
+  },
+  rules: {
+    ...reactHooks.configs.recommended.rules,
+    "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+  },
+};
+
 export default tseslint.config(
-  { ignores: ["oh_queue", "venv", "node_modules", "migrations", "tests"] },
+  { ignores: ["oh_queue", "venv", "node_modules"] },
   {
     files: ["**/*.{js,jsx}"],
     extends: [js.configs.recommended, prettier],
@@ -20,17 +33,12 @@ export default tseslint.config(
         $: "readonly",
       },
     },
-    plugins: { "react-hooks": reactHooks },
-    // Only the classic hooks rules: the React Compiler rules in the recommended set
-    // flag patterns throughout these older components.
-    rules: {
-      "react-hooks/rules-of-hooks": "error",
-      "react-hooks/exhaustive-deps": "warn",
-    },
+    ...react,
   },
   {
-    files: ["**/*.ts"],
+    files: ["**/*.{ts,tsx}"],
     extends: [js.configs.recommended, ...tseslint.configs.recommended, prettier],
     languageOptions: { ecmaVersion: 2022, globals: globals.browser },
-  }
+    ...react,
+  },
 );

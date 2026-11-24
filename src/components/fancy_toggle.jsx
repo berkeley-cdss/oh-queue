@@ -1,39 +1,35 @@
 import React from "react";
 
+// A checkbox shown as an on/off switch by the bootstrap-toggle jQuery plugin.
 export function FancyToggle({ checked, onChange, offText, onText }) {
-  const [initialized, setInitialized] = React.useState(false);
-  const toggleRef = React.useRef();
-
-  const initializeToggle = (toggle) => {
-    if (!toggle || initialized) return;
-    $(toggle).bootstrapToggle();
-    $(toggle).change(() => handleClick(toggle));
-    setInitialized(true);
-    toggleRef.current = toggle;
-  };
-
-  const handleClick = (toggle) => {
-    onChange(toggle.checked);
-  };
+  const inputRef = React.useRef(null);
+  // The latest onChange, for the plugin's change handler.
+  const onChangeRef = React.useRef(onChange);
+  React.useEffect(() => {
+    onChangeRef.current = onChange;
+  });
 
   React.useEffect(() => {
-    if (toggleRef.current) {
-      $(toggleRef.current).off("change");
-      $(toggleRef.current).bootstrapToggle(checked ? "on" : "off");
-      $(toggleRef.current).change(() => handleClick(toggleRef.current));
-    }
-  }, [toggleRef.current, checked]);
+    $(inputRef.current).bootstrapToggle();
+  }, []);
+
+  // Show checked without reporting it as a change, then listen for the person's.
+  React.useEffect(() => {
+    const toggle = inputRef.current;
+    $(toggle).off("change");
+    $(toggle).bootstrapToggle(checked ? "on" : "off");
+    $(toggle).change(() => onChangeRef.current(toggle.checked));
+  }, [checked]);
 
   return (
     <input
-      ref={initializeToggle}
+      ref={inputRef}
       type="checkbox"
       defaultChecked={checked}
       data-off={offText}
       data-on={onText}
       data-size="mini"
       data-toggle="toggle"
-      onClick={handleClick}
     />
   );
 }

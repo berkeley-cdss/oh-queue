@@ -6,15 +6,20 @@ export function ConfigLinked({ configKey, configKeys = [], config, render }) {
   const [values, setValues] = React.useState(
     configKeys.map((key) => config[key]),
   );
-  const submitButtonRef = React.useRef();
+  // While a save is in flight, the button shows it and can't be pressed again.
+  const [saving, setSaving] = React.useState(false);
 
-  React.useEffect(
-    () => {
-      setValue(config[configKey]);
-      setValues(configKeys.map((key) => config[key]));
-    },
-    configKeys.map((key) => config[key]).concat([config[configKey]]),
-  );
+  // Start over from the saved settings whenever they change.
+  const saved = [config[configKey], ...configKeys.map((key) => config[key])];
+  const [shown, setShown] = React.useState(saved);
+  if (
+    saved.length !== shown.length ||
+    saved.some((savedValue, i) => savedValue !== shown[i])
+  ) {
+    setShown(saved);
+    setValue(saved[0]);
+    setValues(saved.slice(1));
+  }
 
   const setters = configKeys.map(
     (key, i) => (val) =>
@@ -31,25 +36,17 @@ export function ConfigLinked({ configKey, configKeys = [], config, render }) {
     if (e.preventDefault) {
       e.preventDefault();
     }
-    if (submitButtonRef.current) {
-      submitButtonRef.current.classList.add("is-loading");
-      submitButtonRef.current.setAttribute("disabled", true);
-    }
-    const time = Date.now();
+    setSaving(true);
+    // Shown for at least a quarter of a second, so it doesn't just flicker.
+    const minimumTime = new Promise((resolve) => setTimeout(resolve, 250));
 
     const requestBody = configKey
       ? { key: configKey, value: e.target ? value : e }
       : { keys: configKeys, values };
 
     app.makeRequest(`update_config`, requestBody, (isSuccess) => {
-      if (submitButtonRef.current && isSuccess) {
-        setTimeout(
-          () => {
-            submitButtonRef.current.classList.remove("is-loading");
-            submitButtonRef.current.removeAttribute("disabled");
-          },
-          250 - (Date.now() - time),
-        );
+      if (isSuccess) {
+        minimumTime.then(() => setSaving(false));
       }
     });
 
@@ -58,10 +55,10 @@ export function ConfigLinked({ configKey, configKeys = [], config, render }) {
 
   const submitButton = (
     <button
-      className="btn btn-default"
+      className={saving ? "btn btn-default is-loading" : "btn btn-default"}
       name="btn-submit"
       type="submit"
-      ref={submitButtonRef}
+      disabled={saving}
     >
       Save
     </button>

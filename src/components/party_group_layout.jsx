@@ -24,12 +24,15 @@ export function PartyGroupLayout({ state, loadGroup, socket }) {
   const groupID = +useParams().id;
   const group = getGroup(state, groupID);
 
+  // The description being edited, reset whenever the group's saved one changes.
   // Before the early returns, so every render calls the same hooks.
   const [description, setDescription] = React.useState("");
-  const groupDescription = group && group.description;
-  React.useEffect(() => {
-    if (groupDescription != null) setDescription(groupDescription);
-  }, [groupDescription]);
+  const savedDescription = group ? group.description : undefined;
+  const [shownDescription, setShownDescription] = React.useState(undefined);
+  if (group && savedDescription !== shownDescription) {
+    setShownDescription(savedDescription);
+    setDescription(savedDescription);
+  }
 
   // Signed-out visitors get no groups; the home page asks them to sign in.
   if (state.loaded && !state.currentUser) {

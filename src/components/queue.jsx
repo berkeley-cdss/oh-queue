@@ -72,10 +72,7 @@ export let Queue = ({ state }) => {
       </div>
     </div>
   );
-  let selectTab = (index) => {
-    state.queueTabIndex = index;
-    app.refresh();
-  };
+  let selectTab = (index) => app.selectQueueTab(index);
   let containerClass = classNames({
     container: true,
     "stub-jumbotron": !showJumbotron,

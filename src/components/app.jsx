@@ -161,6 +161,11 @@ export class App extends React.Component {
     }
   }
 
+  selectQueueTab(index) {
+    this.state.queueTabIndex = index;
+    this.refresh();
+  }
+
   toggleFilter() {
     this.state.filter.enabled = !this.state.filter.enabled;
     this.refresh();
