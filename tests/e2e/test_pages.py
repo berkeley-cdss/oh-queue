@@ -196,11 +196,15 @@ def test_welcome_message_references_without_semicolons(site, app):
     site.visit(COURSE + "/")  # sets up the course's settings
     with app.app_context():
         ConfigEntry.query.filter_by(course="cs61a", key="welcome").one().value = \
-            "Office hours&nbsp&nbsp;today &copy CS 61A &amp `&nbsp` &#160!"
+            "Office hours&nbsp&nbsp;today &copy CS 61A &amp `&nbsp` &#160!\n\n" \
+            "[Zoom](https://berkeley.zoom.us/j/1?pwd=x&region=us)"
         db.session.commit()
     site.visit(COURSE + "/")
     site.wait(lambda: "Office hours" in site.text())
     # textContent, since Selenium's text turns non-breaking spaces into spaces
     text = site.driver.execute_script("return document.querySelector('.alert-info p').textContent")
     assert text == "Office hours\u00a0\u00a0today \u00a9 CS 61A & &nbsp \u00a0!"
+    # but not in links' addresses
+    link = site.driver.find_element(By.LINK_TEXT, "Zoom")
+    assert link.get_attribute("href") == "https://berkeley.zoom.us/j/1?pwd=x&region=us"
     assert site.console_errors() == []
