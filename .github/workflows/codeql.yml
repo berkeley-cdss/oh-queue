@@ -33,11 +33,9 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: none
-          # node_modules is committed but isn't our code; migrations/prev_versions
-          # are migrations Alembic no longer loads
+          # migrations/prev_versions are migrations Alembic no longer loads
           config: |
             paths-ignore:
-              - node_modules
               - migrations/prev_versions
 
       - name: Perform CodeQL Analysis

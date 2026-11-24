@@ -36,7 +36,7 @@ def connect(client):
 
 
 def test_page_renders_with_the_course_name_and_path(client):
-    # In development, this also compiles the frontend with Babel.
+    # The frontend is added by oh_queue/vite.py (tests/test_vite.py).
     response = client.get(COURSE + "/")
     assert response.status_code == 200
     assert b'window.courseName = "CS 61A";' in response.data

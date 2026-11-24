@@ -1,0 +1,88 @@
+import React from "react";
+import { ConfigLinkedMarkdownInput } from "./config_linked_markdown_input";
+import { ConfigLinkedNumeric } from "./config_linked_numeric";
+import { ConfigLinkedToggle } from "./config_linked_toggle";
+
+export function AdminConfigManager({ state: { config } }) {
+  return (
+    <React.Fragment>
+      <div className="table-responsive">
+        <table className="table table-hover">
+          <thead>
+            <tr>
+              <th>Option</th>
+              <th className="col-md-3">Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Should the queue be open to new tickets?</td>
+              <td className="col-md-3">
+                <ConfigLinkedToggle
+                  config={config}
+                  configKey="is_queue_open"
+                  offText="Closed"
+                  onText="Open"
+                />
+              </td>
+            </tr>
+            <tr>
+              <td>
+                Should the queue show the estimated wait time and online staff
+                members?
+              </td>
+              <td className="col-md-1">
+                <ConfigLinkedToggle
+                  config={config}
+                  configKey="show_presence"
+                  offText="No"
+                  onText="Yes"
+                />
+              </td>
+            </tr>
+            <tr>
+              <td>
+                Should notifications be sent to staff when a ticket is added to
+                the queue?
+              </td>
+              <td className="col-md-1">
+                <ConfigLinkedToggle
+                  config={config}
+                  configKey="send_ticket_notifications"
+                  offText="No"
+                  onText="Yes"
+                />
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <p>
+                  What should the delay be before students can request to be
+                  taken off hold? (in minutes)
+                </p>
+              </td>
+              <td className="col-md-3">
+                <ConfigLinkedNumeric
+                  config={config}
+                  configKey="juggling_delay"
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ConfigLinkedMarkdownInput
+        title="Welcome Message"
+        placeholder="Welcome to the OH Queue!"
+        config={config}
+        configKey="welcome"
+      />
+      <ConfigLinkedMarkdownInput
+        title="Ticket Prompt"
+        placeholder="Have fun with your ticket!"
+        config={config}
+        configKey="ticket_prompt"
+      />
+    </React.Fragment>
+  );
+}

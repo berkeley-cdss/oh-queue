@@ -10,7 +10,7 @@ import alembic
 import alembic.command
 from alembic.config import Config
 from dotenv import load_dotenv
-from flask import render_template, url_for
+from flask import url_for
 from flask_migrate import Migrate
 from werkzeug.serving import run_simple
 
@@ -130,13 +130,6 @@ def create_tables():
     db.create_all()
     print("Stamping DB revision...")
     alembic.command.stamp(alembic_cfg, "head")
-
-
-@app.cli.command("build")
-@not_in_production
-def build():
-    with app.test_request_context():
-        render_template("index.html", course_name="test", base_path="/offerings/0")
 
 
 @app.cli.command("run_server")

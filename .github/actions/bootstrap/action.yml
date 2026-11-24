@@ -1,12 +1,8 @@
 name: "bootstrap"
-description: "Sets up Python and Node and installs the dependencies"
+description: "Sets up Python and installs the dependencies"
 inputs:
   dev-dep:
     description: "Whether to install development dependencies"
-    required: false
-    default: "true"
-  node:
-    description: "Whether to set up Node and install the frontend packages (the tests need them; lint and audit don't)"
     required: false
     default: "true"
   python-version:
@@ -21,18 +17,9 @@ runs:
       uses: actions/setup-python@v7
       with:
         python-version: ${{ inputs.python-version }}
-    # In development the app compiles the frontend with Babel when a page is
-    # rendered, so the tests need the Node packages.
-    - name: Set up Node
-      if: ${{ inputs.node == 'true' }}
-      uses: actions/setup-node@v7
-      with:
-        node-version: "24"
-        cache: yarn
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         if [ "${{ inputs.dev-dep }}" = "true" ]; then pip install -r requirements-dev.txt; fi
-        if [ "${{ inputs.node }}" = "true" ]; then yarn install --frozen-lockfile; fi
       shell: bash

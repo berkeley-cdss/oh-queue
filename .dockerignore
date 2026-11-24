@@ -5,8 +5,7 @@
 
 # Dependencies and build output (rebuilt inside the image)
 node_modules/
-oh_queue/static/public/
-oh_queue/static/.webassets-cache/
+oh_queue/static/dist/
 
 # Local Python environments and caches
 venv/
@@ -25,13 +24,13 @@ __pycache__/
 
 # Tests and dev-only files
 tests/
+e2e-screenshots/
 pytest.ini
 .coverage
 coverage.xml
 requirements-dev.txt
 codecov.yml
 .flake8
-.flowconfig
 mise.toml
 docs/
 README.md

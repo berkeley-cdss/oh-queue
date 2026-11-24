@@ -8,3 +8,7 @@ venv/
 coverage.xml
 pytest-coverage.txt
 .pytest_cache/
+node_modules/
+# yarn build
+oh_queue/static/dist/
+e2e-screenshots/
