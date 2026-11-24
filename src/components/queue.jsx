@@ -23,7 +23,7 @@ import {
 
 export let Queue = ({ state }) => {
   if (!state.currentUser && state.config.party_enabled) {
-    return <Navigate to="/old" replace />;
+    return <Navigate to="/" replace />;
   }
   let staff = isStaff(state);
   let myTicket = getMyTicket(state);

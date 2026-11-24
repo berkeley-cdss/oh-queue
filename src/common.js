@@ -9,26 +9,48 @@ export function requestNotificationPermission() {
   }
 }
 
+// Shows a notification, first asking for permission if the person hasn't been
+// asked yet, as Push.js did. A tag replaces any earlier notification with the
+// same tag, and lets cancelNotification close it.
 export function notifyUser(title, body, tag) {
-  if (!("Notification" in window) || Notification.permission !== "granted") {
+  if (!("Notification" in window) || Notification.permission === "denied") {
     return;
   }
+  if (Notification.permission === "default") {
+    Notification.requestPermission()
+      .then((permission) => {
+        if (permission === "granted") {
+          showNotification(title, body, tag);
+        }
+      })
+      .catch(() => {});
+    return;
+  }
+  showNotification(title, body, tag);
+}
+
+function showNotification(title, body, tag) {
+  const options = {
+    body,
+    icon: window.location.origin + "/static/img/logo-tiny.png",
+  };
+  if (tag != null) {
+    options.tag = tag;
+  }
   try {
-    const notification = new Notification(title, {
-      body,
-      icon: window.location.origin + "/static/img/logo-tiny.png",
-      tag,
-    });
+    const notification = new Notification(title, options);
     notification.onclick = () => {
       window.focus();
       notification.close();
     };
-    notification.onclose = () => {
-      if (notifications.get(tag) === notification) {
-        notifications.delete(tag);
-      }
-    };
-    notifications.set(tag, notification);
+    if (tag != null) {
+      notification.onclose = () => {
+        if (notifications.get(tag) === notification) {
+          notifications.delete(tag);
+        }
+      };
+      notifications.set(tag, notification);
+    }
   } catch {
     // Some browsers, such as Chrome on Android, only show notifications from a service worker.
   }

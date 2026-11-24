@@ -143,6 +143,12 @@ def test_admin_saves_settings(site, app):
     assert site.console_errors() == []
 
 
+def ticket_description(app, ticket_id):
+    """From a new session each time, so it isn't a copy the session already loaded."""
+    with app.app_context():
+        return db.session.get(Ticket, ticket_id).description
+
+
 def test_ticket_description_is_saved(site, app):
     with app.app_context():
         student = User(email=STUDENT[0], name=STUDENT[1], course="cs61a")
@@ -161,6 +167,24 @@ def test_ticket_description_is_saved(site, app):
     box.clear()
     box.send_keys("New description")
     site.button("Save Description").click()
+    site.wait(lambda: ticket_description(app, ticket_id) == "New description")
+    assert site.console_errors() == []
+
+
+def test_error_page_home_button(site):
+    site.log_in(*STAFF)
+    site.visit(COURSE + "/no_such_page")
+    site.button("Home").click()
+    site.wait(lambda: "Waiting (0)" in site.text())
+    assert site.driver.current_url.rstrip("/").endswith(COURSE)
+
+
+def test_signed_out_queue_goes_to_the_party_page(site, app):
+    site.visit(COURSE + "/")  # sets up the course's settings
     with app.app_context():
-        site.wait(lambda: Ticket.query.get(ticket_id).description == "New description")
+        ConfigEntry.query.filter_by(course="cs61a", key="party_enabled").one().value = "true"
+        db.session.commit()
+    site.visit(COURSE + "/queue")
+    site.wait(lambda: site.driver.current_url.rstrip("/").endswith(COURSE))
+    assert "Page Not Found" not in site.text()
     assert site.console_errors() == []

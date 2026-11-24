@@ -14,7 +14,7 @@ export function ErrorView({ state, message }) {
             <div className="alert alert-danger">
               <p>{text}</p>
             </div>
-            <Link className="btn btn-primary" to="/old">
+            <Link className="btn btn-primary" to="/">
               Home
             </Link>
           </div>

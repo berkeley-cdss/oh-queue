@@ -238,7 +238,9 @@ export function setTicket(state: State, ticket: Ticket): void {
         const location = ticketLocation(state, ticket);
         notifyUser(
           "Your name is being called",
-          ticket.helper?.name + " is looking for you in " + location.name,
+          (ticket.helper?.name ?? "Staff") +
+            " is looking for you in " +
+            location.name,
           ticket.id + ".assign",
         );
       } else if (
