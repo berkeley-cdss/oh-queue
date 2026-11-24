@@ -25,6 +25,7 @@ __pycache__/
 # Tests and dev-only files
 tests/
 e2e-screenshots/
+axe/
 pytest.ini
 .coverage
 coverage.xml

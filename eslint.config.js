@@ -18,7 +18,8 @@ const react = {
 };
 
 export default tseslint.config(
-  { ignores: ["oh_queue", "venv", "node_modules"] },
+  // tests/ is Python, and axe-core vendored for the a11y audit
+  { ignores: ["oh_queue", "venv", "node_modules", "tests"] },
   {
     files: ["**/*.{js,jsx}"],
     extends: [js.configs.recommended, prettier],

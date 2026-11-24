@@ -12,3 +12,4 @@ node_modules/
 # yarn build
 oh_queue/static/dist/
 e2e-screenshots/
+axe/
