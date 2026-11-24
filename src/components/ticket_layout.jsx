@@ -27,11 +27,13 @@ export function TicketLayout({ loadTicket, state, socket }) {
   let id = +useParams().id;
   let ticket = getTicket(state, id);
 
+  // Load the ticket if it isn't known, also when a link goes from one ticket to another.
+  const missing = ticket == null;
   React.useEffect(() => {
-    if (ticket == null) {
+    if (missing) {
       loadTicket(id);
     }
-  }, []);
+  }, [id, missing, loadTicket]);
 
   // The description being edited, reset whenever the ticket's saved one changes.
   const [description, setDescription] = React.useState("");

@@ -3,18 +3,19 @@ import { app } from "../app_instance";
 import { ConfigLinked } from "./config_linked_form";
 
 export function AdminMagicWordForm({ config }) {
-  const [key, setKey] = React.useState(0);
+  const [, setKey] = React.useState(0);
+  const magicWordData = config["queue_magic_word_data"];
 
   React.useEffect(() => {
-    if (!config["queue_magic_word_data"]) {
+    if (!magicWordData) {
       app.makeRequest("refresh_magic_word", (res) => {
         if (res.magic_word) {
           config["queue_magic_word_data"] = res.magic_word;
-          setKey(key + 1);
+          setKey((key) => key + 1);
         }
       });
     }
-  }, [config, config["queue_magic_word_data"]]);
+  }, [config, magicWordData]);
 
   return (
     <ConfigLinked
