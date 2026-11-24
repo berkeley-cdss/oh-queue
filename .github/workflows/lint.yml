@@ -16,8 +16,6 @@ jobs:
       - uses: actions/checkout@v7
       - name: Bootstrap
         uses: ./.github/actions/bootstrap
-        with:
-          node: "false"
       - name: Lint with flake8
         # fails CI on any problem, using the rules in .flake8
         run: |

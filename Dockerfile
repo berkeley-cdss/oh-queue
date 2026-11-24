@@ -4,25 +4,26 @@
 # and sections'.
 
 # ---------------------------------------------------------------------------
-# Node packages
+# Frontend
 #
-# Babel, which compiles the React components into one script in the build stage.
+# Builds the React app (src/) with Vite into oh_queue/static/dist, which the
+# runtime stage copies. Node isn't in the shipped image.
 # ---------------------------------------------------------------------------
-FROM node:24-slim AS node
+FROM node:24-slim AS frontend
 
 WORKDIR /build
+# Copied on their own so the packages are only reinstalled when they change.
 COPY package.json yarn.lock ./
-# Babel is in dependencies; devDependencies only has Flow, which the build doesn't use.
-RUN yarn install --frozen-lockfile --production
+RUN yarn install --frozen-lockfile
+COPY tsconfig.json vite.config.ts ./
+COPY src ./src
+RUN yarn typecheck && yarn build
 
 # ---------------------------------------------------------------------------
 # Build stage
 #
 # Installs the Python dependencies into a venv that is copied into the runtime
-# stage, so pip and its build cache stay out of the shipped image, then builds
-# the frontend: in production the app serves oh_queue/static/public/common.js
-# and style.css as they are (oh_queue/assets.py), so `flask build` makes them
-# here, with Node, which the runtime image doesn't need.
+# stage, so pip and its build cache stay out of the shipped image.
 # ---------------------------------------------------------------------------
 FROM python:3.14-slim AS builder
 
@@ -35,14 +36,6 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Copied on its own so the dependency layer is only rebuilt when the pins change.
 COPY requirements.txt ./
 RUN pip install -r requirements.txt
-
-COPY --from=node /usr/local/bin/node /usr/local/bin/node
-WORKDIR /build
-COPY --from=node /build/node_modules ./node_modules
-COPY . .
-# `flask build` refuses to run in production, and in development needs no
-# settings: it renders the queue page once, which compiles the bundles.
-RUN ENV=dev FLASK_APP=manage.py PYTHONPATH=. flask build
 
 # ---------------------------------------------------------------------------
 # Runtime stage
@@ -61,9 +54,8 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PORT=8080
 
 WORKDIR /app
-# Owned by the app user: webassets writes its cache in oh_queue/static.
-COPY --chown=app:app . .
-COPY --from=builder --chown=app:app /build/oh_queue/static/public ./oh_queue/static/public
+COPY . .
+COPY --from=frontend /build/oh_queue/static/dist ./oh_queue/static/dist
 
 USER app
 

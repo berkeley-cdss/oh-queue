@@ -1,5 +1,5 @@
-# Keeps the SHA-pinned actions in .github/workflows and the pinned Python
-# packages in requirements.txt and requirements-dev.txt up to date
+# Keeps the SHA-pinned actions in .github/workflows, the pinned Python packages
+# in requirements.txt and requirements-dev.txt, and the npm packages up to date
 version: 2
 updates:
   - package-ecosystem: "github-actions"
@@ -17,5 +17,10 @@ updates:
     # only delays these weekly version bumps, not Dependabot security updates
     cooldown:
       default-days: 7
-# Not npm yet: the frontend still builds with Babel 6, and these updates would
-# propose major versions it can't use. Dependabot alerts still cover yarn.lock.
+  # the frontend's packages, in package.json and yarn.lock
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7

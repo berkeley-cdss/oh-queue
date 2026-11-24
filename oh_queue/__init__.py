@@ -14,7 +14,7 @@ from flask import Flask
 from flask_compress import Compress
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from oh_queue import assets
+from oh_queue.vite import vite_tags
 from oh_queue.jobs import job
 from oh_queue.models import (
     Group,
@@ -37,9 +37,7 @@ app.url_map.strict_slashes = False
 # Behind Cloud Run's proxy, so external URLs (like the Canvas login callback) are https.
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1)
 
-app.jinja_env.globals.update(
-    {"TicketStatus": TicketStatus, "assets_env": assets.assets_env}
-)
+app.jinja_env.globals.update({"TicketStatus": TicketStatus, "vite_tags": vite_tags})
 
 db.init_app(app)
 

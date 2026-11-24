@@ -22,16 +22,16 @@ pip install -r requirements.txt -r requirements-dev.txt
 yarn install
 python manage.py initdb
 python manage.py seed_data
-python manage.py run_server
+yarn dev
 ```
 
-Then open http://localhost:3000/offerings/157/ (the course `seed_data` sets up) and sign in. Without `CANVAS_CLIENT_ID`, signing in goes to a development login, where you can be anyone, as a TA or a student in every course. The database is SQLite (`app.db`) unless `.env` sets `DATABASE_URL`. To sign in with bCourses instead, set `CANVAS_CLIENT_ID` and `CANVAS_CLIENT_SECRET` in `.env` to the UC Berkeley sandbox's developer key.
+`yarn dev` runs the Flask server on port 3000 and Vite's dev server on port 5173, which serves the React app in `src/` to the Flask page and updates it as you edit. (`python manage.py run_server` on its own serves the last `yarn build` instead.) Then open http://localhost:3000/offerings/157/ (the course `seed_data` sets up) and sign in. Without `CANVAS_CLIENT_ID`, signing in goes to a development login, where you can be anyone, as a TA or a student in every course. The database is SQLite (`app.db`) unless `.env` sets `DATABASE_URL`. To sign in with bCourses instead, set `CANVAS_CLIENT_ID` and `CANVAS_CLIENT_SECRET` in `.env` to the UC Berkeley sandbox's developer key.
 
 `seed_data` adds sample assignments, locations, students and tickets. `python manage.py resetdb` starts the database over.
 
 ## Deployment
 
-The app runs on Google Cloud Run, like seating and sections, from the `Dockerfile`: one non-root gunicorn worker with threads, with a health check at `/health`. The image builds the frontend with `flask build`, since in production the app serves `oh_queue/static/public/` as it is. It connects to Cloud SQL as the service account it runs as (`CLOUD_SQL_INSTANCE`, `DB_USER`, `DB_NAME`), so no database password is stored, and gets its other secrets from Secret Manager.
+The app runs on Google Cloud Run, like seating and sections, from the `Dockerfile`: one non-root gunicorn worker with threads, with a health check at `/health`. The image builds the frontend with Vite (`yarn build`, into `oh_queue/static/dist/`), and Flask adds the bundle to the course page (`oh_queue/vite.py`). It connects to Cloud SQL as the service account it runs as (`CLOUD_SQL_INSTANCE`, `DB_USER`, `DB_NAME`), so no database password is stored, and gets its other secrets from Secret Manager.
 
 Each pull request from a branch in this repository is deployed as a preview on the staging project (`.github/workflows/pr-staging.yml`), and the preview's URL is commented on the PR. Previews share the staging database and never run migrations; see [docs/migrations.md](docs/migrations.md).
 
@@ -44,6 +44,19 @@ pytest
 flake8
 ```
 
-The tests set their own settings and database, so they don't need a `.env`. Rendering the page compiles the frontend, which is why they need the Node packages. CI runs them on every pull request, with coverage (`.github/workflows/test.yml`), along with flake8, a dependency audit, and CodeQL.
+The tests set their own settings and database, so they don't need a `.env` or Node. For the frontend:
 
-If you ever receive a `FileNotFoundError: ... .webassets-cache/...` error, the static file cache is corrupted, so delete the `.webassets-cache` folder in `oh_queue/static`. Then rebuild and run.
+```
+yarn typecheck
+yarn lint
+yarn build
+```
+
+The end to end tests open every page of a course in headless Chrome, as staff and as a student, and request and resolve a ticket. They need Chrome and the build, so `pytest` leaves them out:
+
+```
+yarn build
+pytest tests/e2e
+```
+
+CI runs all of these on every pull request, the server tests with coverage (`.github/workflows/test.yml`, `e2e.yml`), along with flake8, a dependency audit, and CodeQL.
