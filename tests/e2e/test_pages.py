@@ -188,3 +188,19 @@ def test_signed_out_queue_goes_to_the_party_page(site, app):
     site.wait(lambda: site.driver.current_url.rstrip("/").endswith(COURSE))
     assert "Page Not Found" not in site.text()
     assert site.console_errors() == []
+
+
+def test_welcome_message_references_without_semicolons(site, app):
+    """Messages written for react-markdown 4, which decoded `&nbsp` like `&nbsp;`."""
+    site.log_in(*STAFF)
+    site.visit(COURSE + "/")  # sets up the course's settings
+    with app.app_context():
+        ConfigEntry.query.filter_by(course="cs61a", key="welcome").one().value = \
+            "Office hours&nbsp&nbsp;today &copy CS 61A &amp `&nbsp` &#160!"
+        db.session.commit()
+    site.visit(COURSE + "/")
+    site.wait(lambda: "Office hours" in site.text())
+    # textContent, since Selenium's text turns non-breaking spaces into spaces
+    text = site.driver.execute_script("return document.querySelector('.alert-info p').textContent")
+    assert text == "Office hours\u00a0\u00a0today \u00a9 CS 61A & &nbsp \u00a0!"
+    assert site.console_errors() == []
