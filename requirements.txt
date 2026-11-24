@@ -10,7 +10,7 @@ Flask-SQLAlchemy==3.1.1
 SQLAlchemy==2.0.52
 alembic==1.20.1
 gunicorn==27.0.1
-MarkupSafe==3.0.3
+MarkupSafe==3.0.4
 pg8000==1.31.5
 psycopg2-binary==2.9.13
 python-dotenv==1.2.4
