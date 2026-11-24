@@ -1,18 +1,12 @@
-import React from "react";
 import { app } from "../app_instance";
 import { SelectPicker } from "./select_picker";
 
 // Staff narrow the queue to an assignment, a question and a location.
 export function FilterControls({ state }) {
-  const [filter, setFilter] = React.useState({
-    assignment_id: "",
-    question: "",
-    location_id: "",
-  });
+  // From the app's state, which outlasts this page, so the fields show the filter in use.
+  const filter = state.filter;
   const update = (key) => (e) => {
-    const next = { ...filter, [key]: e.target.value };
-    setFilter(next);
-    app.setFilter({ ...next });
+    app.setFilter({ ...filter, [key]: e.target.value });
   };
 
   let { assignments, locations } = state;
@@ -33,7 +27,7 @@ export function FilterControls({ state }) {
           id="assignment"
           name="assignment"
           title="Filter by assignment"
-          value={filter.assignment_id}
+          value={filter.assignment_id ?? ""}
           onChange={update("assignment_id")}
         />
       </div>
@@ -45,7 +39,7 @@ export function FilterControls({ state }) {
           name="question"
           aria-label="Filter by question"
           placeholder="Question"
-          value={filter.question}
+          value={filter.question ?? ""}
           onChange={update("question")}
         />
       </div>
@@ -57,7 +51,7 @@ export function FilterControls({ state }) {
           id="location"
           name="location"
           title="Filter by location"
-          value={filter.location_id}
+          value={filter.location_id ?? ""}
           onChange={update("location_id")}
         />
       </div>

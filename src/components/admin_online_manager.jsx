@@ -10,6 +10,7 @@ export function AdminOnlineManager({ state }) {
           <ConfigLinkedToggle
             config={state.config}
             configKey="online_active"
+            label="Online queue"
             offText="No"
             onText="Yes"
           />
@@ -24,6 +25,7 @@ export function AdminOnlineManager({ state }) {
           <ConfigLinkedToggle
             config={state.config}
             configKey="students_set_online_link"
+            label="Who sets the video call link"
             offText="TAs"
             onText="Students"
           />
@@ -38,6 +40,7 @@ export function AdminOnlineManager({ state }) {
           <ConfigLinkedToggle
             config={state.config}
             configKey="students_set_online_doc"
+            label="Who sets the shared document link"
             offText="TAs"
             onText="Students"
           />

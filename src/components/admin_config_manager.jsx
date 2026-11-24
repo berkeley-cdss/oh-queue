@@ -21,6 +21,7 @@ export function AdminConfigManager({ state: { config } }) {
                 <ConfigLinkedToggle
                   config={config}
                   configKey="is_queue_open"
+                  label="Queue open to new tickets"
                   offText="Closed"
                   onText="Open"
                 />
@@ -35,6 +36,7 @@ export function AdminConfigManager({ state: { config } }) {
                 <ConfigLinkedToggle
                   config={config}
                   configKey="show_presence"
+                  label="Show wait time and online staff"
                   offText="No"
                   onText="Yes"
                 />
@@ -49,6 +51,7 @@ export function AdminConfigManager({ state: { config } }) {
                 <ConfigLinkedToggle
                   config={config}
                   configKey="send_ticket_notifications"
+                  label="Notify staff of new tickets"
                   offText="No"
                   onText="Yes"
                 />

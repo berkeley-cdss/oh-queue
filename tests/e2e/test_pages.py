@@ -139,7 +139,10 @@ def test_admin_saves_settings(site, app):
     switch = site.driver.find_element(By.CSS_SELECTOR, "input[role=switch]")
     switch.click()
     site.wait(lambda: config_value(app, "is_queue_open") == "false")
-    assert site.driver.find_element(By.CSS_SELECTOR, f"label[for='{switch.get_attribute('id')}']").text == "Closed"
+    label = site.driver.find_element(By.CSS_SELECTOR, f"label[for='{switch.get_attribute('id')}']").text
+    # the setting's name, for screen readers, then the state shown
+    assert label.startswith("Queue open to new tickets")
+    assert label.endswith("Closed")
     switch.click()
     site.wait(lambda: config_value(app, "is_queue_open") == "true")
     assert site.console_errors() == []

@@ -209,7 +209,11 @@ export function RequestForm(props) {
             />
           </Modal.Body>
           <Modal.Footer>
-            <button type="submit" className="btn btn-primary btn-lg">
+            <button
+              type="submit"
+              className="btn btn-primary btn-lg"
+              disabled={disabled}
+            >
               Request
             </button>
           </Modal.Footer>

@@ -22,6 +22,7 @@ export function AdminAssignmentsManager({ state }) {
         <AdminItemsBooleanField
           itemType="assignment"
           propType="visible"
+          label={`${item.name} visibility`}
           item={item}
           onText="Visible"
           offText="Hidden"

@@ -2,7 +2,8 @@ import Container from "react-bootstrap/Container";
 import Nav from "react-bootstrap/Nav";
 import BootstrapNavbar from "react-bootstrap/Navbar";
 import NavDropdown from "react-bootstrap/NavDropdown";
-import { Link, NavLink } from "react-router-dom";
+import React from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { isPartyRoot, loginPath } from "../common";
 import { getMyGroup, getMyTicket } from "../state";
 
@@ -16,6 +17,15 @@ export let Navbar = ({ state, mode }) => {
     myTicket = null;
   }
   const myGroup = getMyGroup(state);
+
+  // On narrow screens, close the menu once a link in it goes to another page.
+  const [expanded, setExpanded] = React.useState(false);
+  const location = useLocation();
+  const [prevLocation, setPrevLocation] = React.useState(location);
+  if (location !== prevLocation) {
+    setPrevLocation(location);
+    setExpanded(false);
+  }
 
   const words = mode.split("_");
 
@@ -36,6 +46,8 @@ export let Navbar = ({ state, mode }) => {
       bg="primary"
       data-bs-theme="dark"
       className="site-header"
+      expanded={expanded}
+      onToggle={setExpanded}
     >
       <Container fluid>
         {/* the page this is; its top-level heading */}

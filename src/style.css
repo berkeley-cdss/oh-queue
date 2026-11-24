@@ -58,12 +58,13 @@
   font-size: 2rem;
 }
 
-/* The assignment and question, or location and Request, side by side. */
-.form-left {
+/* The assignment and question, or location and Request, side by side. As specific as
+   Bootstrap's .input-group > .form-select and .form-control, and after them, so these win. */
+.input-group > .form-left {
   flex: 3 1 0;
 }
 
-.form-right {
+.input-group > .form-right {
   flex: 2 1 0;
 }
 

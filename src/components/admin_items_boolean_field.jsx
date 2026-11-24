@@ -5,6 +5,7 @@ export function AdminItemsBooleanField({
   itemType,
   propType,
   item,
+  label,
   onText = "Yes",
   offText = "No",
 }) {
@@ -16,6 +17,7 @@ export function AdminItemsBooleanField({
     <FancyToggle
       onText={onText}
       offText={offText}
+      label={label}
       checked={item[propType]}
       onChange={handleChange}
     />

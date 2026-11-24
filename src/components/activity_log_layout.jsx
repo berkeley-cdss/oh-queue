@@ -77,16 +77,23 @@ export function ActivityLogLayout({ state }) {
           {searchText ? (
             <Tabs selectedIndex={0} onSelect={() => null}>
               <Tab label={`Search Results (${foundUsers.length})`}>
-                <UserList users={foundUsers} />
+                {/* keyed, so each search starts on its first page */}
+                <UserList key={searchText} users={foundUsers} />
               </Tab>
             </Tabs>
           ) : (
             <Tabs selectedIndex={activeTab} onSelect={setActiveTab}>
               <Tab label="Staff">
-                <UserList users={userList.filter(({ isStaff }) => isStaff)} />
+                <UserList
+                  key="staff"
+                  users={userList.filter(({ isStaff }) => isStaff)}
+                />
               </Tab>
               <Tab label="Students">
-                <UserList users={userList.filter(({ isStaff }) => !isStaff)} />
+                <UserList
+                  key="students"
+                  users={userList.filter(({ isStaff }) => !isStaff)}
+                />
               </Tab>
             </Tabs>
           )}

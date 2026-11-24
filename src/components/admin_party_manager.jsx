@@ -26,6 +26,7 @@ export function AdminPartyManager({ state }) {
             <ConfigLinkedToggle
               config={state.config}
               configKey="party_enabled"
+              label="Students can create and join groups"
             />
           </td>
         </tr>
@@ -38,6 +39,7 @@ export function AdminPartyManager({ state }) {
             <ConfigLinkedToggle
               config={state.config}
               configKey="allow_private_party_tickets"
+              label="Individual tickets allowed in group mode"
             />
           </td>
         </tr>
