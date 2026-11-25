@@ -22,6 +22,7 @@ from oh_queue.models import (
     GroupAttendance,
     GroupAttendanceStatus,
     GroupStatus,
+    Heartbeat,
     db,
     TicketStatus,
     utcnow,
@@ -78,12 +79,13 @@ import oh_queue.views  # noqa: E402
 def clear_inactive_groups():
     active_groups = Group.query.filter_by(group_status=GroupStatus.active).all()
     for group in active_groups:
+        recent = {
+            user.id for user in Heartbeat.recent(group.course, utcnow() - timedelta(minutes=3))
+        }
         for attendance in group.attendees:
             if (
                 attendance.group_attendance_status == GroupAttendanceStatus.present
-                and attendance.user.heartbeat_time
-                and attendance.user.heartbeat_time
-                > utcnow() - timedelta(minutes=3)
+                and attendance.user_id in recent
             ):
                 break
         else:

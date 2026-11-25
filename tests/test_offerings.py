@@ -156,7 +156,7 @@ def connect(client, prefix):
     return {key: value for _, state in response.get_json()["updates"] for key, value in state.items()}
 
 
-def test_each_course_has_its_own_queue_users_and_roles(app, two_courses):
+def test_each_course_has_its_own_queue_and_roles(app, two_courses):
     student, ta = app.test_client(), app.test_client()
     canvas_sign_in(student, "student@example.edu", {"101": role(is_student=True), "202": role(is_student=True)},
                    canvas_user_id=7)
@@ -181,9 +181,10 @@ def test_each_course_has_its_own_queue_users_and_roles(app, two_courses):
     assert "permission" in response["messages"][0]["text"]
     with app.app_context():
         assert Ticket.query.one().status.name == "pending"
-        assert {(u.email, u.course, u.is_staff) for u in User.query} == {
-            ("student@example.edu", "cs61a", False), ("student@example.edu", "202", False),
-            ("ta@example.edu", "cs61a", True), ("ta@example.edu", "202", False)}
+        # One row per person, with their role in each course.
+        assert {(u.email, frozenset(u.staff_offerings), frozenset(u.student_offerings)) for u in User.query} == {
+            ("student@example.edu", frozenset(), frozenset({"cs61a", "202"})),
+            ("ta@example.edu", frozenset({"cs61a"}), frozenset({"202"}))}
 
 
 def test_link_offering_command(app):

@@ -30,10 +30,13 @@ def seed():
                                 hidden=True))
         hog = Assignment(name="Hog", course=course, visible=True)
         cory = Location(name="Cory 247", course=course, visible=True, online=False, link="")
-        staff = User(email=STAFF.email, name=STAFF.name, is_staff=True, course=course)
-        student = User(email=STUDENT.email, name=STUDENT.name, course=course)
-        helped = User(email="helped@example.edu", name="Helped Student", course=course)
-        grouped = User(email="grouped@example.edu", name="Grouped Student", course=course)
+        staff = User(email=STAFF.email, name=STAFF.name)
+        student = User(email=STUDENT.email, name=STUDENT.name)
+        helped = User(email="helped@example.edu", name="Helped Student")
+        grouped = User(email="grouped@example.edu", name="Grouped Student")
+        staff.set_role(course, is_staff=True)
+        for person in (student, helped, grouped):
+            person.set_role(course, is_staff=False)
         db.session.add_all([hog, cory, staff, student, helped, grouped])
         db.session.flush()
 

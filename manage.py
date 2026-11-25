@@ -92,11 +92,12 @@ def seed_data():
             random.choice([last_name, last_name[0]]),
             random.choice(["berkeley.edu", "gmail.com"]),
         )
-        student = User.query.filter_by(email=email, course=course).one_or_none()
+        student = User.query.filter_by(email=email).one_or_none()
         if not student:
-            student = User(name=real_name, email=email, course=course)
+            student = User(name=real_name, email=email)
             db.session.add(student)
-            db.session.commit()
+        student.set_role(course, is_staff=False)
+        db.session.commit()
 
         delta = datetime.timedelta(minutes=random.randrange(0, 30))
         ticket = Ticket(
