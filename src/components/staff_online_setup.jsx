@@ -33,8 +33,7 @@ export function StaffOnlineSetup({ state }) {
           <br />
           <p>
             Consider using <a href="https://meet.google.com">Google Meet</a> to
-            host video calls, and <a href="https://code.cs61a.org">61A Code</a>{" "}
-            for a collaborative code editor.
+            host video calls.
           </p>
           <form id="staff-online-setup-form" onSubmit={submit}>
             <div className="mb-3">
@@ -59,7 +58,7 @@ export function StaffOnlineSetup({ state }) {
                 className="form-control"
                 id="staff-doc-link"
                 name="staff-doc-link"
-                placeholder="code.cs61a.org/xyz"
+                placeholder="docs.google.com/xyz"
                 defaultValue={state.currentUser.doc_url}
               />
             </div>
