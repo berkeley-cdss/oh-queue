@@ -60,31 +60,29 @@ def _people(bind):
             person["call_url"] = row.call_url
         if row.doc_url:
             person["doc_url"] = row.doc_url
-        if row.course is None:
-            continue  # no course to give them a role in
         if row.is_staff:
             person["staff"].add(row.course)
         else:
             person["student"].add(row.course)
 
-    if sa.inspect(bind).has_table("account"):
-        account = sa.Table("account", meta, autoload_with=bind)
-        conflicts = []
-        for row in bind.execute(sa.select(account).order_by(account.c.id)):
-            person = people.setdefault(row.email.lower(), {
-                "email": row.email, "name": row.name, "staff": set(), "student": set(),
-                "call_url": None, "doc_url": None, "old_ids": [],
-            })
-            if person.get("canvas_id") not in (None, row.canvas_id):
-                # Two bCourses accounts with one email: keeping either would lock the other out.
-                conflicts.append(f"{row.email} (Canvas users {person['canvas_id']} and {row.canvas_id})")
-            # Signed-in people get their Canvas name and details.
-            person.update(name=row.name, canvas_id=row.canvas_id,
-                          is_global_admin=bool(row.is_global_admin),
-                          canvas_courses=row.canvas_courses or {})
-        if conflicts:
-            raise RuntimeError("Some emails belong to more than one bCourses account, so they can't be merged; "
-                               "fix them first: " + ", ".join(conflicts))
+    # d3a7e5f1c0b2 made this table, so every database here has it.
+    account = sa.Table("account", meta, autoload_with=bind)
+    conflicts = []
+    for row in bind.execute(sa.select(account).order_by(account.c.id)):
+        person = people.setdefault(row.email.lower(), {
+            "email": row.email, "name": row.name, "staff": set(), "student": set(),
+            "call_url": None, "doc_url": None, "old_ids": [],
+        })
+        if person.get("canvas_id") not in (None, row.canvas_id):
+            # Two bCourses accounts with one email: keeping either would lock the other out.
+            conflicts.append(f"{row.email} (Canvas users {person['canvas_id']} and {row.canvas_id})")
+        # Signed-in people get their Canvas name and details.
+        person.update(name=row.name, canvas_id=row.canvas_id,
+                      is_global_admin=bool(row.is_global_admin),
+                      canvas_courses=row.canvas_courses or {})
+    if conflicts:
+        raise RuntimeError("Some emails belong to more than one bCourses account, so they can't be merged; "
+                           "fix them first: " + ", ".join(conflicts))
     for person in people.values():
         # Staff in a course where an older row had them as a student.
         person["student"] -= person["staff"]
@@ -92,8 +90,17 @@ def _people(bind):
 
 
 def _check_references(bind):
-    """Refuse to start if a reference names a user row that doesn't exist: it has
-    no person to point at, and would be lost or stop the migration partway."""
+    """Refuse to start if a table this migration doesn't know references users,
+    or a reference names a user row that doesn't exist: it has no person to
+    point at, and would be lost or stop the migration partway."""
+    inspector = sa.inspect(bind)
+    unexpected = [
+        table for table in inspector.get_table_names()
+        if table not in {t for t, _ in USER_REFERENCES} | {"user"}
+        and any(fk["referred_table"] == "user" for fk in inspector.get_foreign_keys(table))
+    ]
+    if unexpected:
+        raise RuntimeError(f"Tables {unexpected} reference user; extend this migration to re-point them.")
     dangling = []
     for table, column in USER_REFERENCES:
         ids = [row[0] for row in bind.execute(sa.text(
@@ -168,14 +175,6 @@ def upgrade():
     if mappings:
         op.bulk_insert(id_map, mappings)
 
-    inspector = sa.inspect(bind)
-    unexpected = [
-        table for table in inspector.get_table_names()
-        if table not in {t for t, _ in USER_REFERENCES} | {"user"}
-        and any(fk["referred_table"] == "user" for fk in inspector.get_foreign_keys(table))
-    ]
-    if unexpected:
-        raise RuntimeError(f"Tables {unexpected} reference user; extend this migration to re-point them.")
     for table in dict.fromkeys(t for t, _ in USER_REFERENCES):
         _drop_foreign_keys_to(table, "user")
     for table, column in USER_REFERENCES:

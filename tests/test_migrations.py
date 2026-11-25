@@ -355,3 +355,75 @@ def test_refuses_two_bcourses_accounts_with_one_email(app_context):
     finally:
         drop_old_user_tables()
         sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def test_refuses_users_without_an_email(app_context):
+    try:
+        before_one_user_with_references()
+        sql("INSERT INTO user (id, email, name, is_staff, course) VALUES (1, '', 'No Email', 0, 'cs61a')")
+        stamp(revision="42b35af5ed41")
+        with pytest.raises(RuntimeError, match="no email"):
+            upgrade_raising(app_context)
+        assert {"user", "account"} <= tables() and "users" not in tables()
+    finally:
+        drop_old_user_tables()
+        sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def test_refuses_other_tables_referencing_users(app_context):
+    try:
+        before_one_user_with_references()
+        sql("CREATE TABLE survey (id INTEGER PRIMARY KEY, user_id INTEGER REFERENCES user (id))")
+        stamp(revision="42b35af5ed41")
+        with pytest.raises(RuntimeError, match=r"\['survey'\] reference user"):
+            upgrade_raising(app_context)
+        assert {"user", "account"} <= tables() and not {"users", "user_id_map"} & tables()
+    finally:
+        drop_old_user_tables()
+        sql("DROP TABLE IF EXISTS survey")
+        sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def test_merges_tables_without_foreign_keys(app_context):
+    """A copied database may have lost its foreign keys; the references are
+    re-pointed all the same, and get them back."""
+    try:
+        before_one_user_with_references()
+        sql("DROP TABLE chat_message")
+        sql("CREATE TABLE chat_message (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, course VARCHAR(255) NOT NULL)")
+        # A blank name falls back to the email.
+        sql("INSERT INTO user (id, email, name, is_staff, course) VALUES (5, 'a@example.edu', '', 0, 'cs61a')")
+        sql("INSERT INTO chat_message (id, user_id, course) VALUES (1, 5, 'cs61a')")
+        stamp(revision="42b35af5ed41")
+        upgrade(revision="5b9e2c7d1f30")
+        [(new_id, name)] = sql("SELECT id, name FROM users")
+        assert name == "a@example.edu"
+        assert sql("SELECT user_id FROM chat_message") == [(new_id,)]
+        assert [fk["referred_table"] for fk in sa.inspect(db.engine).get_foreign_keys("chat_message")] == ["users"]
+    finally:
+        drop_old_user_tables()
+        sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def test_merges_a_database_without_users(app_context):
+    try:
+        before_one_user_with_references()
+        stamp(revision="42b35af5ed41")
+        upgrade(revision="5b9e2c7d1f30")
+        assert sql("SELECT * FROM users") == []
+        assert not {"user", "account"} & tables()
+    finally:
+        drop_old_user_tables()
+        sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def test_merging_users_cant_be_undone(app_context):
+    from alembic import command
+
+    try:
+        stamp(revision="5b9e2c7d1f30")
+        with pytest.raises(NotImplementedError, match="can't be undone"):
+            command.downgrade(app_context.extensions["migrate"].migrate.get_config(), "42b35af5ed41")
+        assert "users" in tables()
+    finally:
+        sql("DROP TABLE IF EXISTS alembic_version")
