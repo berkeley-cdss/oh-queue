@@ -8,8 +8,9 @@ import { isPartyRoot, loginPath } from "../common";
 import { getMyGroup, getMyTicket } from "../state";
 
 // The site header, as on the pages outside a course (oh_queue/templates/pages/base.html)
-// and in sections and seating: the course and page as its heading, and links to the
-// course's pages.
+// and in sections and seating: the course as its heading, with the page's name for
+// screen readers; the course's pages on the left; and the way out (Offerings, and the
+// account menu with Log Out) on the right.
 export let Navbar = ({ state, mode }) => {
   var { currentUser } = state;
   var myTicket = getMyTicket(state);
@@ -38,7 +39,7 @@ export let Navbar = ({ state, mode }) => {
     .join(" ");
 
   const partyAsRoot = isPartyRoot(state);
-  const defaultMode = partyAsRoot ? "party" : "queue";
+  const isStaff = !!currentUser && currentUser.isStaff;
 
   return (
     <BootstrapNavbar
@@ -52,16 +53,14 @@ export let Navbar = ({ state, mode }) => {
       <Container fluid>
         {/* the page this is; its top-level heading */}
         <h1 className="site-title">
-          <BootstrapNavbar.Brand
-            as={Link}
-            to={"/" + (mode === defaultMode ? "" : mode)}
-          >
-            {window.courseName} | {title}
+          <BootstrapNavbar.Brand as={Link} to="/">
+            {window.courseName}
+            <span className="visually-hidden"> | {title}</span>
           </BootstrapNavbar.Brand>
         </h1>
         <BootstrapNavbar.Toggle aria-controls="site-nav" />
         <BootstrapNavbar.Collapse id="site-nav">
-          <Nav className="ms-auto">
+          <Nav className="me-auto">
             {!!myGroup && (
               <Nav.Link as={NavLink} to={`/groups/${myGroup.id}/`}>
                 My Group
@@ -82,39 +81,45 @@ export let Navbar = ({ state, mode }) => {
                 Queue
               </Nav.Link>
             )}
-            {currentUser && currentUser.isStaff && (
+            {currentUser && (
+              <Nav.Link as={NavLink} to={`/user/${currentUser.id}`} end>
+                Ticket History
+              </Nav.Link>
+            )}
+            {isStaff && (
               <Nav.Link as={NavLink} to="/activity_log">
                 Activity Log
               </Nav.Link>
             )}
-            {currentUser && currentUser.isStaff && (
+            {isStaff && (
               <Nav.Link as={NavLink} to="/admin">
                 Admin
               </Nav.Link>
             )}
+            {isStaff && state.config.online_active && (
+              <Nav.Link as={NavLink} to="/online_setup">
+                Online Setup
+              </Nav.Link>
+            )}
+          </Nav>
+          <Nav>
             {currentUser ? (
-              <NavDropdown
-                title={currentUser.name}
-                id="account-menu"
-                align="end"
-                data-bs-theme="light"
-              >
-                {state.config.online_active && currentUser.isStaff && (
-                  <NavDropdown.Item as={Link} to="/online_setup">
-                    Online Setup
-                  </NavDropdown.Item>
-                )}
-                <NavDropdown.Item as={Link} to={`/user/${currentUser.id}`}>
-                  Ticket History
-                </NavDropdown.Item>
-                <NavDropdown.Item href="/offerings">Offerings</NavDropdown.Item>
-                {/* A POST, so other sites can't sign people out. */}
-                <form method="post" action="/logout/">
-                  <button type="submit" className="dropdown-item">
-                    Log Out
-                  </button>
-                </form>
-              </NavDropdown>
+              <>
+                <Nav.Link href="/offerings">Offerings</Nav.Link>
+                <NavDropdown
+                  title={currentUser.name}
+                  id="account-menu"
+                  align="end"
+                  data-bs-theme="light"
+                >
+                  {/* A POST, so other sites can't sign people out. */}
+                  <form method="post" action="/logout/">
+                    <button type="submit" className="dropdown-item">
+                      Log Out
+                    </button>
+                  </form>
+                </NavDropdown>
+              </>
             ) : (
               <Nav.Link href={loginPath()}>Login</Nav.Link>
             )}
