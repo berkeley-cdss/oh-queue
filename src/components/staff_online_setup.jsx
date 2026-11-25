@@ -31,6 +31,11 @@ export function StaffOnlineSetup({ state }) {
       <main>
         <div className="container">
           <br />
+          <p id="online-setup-scope">
+            These links are yours in <strong>every course</strong> you staff on
+            the Office Hours Queue, not just {window.courseName}: changing them
+            here changes them in all of your courses.
+          </p>
           <p>
             Consider using <a href="https://meet.google.com">Google Meet</a> to
             host video calls.
@@ -38,12 +43,13 @@ export function StaffOnlineSetup({ state }) {
           <form id="staff-online-setup-form" onSubmit={submit}>
             <div className="mb-3">
               <label className="form-label" htmlFor="staff-call-link">
-                Your Default Video Call Link
+                Your Default Video Call Link (all courses)
               </label>
               <input
                 type="text"
                 className="form-control"
                 id="staff-call-link"
+                aria-describedby="online-setup-scope"
                 name="staff-call-link"
                 placeholder="meet.google.com/xyz"
                 defaultValue={state.currentUser.call_url}
@@ -51,12 +57,13 @@ export function StaffOnlineSetup({ state }) {
             </div>
             <div className="mb-3">
               <label className="form-label" htmlFor="staff-doc-link">
-                Your Default Shared Document Link
+                Your Default Shared Document Link (all courses)
               </label>
               <input
                 type="text"
                 className="form-control"
                 id="staff-doc-link"
+                aria-describedby="online-setup-scope"
                 name="staff-doc-link"
                 placeholder="docs.google.com/xyz"
                 defaultValue={state.currentUser.doc_url}
