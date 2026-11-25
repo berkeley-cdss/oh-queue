@@ -7,6 +7,7 @@ Indexes the migrations drop are renamed first, as copying the production
 database from MySQL to Postgres renamed them (idx_<number>_<name>).
 """
 
+import pytest
 import sqlalchemy as sa
 from flask_migrate import downgrade, stamp, upgrade
 
@@ -241,18 +242,22 @@ def test_removes_llm_tips(app_context):
         sql("DROP TABLE IF EXISTS alembic_version")
 
 
+def before_one_user_with_references():
+    """before_one_user, with the tables referencing users pointing at the old table."""
+    before_one_user()
+    for table in ("heartbeat", "ticket_event", "group_attendance", "chat_message", "ticket", "users"):
+        sql(f"DROP TABLE {table}")
+    sql("""CREATE TABLE ticket (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES user (id),
+           helper_id INTEGER REFERENCES user (id), course VARCHAR(255) NOT NULL)""")
+    sql("CREATE INDEX ix_ticket_user_id ON ticket (user_id)")
+    for table in ("ticket_event", "group_attendance", "chat_message"):
+        sql(f"""CREATE TABLE {table} (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES user (id),
+                course VARCHAR(255) NOT NULL)""")
+
+
 def test_merges_users_into_one_per_person(app_context):
     try:
-        before_one_user()
-        # The tables referencing users, pointing at the old table.
-        for table in ("heartbeat", "ticket_event", "group_attendance", "chat_message", "ticket", "users"):
-            sql(f"DROP TABLE {table}")
-        sql("""CREATE TABLE ticket (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES user (id),
-               helper_id INTEGER REFERENCES user (id), course VARCHAR(255) NOT NULL)""")
-        sql("CREATE INDEX ix_ticket_user_id ON ticket (user_id)")
-        for table in ("ticket_event", "group_attendance", "chat_message"):
-            sql(f"""CREATE TABLE {table} (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES user (id),
-                    course VARCHAR(255) NOT NULL)""")
+        before_one_user_with_references()
         sql("""INSERT INTO user (id, email, name, is_staff, course, call_url, doc_url) VALUES
                (10, 'ada@example.edu', 'Ada', 0, 'cs61a', 'meet.google.com/old', NULL),
                (11, 'ADA@example.edu', 'Ada L.', 1, 'data8', 'meet.google.com/new', NULL),
@@ -309,5 +314,44 @@ def test_merges_users_into_one_per_person(app_context):
         assert Heartbeat.query.one().user.email == "ada@example.edu"
     finally:
         db.session.rollback()
+        drop_old_user_tables()
+        sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def upgrade_raising(app):
+    """Upgrade to 5b9e2c7d1f30 through Alembic, which raises the migration's own
+    error, where Flask-Migrate's upgrade logs it and exits."""
+    from alembic import command
+
+    command.upgrade(app.extensions["migrate"].migrate.get_config(), "5b9e2c7d1f30")
+
+
+def test_refuses_references_to_missing_users(app_context):
+    try:
+        before_one_user_with_references()
+        sql("INSERT INTO user (id, email, name, is_staff, course) VALUES (1, 'a@example.edu', 'A', 0, 'cs61a')")
+        sql("INSERT INTO ticket (id, user_id, helper_id, course) VALUES (1, 1, 7, 'cs61a'), (2, 1, 8, 'cs61a')")
+        sql("INSERT INTO chat_message (id, user_id, course) VALUES (1, 9, 'cs61a')")
+        stamp(revision="42b35af5ed41")
+        with pytest.raises(RuntimeError, match=r"ticket.helper_id \(user ids 7, 8\); chat_message.user_id \(user ids 9\)"):
+            upgrade_raising(app_context)
+        # Nothing changed.
+        assert {"user", "account"} <= tables() and "users" not in tables()
+        assert sql("SELECT helper_id FROM ticket ORDER BY id") == [(7,), (8,)]
+    finally:
+        drop_old_user_tables()
+        sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def test_refuses_two_bcourses_accounts_with_one_email(app_context):
+    try:
+        before_one_user_with_references()
+        sql("""INSERT INTO account (id, canvas_id, email, name, is_global_admin, canvas_courses) VALUES
+               (1, '555', 'ada@example.edu', 'Ada', 0, '{}'), (2, '777', 'ADA@example.edu', 'Ada', 0, '{}')""")
+        stamp(revision="42b35af5ed41")
+        with pytest.raises(RuntimeError, match=r"ADA@example.edu \(Canvas users 555 and 777\)"):
+            upgrade_raising(app_context)
+        assert {"user", "account"} <= tables() and "users" not in tables()
+    finally:
         drop_old_user_tables()
         sql("DROP TABLE IF EXISTS alembic_version")

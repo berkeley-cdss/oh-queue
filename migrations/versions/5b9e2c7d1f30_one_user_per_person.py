@@ -69,19 +69,42 @@ def _people(bind):
 
     if sa.inspect(bind).has_table("account"):
         account = sa.Table("account", meta, autoload_with=bind)
-        for row in bind.execute(sa.select(account)):
+        conflicts = []
+        for row in bind.execute(sa.select(account).order_by(account.c.id)):
             person = people.setdefault(row.email.lower(), {
                 "email": row.email, "name": row.name, "staff": set(), "student": set(),
                 "call_url": None, "doc_url": None, "old_ids": [],
             })
+            if person.get("canvas_id") not in (None, row.canvas_id):
+                # Two bCourses accounts with one email: keeping either would lock the other out.
+                conflicts.append(f"{row.email} (Canvas users {person['canvas_id']} and {row.canvas_id})")
             # Signed-in people get their Canvas name and details.
             person.update(name=row.name, canvas_id=row.canvas_id,
                           is_global_admin=bool(row.is_global_admin),
                           canvas_courses=row.canvas_courses or {})
+        if conflicts:
+            raise RuntimeError("Some emails belong to more than one bCourses account, so they can't be merged; "
+                               "fix them first: " + ", ".join(conflicts))
     for person in people.values():
         # Staff in a course where an older row had them as a student.
         person["student"] -= person["staff"]
     return people
+
+
+def _check_references(bind):
+    """Refuse to start if a reference names a user row that doesn't exist: it has
+    no person to point at, and would be lost or stop the migration partway."""
+    dangling = []
+    for table, column in USER_REFERENCES:
+        ids = [row[0] for row in bind.execute(sa.text(
+            f'SELECT DISTINCT {column} FROM "{table}" '
+            f'WHERE {column} IS NOT NULL AND {column} NOT IN (SELECT id FROM "user") ORDER BY {column}'
+        ))]
+        if ids:
+            shown = ", ".join(str(i) for i in ids[:10]) + (", ..." if len(ids) > 10 else "")
+            dangling.append(f"{table}.{column} (user ids {shown})")
+    if dangling:
+        raise RuntimeError("Some rows refer to users that don't exist; fix them first: " + "; ".join(dangling))
 
 
 def _drop_foreign_keys_to(table, referred):
@@ -97,6 +120,9 @@ def _drop_foreign_keys_to(table, referred):
 
 def upgrade():
     bind = op.get_bind()
+    # Everything that can refuse the data, before anything changes.
+    people = _people(bind)
+    _check_references(bind)
 
     users = op.create_table(
         "users",
@@ -116,7 +142,6 @@ def upgrade():
     op.create_index("ix_users_email", "users", ["email"], unique=True)
     op.create_index("ix_users_canvas_id", "users", ["canvas_id"], unique=True)
 
-    people = _people(bind)
     for person in people.values():
         person["id"] = bind.execute(
             sa.insert(users).returning(users.c.id),

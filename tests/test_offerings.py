@@ -6,6 +6,8 @@ from oh_queue.models import (
     MAX_OFFERING_CANVAS_ID,
     Assignment,
     ConfigEntry,
+    Group,
+    GroupAttendance,
     Location,
     Offering,
     Ticket,
@@ -185,6 +187,41 @@ def test_each_course_has_its_own_queue_and_roles(app, two_courses):
         assert {(u.email, frozenset(u.staff_offerings), frozenset(u.student_offerings)) for u in User.query} == {
             ("student@example.edu", frozenset(), frozenset({"cs61a", "202"})),
             ("ta@example.edu", frozenset({"cs61a"}), frozenset({"202"}))}
+
+
+def make_group(client, course_key, prefix):
+    connect(client, prefix)  # sets up the course's settings
+    with client.application.app_context():
+        ConfigEntry.query.filter_by(course=course_key, key="party_enabled").one().value = "true"
+        assignment = Assignment(name="Hog", visible=True, course=course_key)
+        location = Location(name="Cory", visible=True, online=False, link="", course=course_key)
+        db.session.add_all([assignment, location])
+        db.session.commit()
+        ids = {"assignment_id": assignment.id, "location_id": location.id}
+    client.post(prefix + "/api/create_group", json={**ids, "question": "1"})
+    with client.application.app_context():
+        return Group.query.filter_by(course=course_key).one().id
+
+
+def test_a_group_in_one_course_leaves_groups_in_other_courses_alone(app, two_courses):
+    student = app.test_client()
+    canvas_sign_in(student, "student@example.edu", {"101": role(is_student=True), "202": role(is_student=True)})
+    student.get(COURSE + "/")
+    student.get(OTHER + "/")
+    cs61a_group = make_group(student, "cs61a", COURSE)
+    data8_group = make_group(student, "202", OTHER)
+    # Creating the data8 group left the cs61a one open, with the student in it.
+    with app.app_context():
+        assert {(a.group_id, a.group_attendance_status.name) for a in GroupAttendance.query} == {
+            (cs61a_group, "present"), (data8_group, "present")}
+        assert {g.id: g.group_status.name for g in Group.query} == {
+            cs61a_group: "active", data8_group: "active"}
+    # Present in both, they can still leave or start a group in either.
+    response = student.post(COURSE + "/api/leave_group", json=cs61a_group)
+    assert response.status_code == 200
+    with app.app_context():
+        assert db.session.get(Group, cs61a_group).group_status.name == "resolved"
+        assert db.session.get(Group, data8_group).group_status.name == "active"
 
 
 def test_link_offering_command(app):

@@ -1236,8 +1236,11 @@ def get_user(user_id):
 
 
 def leave_current_groups():
+    # Only this course's: one person can be in a group in each of their courses.
     prev_attendance = GroupAttendance.query.filter_by(
-        user_id=current_user.id, group_attendance_status=GroupAttendanceStatus.present
+        user_id=current_user.id,
+        course=get_course(),
+        group_attendance_status=GroupAttendanceStatus.present,
     ).one_or_none()
     if prev_attendance:
         prev_attendance.group_attendance_status = GroupAttendanceStatus.gone
