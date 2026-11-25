@@ -1,8 +1,10 @@
 import datetime
 import enum
 
+from flask import g
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import literal, types
 
 db = SQLAlchemy()
 
@@ -36,6 +38,30 @@ class EnumType(db.TypeDecorator):
     @property
     def python_type(self):
         return self.enum_class
+
+
+class StringSet(types.TypeDecorator):
+    """A set of strings stored as comma-separated text, as in seating and sections."""
+
+    impl = types.Text
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        return ",".join(sorted(set(value or ())))
+
+    def process_result_value(self, value, dialect):
+        return set(value.split(",")) if value else set()
+
+
+def set_contains(column, item: str):
+    """SQL condition: the StringSet ``column`` contains ``item``."""
+    # autoescape: keys like "cs61a_tutoring" contain "_", a LIKE wildcard.
+    return (literal(",") + db.func.coalesce(column, "") + literal(",")).contains(f",{item},", autoescape=True)
+
+
+def current_course_key():
+    """The current offering's key, or None outside an offering's pages."""
+    return g.offering.key if "offering" in g else None
 
 
 # offerings.canvas_id is a 32-bit integer. Canvas gives a course on another
@@ -99,70 +125,110 @@ class Offering(db.Model):
         return f"<Offering {self.name}>"
 
 
-class Account(db.Model, UserMixin):
-    """Someone signed in with Canvas, across all of their courses, as in sections.
+class User(db.Model, UserMixin):
+    """One person, across all offerings, as in seating and sections.
 
-    Flask-Login keeps the account's id in the session. Inside an offering, the
-    login manager resolves it to that course's User row (see login.py), which
-    holds what is per course: staff status, call and doc links, tickets.
+    Roles are per offering, in sets of offering keys (the value of each row's
+    `course` column), because offerings moved from the per-course sites keep
+    their old keys. Inside an offering's pages, `is_staff` and `is_admin`
+    answer for that offering.
     """
 
-    __tablename__ = "account"
+    __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
-    canvas_id = db.Column(db.String(255), unique=True, index=True, nullable=False)
-    email = db.Column(db.String(255), index=True, nullable=False)
+    email = db.Column(db.String(255), unique=True, index=True, nullable=False)
     name = db.Column(db.String(255), nullable=False)
-    # Staff in every course (member of ADMIN_OVERRIDE_CANVAS_COURSE_ID).
+    # Set when the person first signs in; people moved from the per-course sites
+    # who haven't signed in since don't have one.
+    canvas_id = db.Column(db.String(255), unique=True, index=True, nullable=True)
+    # Staff in every offering (member of ADMIN_OVERRIDE_CANVAS_COURSE_ID).
     is_global_admin = db.Column(db.Boolean, nullable=False, default=False)
     # Active Canvas courses at last sign-in, keyed by str(canvas course id):
     # {"name", "code", "start_at", "is_staff", "is_admin", "is_student"}.
     canvas_courses = db.Column(db.JSON, nullable=False, default=dict)
+    staff_offerings = db.Column(StringSet, nullable=False, default=set)
+    admin_offerings = db.Column(StringSet, nullable=False, default=set)
+    student_offerings = db.Column(StringSet, nullable=False, default=set)
 
-    # Session ids are prefixed so cookies from the per-course sites, which hold
-    # a User id, can't be mistaken for an account id.
-    SESSION_ID_PREFIX = "account-"
+    # A staff member's default video call and shared document links (Online Setup).
+    call_url = db.Column(db.String(255))
+    doc_url = db.Column(db.String(255))
+
+    def __init__(self, **kwargs):
+        # Column defaults only apply on insert; set_role needs real sets before then.
+        for field in ("staff_offerings", "admin_offerings", "student_offerings"):
+            kwargs.setdefault(field, set())
+        kwargs.setdefault("canvas_courses", {})
+        kwargs.setdefault("is_global_admin", False)
+        super().__init__(**kwargs)
+
+    # Session ids are prefixed so cookies from before this table existed, which
+    # hold the id of a different table's row, can't be mistaken for a user id.
+    SESSION_ID_PREFIX = "user-"
 
     def get_id(self):
         return f"{self.SESSION_ID_PREFIX}{self.id}"
 
     @classmethod
     def parse_session_id(cls, session_id: str):
-        prefix, _, account_id = session_id.partition(cls.SESSION_ID_PREFIX)
-        return int(account_id) if not prefix and account_id.isdigit() else None
+        prefix, _, user_id = session_id.partition(cls.SESSION_ID_PREFIX)
+        return int(user_id) if not prefix and user_id.isdigit() else None
 
-    def course_info(self, canvas_course_id: int):
-        """The account's Canvas role details in a course, or None if not enrolled."""
-        info = self.canvas_courses.get(str(canvas_course_id))
+    @property
+    def is_staff(self) -> bool:
+        key = current_course_key()
+        return key is not None and (self.is_global_admin or key in self.staff_offerings)
+
+    @property
+    def is_admin(self) -> bool:
+        key = current_course_key()
+        return key is not None and (self.is_global_admin or key in self.admin_offerings)
+
+    def is_member_of(self, key: str) -> bool:
+        return self.is_global_admin or key in self.staff_offerings or key in self.student_offerings
+
+    def set_role(self, key: str, *, is_staff: bool, is_admin: bool = False):
+        """Make this person staff (optionally admin) or a student in an offering."""
+        if is_staff:
+            self.staff_offerings = self.staff_offerings | {key}
+            self.student_offerings = self.student_offerings - {key}
+        else:
+            self.student_offerings = self.student_offerings | {key}
+            self.staff_offerings = self.staff_offerings - {key}
+        if is_admin:
+            self.admin_offerings = self.admin_offerings | {key}
+        else:
+            self.admin_offerings = self.admin_offerings - {key}
+
+    def absorb(self, other: "User"):
+        """Merge ``other`` (the same person under another email) into this user,
+        moving their tickets, messages, groups, roles and links, then delete
+        ``other``."""
+        for model, column in USER_REFERENCES:
+            model.query.filter(column == other.id).update({column: self.id}, synchronize_session="fetch")
+        # One heartbeat per course: keep the newer.
+        mine = {h.course: h for h in Heartbeat.query.filter_by(user_id=self.id)}
+        for theirs in Heartbeat.query.filter_by(user_id=other.id).all():
+            if theirs.course not in mine:
+                theirs.user_id = self.id
+            else:
+                mine[theirs.course].time = max(mine[theirs.course].time, theirs.time)
+                db.session.delete(theirs)
+        self.staff_offerings = self.staff_offerings | other.staff_offerings
+        self.admin_offerings = self.admin_offerings | other.admin_offerings
+        self.student_offerings = (self.student_offerings | other.student_offerings) - self.staff_offerings
+        self.call_url = self.call_url or other.call_url
+        self.doc_url = self.doc_url or other.doc_url
+        db.session.delete(other)
+        db.session.flush()
+
+    def canvas_roles_in(self, canvas_course_id: int):
+        """``(is_staff, is_admin)`` in a Canvas course from the last sign-in, or
+        None if not enrolled there."""
+        info = (self.canvas_courses or {}).get(str(canvas_course_id))
         if info is None or not (info["is_staff"] or info["is_student"]):
             return None
-        return info
-
-    def is_staff_in(self, canvas_course_id: int) -> bool:
-        info = self.course_info(canvas_course_id)
-        return self.is_global_admin or bool(info and info["is_staff"])
-
-    def is_admin_in(self, canvas_course_id: int) -> bool:
-        """Teachers and Lead TAs, who can take an offering off the site."""
-        info = self.course_info(canvas_course_id)
-        return self.is_global_admin or bool(info and info["is_admin"])
-
-
-class User(db.Model, UserMixin):
-    """Someone in one course: each course has its own row for a person."""
-
-    __tablename__ = "user"
-    id = db.Column(db.Integer, primary_key=True)
-    created = db.Column(db.DateTime, default=db.func.now())
-    email = db.Column(db.String(255), nullable=False, index=True)
-    name = db.Column(db.String(255), nullable=False)
-    is_staff = db.Column(db.Boolean, default=False)
-    # is_admin = db.Column(db.Boolean, default=False)
-
-    course = db.Column(db.String(255), nullable=False, index=True)
-
-    call_url = db.Column(db.String(255))
-    doc_url = db.Column(db.String(255))
-    heartbeat_time = db.Column(db.DateTime, default=db.func.now(), index=True)
+        return info["is_staff"], info["is_admin"]
 
     @property
     def short_name(self):
@@ -170,6 +236,49 @@ class User(db.Model, UserMixin):
         if "@" in first_name:
             return first_name.rsplit("@")[0]
         return first_name
+
+
+def with_email(email: str):
+    """The person with this email, ignoring case (as the migration merged them)."""
+    return User.query.filter(db.func.lower(User.email) == email.strip().lower()).one_or_none()
+
+
+def in_course(key: str):
+    """SQL condition: the person is staff or a student in offering ``key``."""
+    return db.or_(set_contains(User.staff_offerings, key), set_contains(User.student_offerings, key))
+
+
+def staff_in(key: str):
+    """SQL condition: the person is staff in offering ``key``, as ``User.is_staff`` is."""
+    return db.or_(User.is_global_admin.is_(True), set_contains(User.staff_offerings, key))
+
+
+class Heartbeat(db.Model):
+    """When someone last had a course's queue open, for the count of who's online
+    and for closing groups everyone has left. Per course, since one person can
+    have several courses' queues open at once."""
+
+    __tablename__ = "heartbeat"
+    __table_args__ = (db.UniqueConstraint("user_id", "course", name="uq_heartbeat_user_id_course"),)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.ForeignKey("users.id"), nullable=False, index=True)
+    course = db.Column(db.String(255), nullable=False, index=True)
+    time = db.Column(db.DateTime, nullable=False, index=True)
+
+    user = db.relationship(User)
+
+    @classmethod
+    def beat(cls, user, course: str):
+        heartbeat = cls.query.filter_by(user_id=user.id, course=course).one_or_none()
+        if heartbeat is None:
+            heartbeat = cls(user_id=user.id, course=course)
+            db.session.add(heartbeat)
+        heartbeat.time = utcnow()
+
+    @classmethod
+    def recent(cls, course: str, since: datetime.datetime):
+        """Who had the course's queue open since ``since``."""
+        return User.query.join(cls).filter(cls.course == course, cls.time > since)
 
 
 class ConfigEntry(db.Model):
@@ -243,8 +352,8 @@ class Ticket(db.Model):
     hold_time = db.Column(db.DateTime)  # time when student was put on hold
     rerequest_time = db.Column(db.DateTime)  # time when student re-requested help
 
-    user_id = db.Column(db.ForeignKey("user.id"), nullable=False, index=True)
-    helper_id = db.Column(db.ForeignKey("user.id"), index=True)
+    user_id = db.Column(db.ForeignKey("users.id"), nullable=False, index=True)
+    helper_id = db.Column(db.ForeignKey("users.id"), index=True)
 
     assignment_id = db.Column(
         db.ForeignKey("assignment.id"), nullable=False, index=True
@@ -299,7 +408,7 @@ class TicketEvent(db.Model):
     time = db.Column(db.DateTime, default=db.func.now())
     event_type = db.Column(EnumType(TicketEventType), nullable=False)
     ticket_id = db.Column(db.ForeignKey("ticket.id"), nullable=False)
-    user_id = db.Column(db.ForeignKey("user.id"), nullable=False)
+    user_id = db.Column(db.ForeignKey("users.id"), nullable=False)
 
     course = db.Column(db.String(255), nullable=False, index=True)
 
@@ -351,7 +460,7 @@ class GroupAttendance(db.Model):
     group_id = db.Column(db.ForeignKey("group.id"), nullable=False, index=True)
     group = db.relationship("Group", back_populates="attendees")
 
-    user_id = db.Column(db.ForeignKey("user.id"), nullable=False, index=True)
+    user_id = db.Column(db.ForeignKey("users.id"), nullable=False, index=True)
     user = db.relationship(User, foreign_keys=[user_id], lazy="joined")
 
     group_attendance_status = db.Column(
@@ -370,7 +479,7 @@ class ChatMessage(db.Model):
 
     body = db.Column(db.String(255), nullable=False, default="")
 
-    user_id = db.Column(db.ForeignKey("user.id"), nullable=False, index=True)
+    user_id = db.Column(db.ForeignKey("users.id"), nullable=False, index=True)
     user = db.relationship(User, foreign_keys=[user_id])
 
     ticket_id = db.Column(db.ForeignKey("ticket.id"), nullable=True, index=True)
@@ -380,3 +489,13 @@ class ChatMessage(db.Model):
     group = db.relationship("Group", backref=db.backref("messages", lazy="joined"))
 
     course = db.Column(db.String(255), nullable=False, index=True)
+
+
+# Every column holding a User's id, besides Heartbeat.user_id.
+USER_REFERENCES = [
+    (Ticket, Ticket.user_id),
+    (Ticket, Ticket.helper_id),
+    (TicketEvent, TicketEvent.user_id),
+    (GroupAttendance, GroupAttendance.user_id),
+    (ChatMessage, ChatMessage.user_id),
+]

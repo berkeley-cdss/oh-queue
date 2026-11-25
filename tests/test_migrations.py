@@ -1,5 +1,5 @@
 """The migrations that remove Slack notifications, okpy backup links, appointments
-and LLM tips.
+and LLM tips, add offerings, and merge users into one row per person.
 
 The migrations before them were written for MySQL and don't run on SQLite, so
 the tests start from the current tables, as `manage.py initdb` makes them.
@@ -7,10 +7,11 @@ Indexes the migrations drop are renamed first, as copying the production
 database from MySQL to Postgres renamed them (idx_<number>_<name>).
 """
 
+import pytest
 import sqlalchemy as sa
 from flask_migrate import downgrade, stamp, upgrade
 
-from oh_queue.models import Account, Offering, db
+from oh_queue.models import Heartbeat, Offering, User, db, utcnow
 
 BEFORE = "8f4b2d6f0c1a"
 REMOVED_KEYS = [
@@ -30,6 +31,27 @@ def sql(statement, **params):
 
 def tables():
     return set(sa.inspect(db.engine).get_table_names())
+
+
+def before_one_user():
+    """The user tables as they were before 5b9e2c7d1f30: a row per person per
+    course, and an account per person who had signed in. The current tables
+    stay, for the other tables' foreign keys; test_merges_users_into_one_per_person
+    replaces them."""
+    sql("""CREATE TABLE user (id INTEGER PRIMARY KEY, created DATETIME, email VARCHAR(255) NOT NULL,
+           name VARCHAR(255) NOT NULL, is_staff BOOLEAN, course VARCHAR(255) NOT NULL, call_url VARCHAR(255),
+           doc_url VARCHAR(255), heartbeat_time DATETIME)""")
+    sql("""CREATE TABLE account (id INTEGER PRIMARY KEY, canvas_id VARCHAR(255) NOT NULL,
+           email VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, is_global_admin BOOLEAN NOT NULL,
+           canvas_courses JSON NOT NULL)""")
+    sql("CREATE UNIQUE INDEX ix_account_canvas_id ON account (canvas_id)")
+    sql("CREATE INDEX ix_account_email ON account (email)")
+
+
+def drop_old_user_tables():
+    # Not the app's tables, so the app fixture doesn't drop them.
+    sql("DROP TABLE IF EXISTS user")
+    sql("DROP TABLE IF EXISTS account")
 
 
 def test_removes_slack_and_okpy(app_context):
@@ -71,6 +93,7 @@ def check_upgrade_and_downgrade():
 
 def test_adds_offerings_and_accounts(app_context):
     try:
+        before_one_user()
         sql("INSERT INTO config_entries (key, value, public, course) VALUES ('is_queue_open', 'true', 1, 'cs61a')")
         stamp(revision="d3a7e5f1c0b2")
         downgrade(revision="4370289bdaeb")
@@ -85,21 +108,21 @@ def test_adds_offerings_and_accounts(app_context):
         indexes = {i["name"]: i["unique"] for t in ("offerings", "account")
                    for i in sa.inspect(db.engine).get_indexes(t)}
         assert indexes == {"ix_offerings_canvas_id": 1, "ix_account_canvas_id": 1, "ix_account_email": 0}
-        # The models use the migrated tables.
+        # The model uses the migrated table.
         db.session.add(Offering(canvas_id=101, key="cs61a", name="CS 61A"))
-        db.session.add(Account(canvas_id="42", email="a@example.edu", name="A", canvas_courses={"101": {}}))
         db.session.commit()
-        assert Account.query.one().canvas_courses == {"101": {}}
+        assert Offering.query.one().key == "cs61a"
     finally:
         db.session.rollback()
         sql("DROP TABLE IF EXISTS alembic_version")
+        drop_old_user_tables()
 
 
 def test_it_is_the_only_head(app_context):
     from alembic.script import ScriptDirectory
 
     config = app_context.extensions["migrate"].migrate.get_config()
-    assert ScriptDirectory.from_config(config).get_heads() == ["42b35af5ed41"]
+    assert ScriptDirectory.from_config(config).get_heads() == ["5b9e2c7d1f30"]
 
 
 APPOINTMENT_KEYS = [
@@ -123,8 +146,10 @@ def columns(table):
 
 def test_removes_appointments(app_context):
     try:
+        before_one_user()
         check_appointments_upgrade_and_downgrade()
     finally:
+        drop_old_user_tables()
         sql("DROP TABLE IF EXISTS alembic_version")
         sql("DROP TABLE IF EXISTS appointment_signup")
         sql("DROP TABLE IF EXISTS appointment")
@@ -185,6 +210,7 @@ LLM_TICKET_COLUMNS = {"llm_tips", "use_llm", "student_help_type", "student_help_
 
 def test_removes_llm_tips(app_context):
     try:
+        before_one_user()
         for course in ("cs61a", "data8"):
             sql("INSERT INTO config_entries (key, value, public, course) VALUES ('is_queue_open', 'true', 1, :course)",
                 course=course)
@@ -212,4 +238,235 @@ def test_removes_llm_tips(app_context):
         assert sorted(sql("SELECT course, key FROM config_entries")) == [
             ("cs61a", "is_queue_open"), ("data8", "is_queue_open")]
     finally:
+        drop_old_user_tables()
+        sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def before_one_user_with_references():
+    """before_one_user, with the tables referencing users pointing at the old table."""
+    before_one_user()
+    for table in ("heartbeat", "ticket_event", "group_attendance", "chat_message", "ticket", "users"):
+        sql(f"DROP TABLE {table}")
+    sql("""CREATE TABLE ticket (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES user (id),
+           helper_id INTEGER REFERENCES user (id), course VARCHAR(255) NOT NULL)""")
+    sql("CREATE INDEX ix_ticket_user_id ON ticket (user_id)")
+    for table in ("ticket_event", "group_attendance", "chat_message"):
+        sql(f"""CREATE TABLE {table} (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES user (id),
+                course VARCHAR(255) NOT NULL)""")
+
+
+def test_merges_users_into_one_per_person(app_context):
+    try:
+        before_one_user_with_references()
+        sql("""INSERT INTO user (id, email, name, is_staff, course, call_url, doc_url) VALUES
+               (10, 'ada@example.edu', 'Ada', 0, 'cs61a', 'meet.google.com/old', NULL),
+               (11, 'ADA@example.edu', 'Ada L.', 1, 'data8', 'meet.google.com/new', NULL),
+               (12, 'ada@example.edu', 'Ada L.', 0, 'data8', NULL, 'docs.google.com/ada'),
+               (13, 'tutor@example.edu', 'Tutor', 1, 'cs61a', NULL, NULL),
+               (14, 'bob@example.edu', 'Bob', NULL, 'cs61a', NULL, NULL)""")
+        sql("""INSERT INTO account (id, canvas_id, email, name, is_global_admin, canvas_courses) VALUES
+               (1, '555', 'ada@example.edu', 'Ada Lovelace', 0, '{"101": {"is_staff": false}}'),
+               (2, '556', 'new@example.edu', 'Only Signed In', 1, '{}')""")
+        sql("INSERT INTO ticket (id, user_id, helper_id, course) VALUES (1, 10, 13, 'cs61a'), (2, 14, 11, 'data8')")
+        sql("INSERT INTO ticket_event (id, user_id, course) VALUES (1, 11, 'data8')")
+        sql("INSERT INTO group_attendance (id, user_id, course) VALUES (1, 14, 'cs61a')")
+        sql("INSERT INTO chat_message (id, user_id, course) VALUES (1, 12, 'data8')")
+        stamp(revision="42b35af5ed41")
+
+        upgrade(revision="5b9e2c7d1f30")
+
+        assert not {"user", "account", "user_id_map"} & tables()
+        people = {row.email: row for row in sql("SELECT * FROM users")}
+        assert set(people) == {"ada@example.edu", "tutor@example.edu", "bob@example.edu", "new@example.edu"}
+        ada = people["ada@example.edu"]
+        # Signed-in people keep their Canvas name and details; the newest links win.
+        assert (ada.name, ada.canvas_id, ada.canvas_courses) == ("Ada Lovelace", "555", '{"101": {"is_staff": false}}')
+        assert (ada.call_url, ada.doc_url) == ("meet.google.com/new", "docs.google.com/ada")
+        # Staff in data8, though an older row had her as a student there.
+        assert (ada.staff_offerings, ada.student_offerings, ada.admin_offerings) == ("data8", "cs61a", "")
+        assert people["tutor@example.edu"].staff_offerings == "cs61a"
+        assert people["bob@example.edu"].student_offerings == "cs61a"  # an unknown role counts as student
+        assert people["new@example.edu"].is_global_admin
+
+        # Each person keeps their oldest row's id; someone who only signed in gets the next one.
+        ids = {email: row.id for email, row in people.items()}
+        assert ids == {"ada@example.edu": 10, "tutor@example.edu": 13, "bob@example.edu": 14, "new@example.edu": 15}
+        # Every reference now points at the merged person.
+        ada, tutor, bob = ids["ada@example.edu"], ids["tutor@example.edu"], ids["bob@example.edu"]
+        assert sql("SELECT user_id, helper_id FROM ticket ORDER BY id") == [(ada, tutor), (bob, ada)]
+        assert sql("SELECT user_id FROM ticket_event") == [(ada,)]
+        assert sql("SELECT user_id FROM group_attendance") == [(bob,)]
+        assert sql("SELECT user_id FROM chat_message") == [(ada,)]
+        inspector = sa.inspect(db.engine)
+        foreign_keys = {
+            (table, tuple(fk["constrained_columns"]), fk["referred_table"])
+            for table in ("ticket", "ticket_event", "group_attendance", "chat_message")
+            for fk in inspector.get_foreign_keys(table)
+        }
+        assert foreign_keys == {
+            ("ticket", ("user_id",), "users"), ("ticket", ("helper_id",), "users"),
+            ("ticket_event", ("user_id",), "users"), ("group_attendance", ("user_id",), "users"),
+            ("chat_message", ("user_id",), "users")}
+        assert "ix_ticket_user_id" in {i["name"] for i in inspector.get_indexes("ticket")}
+
+        # The models use the migrated tables.
+        assert db.session.get(User, ada).staff_offerings == {"data8"}
+        db.session.add(Heartbeat(user_id=ada, course="cs61a", time=utcnow()))
+        db.session.commit()
+        assert Heartbeat.query.one().user.email == "ada@example.edu"
+    finally:
+        db.session.rollback()
+        drop_old_user_tables()
+        sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def upgrade_raising(app):
+    """Upgrade to 5b9e2c7d1f30 through Alembic, which raises the migration's own
+    error, where Flask-Migrate's upgrade logs it and exits."""
+    from alembic import command
+
+    command.upgrade(app.extensions["migrate"].migrate.get_config(), "5b9e2c7d1f30")
+
+
+def test_rows_whose_user_is_missing_get_a_placeholder(app_context):
+    try:
+        before_one_user_with_references()
+        sql("INSERT INTO user (id, email, name, is_staff, course) VALUES (1, 'a@example.edu', 'A', 0, 'cs61a')")
+        sql("INSERT INTO ticket (id, user_id, helper_id, course) VALUES (1, 7, 1, 'cs161'), (2, 7, 8, 'cs161')")
+        sql("INSERT INTO chat_message (id, user_id, course) VALUES (1, 7, 'cs161')")
+        stamp(revision="42b35af5ed41")
+        upgrade(revision="5b9e2c7d1f30")
+        assert sql("SELECT id, email, name, staff_offerings, student_offerings FROM users ORDER BY id") == [
+            (1, "a@example.edu", "A", "", "cs61a"),
+            (7, "unknown-user-7@oh-queue.invalid", "Unknown user 7", "", ""),
+            (8, "unknown-user-8@oh-queue.invalid", "Unknown user 8", "", "")]
+        # The references keep their ids, now someone's.
+        assert sql("SELECT user_id, helper_id FROM ticket ORDER BY id") == [(7, 1), (7, 8)]
+        assert sql("SELECT user_id FROM chat_message") == [(7,)]
+    finally:
+        drop_old_user_tables()
+        sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def test_refuses_two_bcourses_accounts_with_one_email(app_context):
+    try:
+        before_one_user_with_references()
+        sql("""INSERT INTO account (id, canvas_id, email, name, is_global_admin, canvas_courses) VALUES
+               (1, '555', 'ada@example.edu', 'Ada', 0, '{}'), (2, '777', 'ADA@example.edu', 'Ada', 0, '{}')""")
+        stamp(revision="42b35af5ed41")
+        with pytest.raises(RuntimeError, match=r"ADA@example.edu \(Canvas users 555 and 777\)"):
+            upgrade_raising(app_context)
+        assert {"user", "account"} <= tables() and "users" not in tables()
+    finally:
+        drop_old_user_tables()
+        sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def test_drops_users_without_an_email_that_nothing_refers_to(app_context):
+    try:
+        before_one_user_with_references()
+        sql("""INSERT INTO user (id, email, name, is_staff, course) VALUES
+               (1, '', 'No Email', 1, 'cs61a'), (2, 'a@example.edu', 'A', 0, 'cs61a')""")
+        sql("INSERT INTO ticket (id, user_id, course) VALUES (1, 2, 'cs61a')")
+        stamp(revision="42b35af5ed41")
+        upgrade(revision="5b9e2c7d1f30")
+        assert sql("SELECT id, email FROM users") == [(2, "a@example.edu")]
+        assert sql("SELECT user_id FROM ticket") == [(2,)]
+    finally:
+        drop_old_user_tables()
+        sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def test_refuses_users_without_an_email_that_something_refers_to(app_context):
+    try:
+        before_one_user_with_references()
+        sql("""INSERT INTO user (id, email, name, is_staff, course) VALUES
+               (1, '', 'No Email', 0, 'cs61a'), (2, ' ', 'Blank', 0, 'cs61a'), (3, 'a@example.edu', 'A', 0, 'cs61a')""")
+        sql("INSERT INTO chat_message (id, user_id, course) VALUES (1, 2, 'cs61a')")
+        stamp(revision="42b35af5ed41")
+        with pytest.raises(RuntimeError, match=r"rows \[1, 2\] have no email.*chat_message.user_id refer"):
+            upgrade_raising(app_context)
+        assert {"user", "account"} <= tables() and "users" not in tables()
+    finally:
+        drop_old_user_tables()
+        sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def test_refuses_other_tables_referencing_users(app_context):
+    try:
+        before_one_user_with_references()
+        sql("CREATE TABLE survey (id INTEGER PRIMARY KEY, user_id INTEGER REFERENCES user (id))")
+        stamp(revision="42b35af5ed41")
+        with pytest.raises(RuntimeError, match=r"\['survey'\] reference user"):
+            upgrade_raising(app_context)
+        assert {"user", "account"} <= tables() and not {"users", "user_id_map"} & tables()
+    finally:
+        drop_old_user_tables()
+        sql("DROP TABLE IF EXISTS survey")
+        sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def test_merges_tables_without_foreign_keys(app_context):
+    """A copied database may have lost its foreign keys; the references are
+    re-pointed all the same, and get them back."""
+    try:
+        before_one_user_with_references()
+        sql("DROP TABLE chat_message")
+        sql("CREATE TABLE chat_message (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, course VARCHAR(255) NOT NULL)")
+        # A blank name falls back to the email.
+        sql("INSERT INTO user (id, email, name, is_staff, course) VALUES (5, 'a@example.edu', '', 0, 'cs61a')")
+        sql("INSERT INTO chat_message (id, user_id, course) VALUES (1, 5, 'cs61a')")
+        stamp(revision="42b35af5ed41")
+        upgrade(revision="5b9e2c7d1f30")
+        [(new_id, name)] = sql("SELECT id, name FROM users")
+        assert name == "a@example.edu"
+        assert sql("SELECT user_id FROM chat_message") == [(new_id,)]
+        assert [fk["referred_table"] for fk in sa.inspect(db.engine).get_foreign_keys("chat_message")] == ["users"]
+    finally:
+        drop_old_user_tables()
+        sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def test_merges_a_database_without_users(app_context):
+    try:
+        before_one_user_with_references()
+        stamp(revision="42b35af5ed41")
+        upgrade(revision="5b9e2c7d1f30")
+        assert sql("SELECT * FROM users") == []
+        assert not {"user", "account"} & tables()
+    finally:
+        drop_old_user_tables()
+        sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def test_merging_users_cant_be_undone(app_context):
+    from alembic import command
+
+    try:
+        stamp(revision="5b9e2c7d1f30")
+        with pytest.raises(NotImplementedError, match="can't be undone"):
+            command.downgrade(app_context.extensions["migrate"].migrate.get_config(), "42b35af5ed41")
+        assert "users" in tables()
+    finally:
+        sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def test_merges_more_people_than_fit_in_one_insert(app_context):
+    try:
+        before_one_user_with_references()
+        # 1,201 people, each with a row in two courses, and a ticket from each row.
+        rows = ", ".join(f"({i}, 'p{i // 2}@example.edu', 'P', 0, '{'cs61a' if i % 2 else 'data8'}')"
+                         for i in range(2, 2404))
+        sql(f"INSERT INTO user (id, email, name, is_staff, course) VALUES {rows}")
+        sql("INSERT INTO ticket (user_id, course) SELECT id, course FROM user")
+        stamp(revision="42b35af5ed41")
+        upgrade(revision="5b9e2c7d1f30")
+        assert sql("SELECT COUNT(*), MIN(id), MAX(id) FROM users") == [(1201, 2, 2402)]
+        assert sql("SELECT student_offerings FROM users WHERE email = 'p600@example.edu'") == [("cs61a,data8",)]
+        # Each person's two tickets point at them.
+        assert sql("""SELECT COUNT(*) FROM ticket JOIN users ON users.id = ticket.user_id
+                      GROUP BY users.id HAVING COUNT(*) != 2""") == []
+        assert sql("SELECT COUNT(*) FROM ticket") == [(2402,)]
+    finally:
+        drop_old_user_tables()
         sql("DROP TABLE IF EXISTS alembic_version")

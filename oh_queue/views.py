@@ -16,6 +16,7 @@ from oh_queue.models import (
     GroupAttendance,
     GroupAttendanceStatus,
     GroupStatus,
+    Heartbeat,
     Location,
     Ticket,
     TicketEvent,
@@ -23,9 +24,12 @@ from oh_queue.models import (
     TicketStatus,
     User,
     active_statuses,
+    in_course,
+    staff_in,
     utcnow,
 )
 from sqlalchemy import desc
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload, selectinload
 
 from oh_queue.offering import OFFERING_URL_PREFIX, get_course, get_course_name, load_offering
@@ -284,14 +288,9 @@ def emit_state(attrs, entity=None):
             user_json(current_user) if current_user.is_authenticated else None
         )
     if "presence" in attrs:
-        out = dict(
-            students=User.query.filter(
-                User.heartbeat_time
-                > utcnow() - datetime.timedelta(seconds=30),
-                User.course == get_course(),
-                User.is_staff == False,  # noqa: E712 (SQL, not Python)
-            ).count()
-        )
+        since = utcnow() - datetime.timedelta(seconds=30)
+        online = Heartbeat.recent(get_course(), since)
+        out = dict(students=online.filter(~staff_in(get_course())).count())
         active_staff = {
             (t.helper.email, t.helper.name)
             for t in Ticket.query.filter(
@@ -302,12 +301,7 @@ def emit_state(attrs, entity=None):
         }
         active_staff |= {
             (user.email, user.name)
-            for user in User.query.filter(
-                User.heartbeat_time
-                > utcnow() - datetime.timedelta(seconds=30),
-                User.course == get_course(),
-                User.is_staff == True,  # noqa: E712 (SQL, not Python)
-            ).all()
+            for user in online.filter(staff_in(get_course())).all()
         }
         out["staff"] = len(active_staff)
         # Only staff see who's online.
@@ -479,7 +473,8 @@ def socket_unauthorized():
 def logged_in(f):
     @functools.wraps(f)
     def wrapper(*args, **kwds):
-        if not current_user.is_authenticated and current_user.course == get_course():
+        # Signed-in people outside the course were already turned away (login.py).
+        if not current_user.is_authenticated:
             return socket_unauthorized()
         return f(*args, **kwds)
 
@@ -489,11 +484,7 @@ def logged_in(f):
 def is_staff(f):
     @functools.wraps(f)
     def wrapper(*args, **kwds):
-        if not (
-            current_user.is_authenticated
-            and current_user.is_staff
-            and current_user.course == get_course()
-        ):
+        if not (current_user.is_authenticated and current_user.is_staff):
             return socket_unauthorized()
         return f(*args, **kwds)
 
@@ -564,10 +555,13 @@ def requires_group_access(f):
 
 @api("connect")
 def connect(data=None):
-    if not current_user.is_authenticated:
-        pass
-
-    current_user.heartbeat_time = utcnow()
+    if current_user.is_authenticated:
+        Heartbeat.beat(current_user, get_course())
+        try:
+            db.session.commit()
+        except IntegrityError:
+            # Another tab made this person's first heartbeat in the course just now.
+            db.session.rollback()
 
     entity_type = None
 
@@ -1209,7 +1203,7 @@ def send_chat_message(data):
 @api("list_users")
 @is_staff
 def list_users():
-    return [user_json(user) for user in User.query.filter_by(course=get_course()).all()]
+    return [user_json(user) for user in User.query.filter(in_course(get_course())).all()]
 
 
 @api("get_user")
@@ -1217,7 +1211,9 @@ def list_users():
 def get_user(user_id):
     if user_id != current_user.id and not current_user.is_staff:
         return socket_unauthorized()
-    user = User.query.filter_by(course=get_course(), id=user_id).one()
+    user = db.session.get(User, user_id)
+    if user is None:
+        return socket_error("No such user")
     tickets = (
         Ticket.query.filter(
             or_(Ticket.user_id == user.id, Ticket.helper_id == user.id),
@@ -1229,6 +1225,10 @@ def get_user(user_id):
         .options(joinedload(Ticket.group))
         .all()
     )
+    # Anyone in the course, or who was helped or helped in it (global admins
+    # have no role in a course of their own).
+    if not tickets and not user.is_member_of(get_course()):
+        return socket_error("No such user")
     return {
         "user": user_json(user),
         "tickets": [ticket_json(ticket) for ticket in tickets],
@@ -1236,8 +1236,11 @@ def get_user(user_id):
 
 
 def leave_current_groups():
+    # Only this course's: one person can be in a group in each of their courses.
     prev_attendance = GroupAttendance.query.filter_by(
-        user_id=current_user.id, group_attendance_status=GroupAttendanceStatus.present
+        user_id=current_user.id,
+        course=get_course(),
+        group_attendance_status=GroupAttendanceStatus.present,
     ).one_or_none()
     if prev_attendance:
         prev_attendance.group_attendance_status = GroupAttendanceStatus.gone

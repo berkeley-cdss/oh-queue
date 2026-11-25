@@ -9,26 +9,26 @@ from sqlalchemy.exc import IntegrityError
 from oh_queue.models import Offering, can_be_offering, db, newest_first_key, start_month
 
 
-def _categorized_offerings(account):
-    """Set-up offerings the account is staff in, a student in, or otherwise
+def _categorized_offerings(user):
+    """Set-up offerings the user is staff in, a student in, or otherwise
     enrolled in, like seating's offerings page."""
     # Skip too-big IDs, which Postgres refuses to compare with the column.
-    canvas_ids = [int(i) for i in account.canvas_courses if can_be_offering(i)]
+    canvas_ids = [int(i) for i in user.canvas_courses if can_be_offering(i)]
     shown = Offering.query.filter(Offering.hidden.is_(False))
     existing = shown.filter(Offering.canvas_id.in_(canvas_ids)).all()
     staff, students, other = [], [], []
     for offering in existing:
-        info = account.canvas_courses[str(offering.canvas_id)]
+        info = user.canvas_courses[str(offering.canvas_id)]
         # Offerings linked from the per-course sites start without Canvas details.
         if offering.code is None:
             offering.name, offering.code, offering.start_at = info["name"], info["code"], info["start_at"]
-        if info["is_staff"] or account.is_global_admin:
+        if info["is_staff"] or user.is_global_admin:
             staff.append(offering)
         elif info["is_student"]:
             students.append(offering)
         else:
             other.append(offering)
-    if account.is_global_admin:
+    if user.is_global_admin:
         staff += shown.filter(Offering.canvas_id.notin_(canvas_ids)).all()
     db.session.commit()
 
@@ -36,6 +36,13 @@ def _categorized_offerings(account):
         return sorted(offerings, key=lambda o: newest_first_key(o.start_at, o.display_name), reverse=True)
 
     return newest_first(staff), newest_first(students), newest_first(other)
+
+
+def can_remove(user, canvas_id: int) -> bool:
+    """Whether ``user`` may take this offering off the site: global admins, and
+    the course's admins in Canvas (Teachers and Lead TAs), not all of its staff."""
+    info = user.canvas_courses.get(str(canvas_id))
+    return user.is_global_admin or bool(info and info["is_admin"])
 
 
 def create_offering_pages(app: flask.Flask):
@@ -57,7 +64,7 @@ def create_offering_pages(app: flask.Flask):
             staff_offerings_existing=staff,
             student_offerings_existing=students,
             other_offerings_existing=other,
-            removable_ids={o.canvas_id for o in staff if current_user.is_admin_in(o.canvas_id)},
+            removable_ids={o.canvas_id for o in staff if can_remove(current_user, o.canvas_id)},
         )
 
     @app.route("/offerings/new", methods=["GET", "POST"])
@@ -110,7 +117,7 @@ def create_offering_pages(app: flask.Flask):
         offering = Offering.for_canvas_id(canvas_id)
         if offering is None or offering.hidden:
             abort(404)
-        if not current_user.is_admin_in(canvas_id):
+        if not can_remove(current_user, canvas_id):
             abort(403, "Only course admins (instructors and Lead TAs) can remove an offering.")
         offering.hidden = True
         db.session.commit()

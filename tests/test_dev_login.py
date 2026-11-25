@@ -4,7 +4,7 @@ import pytest
 
 from oh_queue import canvas_service
 from oh_queue.dev_login import mock_user_roster
-from oh_queue.models import Account, Offering, User, db
+from oh_queue.models import Offering, User, db
 
 # Seeded users (oh_queue/fake_canvas_data): a TA, a student and a teacher in CS 169A.
 YU_LONG, JIMMY_XU, OSKI = "123456", "234567", "567890"
@@ -76,9 +76,9 @@ def test_login_goes_to_the_dev_login_page_and_back(client, offering):
     assert response.status_code == 302
     assert response.headers["Location"].endswith(f"/offerings/{CS169A}/")
     with client.application.app_context():
-        account = Account.query.filter_by(canvas_id=YU_LONG).one()
-        assert (account.email, account.name) == ("long_yu@berkeley.edu", "Yu Long")
-        assert set(account.canvas_courses) == {str(CS169A), "4567890"}
+        user = User.query.filter_by(canvas_id=YU_LONG).one()
+        assert (user.email, user.name) == ("long_yu@berkeley.edu", "Yu Long")
+        assert set(user.canvas_courses) == {str(CS169A), "4567890"}
 
 
 @pytest.mark.parametrize("user_id, is_staff", [(YU_LONG, True), (OSKI, True), (JIMMY_XU, False)])
@@ -86,8 +86,8 @@ def test_seeded_users_get_their_role_in_the_course(client, offering, user_id, is
     dev_login(client, user_id)
     assert client.get(f"/offerings/{CS169A}/").status_code == 200
     with client.application.app_context():
-        email = Account.query.filter_by(canvas_id=user_id).one().email
-        assert User.query.filter_by(email=email, course=str(CS169A)).one().is_staff == is_staff
+        user = User.query.filter_by(canvas_id=user_id).one()
+        assert (str(CS169A) in user.staff_offerings or user.is_global_admin) == is_staff
 
 
 def test_staff_can_set_up_their_other_courses(client, mock_canvas):
@@ -103,7 +103,7 @@ def test_only_seeded_users_can_sign_in(client, mock_canvas):
     assert dev_login(client, "999").status_code == 400
     assert dev_login(client, None).status_code == 400
     with mock_canvas.app_context():
-        assert Account.query.count() == 0
+        assert User.query.count() == 0
 
 
 def test_no_dev_login_without_the_fake_canvas(client, monkeypatch):
@@ -114,4 +114,4 @@ def test_no_dev_login_without_the_fake_canvas(client, monkeypatch):
     monkeypatch.setitem(client.application.config, "ENV", "prod")
     assert dev_login(client, YU_LONG).headers["Location"].endswith("/")
     with client.application.app_context():
-        assert Account.query.count() == 0
+        assert User.query.count() == 0

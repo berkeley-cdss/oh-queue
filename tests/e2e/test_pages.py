@@ -12,10 +12,17 @@ from oh_queue.models import (Assignment, ConfigEntry, Group, GroupAttendance, Gr
 from tests.browser import COURSE, STAFF, STUDENT
 
 
+def student_in_cs61a(email, name):
+    """A student of the test course who hasn't signed in yet."""
+    student = User(email=email, name=name)
+    student.set_role("cs61a", is_staff=False)
+    return student
+
+
 def add_group(app, question="3"):
     """An active group of one student, and its id."""
     with app.app_context():
-        student = User(email="grouped@example.edu", name="Grouped Student", course="cs61a")
+        student = student_in_cs61a("grouped@example.edu", "Grouped Student")
         group = Group(question=question, description="", assignment_id=1, location_id=1, course="cs61a",
                       group_status=GroupStatus.active)
         db.session.add_all([student, group])
@@ -153,7 +160,7 @@ def ticket_description(app, ticket_id):
 
 def test_ticket_description_is_saved(site, app):
     with app.app_context():
-        student = User(email=STUDENT.email, name=STUDENT.name, course="cs61a")
+        student = student_in_cs61a(STUDENT.email, STUDENT.name)
         db.session.add(student)
         db.session.flush()
         ticket = Ticket(user=student, status=TicketStatus.pending, assignment_id=1, location_id=1,
@@ -270,7 +277,7 @@ def test_next_ticket_shows_the_next_tickets_assignment(site, app):
         db.session.add(maps)
         tickets = []
         for email, assignment_id, question in (("first@example.edu", 1, "3"), ("second@example.edu", 2, "7")):
-            student = User(email=email, name=email, course="cs61a")
+            student = student_in_cs61a(email, email)
             db.session.add(student)
             db.session.flush()
             ticket = Ticket(user=student, status=TicketStatus.pending, assignment_id=assignment_id, location_id=1,

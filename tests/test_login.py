@@ -9,7 +9,7 @@ from authlib.integrations.base_client import OAuthError
 
 from oh_queue import canvas_service
 from oh_queue.login import _safe_next
-from oh_queue.models import MAX_OFFERING_CANVAS_ID, Account, User, db
+from oh_queue.models import MAX_OFFERING_CANVAS_ID, ChatMessage, Heartbeat, Ticket, TicketStatus, User, db, utcnow
 from tests.conftest import AUTHORIZE, COURSE, canvas_sign_in, log_in, role
 
 
@@ -29,7 +29,7 @@ def test_staff_in_the_course_are_staff(client, roles):
     assert user["isStaff"]
     assert user["name"] == "Ta"
     with client.application.app_context():
-        assert User.query.filter_by(email="ta@example.edu").one().course == "cs61a"
+        assert User.query.filter_by(email="ta@example.edu").one().staff_offerings == {"cs61a"}
 
 
 def test_students_and_staff_of_other_courses_are_not_staff(client):
@@ -43,27 +43,92 @@ def test_roles_are_updated_at_each_sign_in(client):
     canvas_sign_in(client, "ta@example.edu", {"101": role(is_student=True)})
     assert not current_user(client)["isStaff"]
     with client.application.app_context():
-        assert User.query.filter_by(email="ta@example.edu").count() == 1
-        assert Account.query.count() == 1
+        user = User.query.one()
+        assert (user.staff_offerings, user.student_offerings) == (set(), {"cs61a"})
 
 
 def test_admin_override_members_are_staff_in_every_course(client):
     canvas_sign_in(client, "admin@example.edu", {"999": role(is_student=True)})
     assert current_user(client)["isStaff"]
     with client.application.app_context():
-        assert Account.query.one().is_global_admin
+        assert User.query.one().is_global_admin
 
 
-def test_signing_in_keeps_each_course_s_existing_users(client):
+def moved_user(email, *, staff_in=(), student_in=(), **fields):
+    """Someone moved from the per-course sites, who hasn't signed in since."""
+    user = User(email=email, name="Old Name", **fields)
+    for key in staff_in:
+        user.set_role(key, is_staff=True)
+    for key in student_in:
+        user.set_role(key, is_staff=False)
+    db.session.add(user)
+    db.session.commit()
+    return user.id
+
+
+def test_first_sign_in_claims_the_moved_user_with_that_email(client):
     with client.application.app_context():
-        db.session.add(User(email="ta@example.edu", name="Old Name", is_staff=False, course="cs61a",
-                            call_url="meet.google.com/ta"))
-        db.session.commit()
-    canvas_sign_in(client, "ta@example.edu", {"101": role(is_staff=True)})
+        user_id = moved_user("TA@example.edu", student_in=["cs61a", "data8"], call_url="meet.google.com/ta")
+    canvas_sign_in(client, "ta@example.edu", {"101": role(is_staff=True)}, canvas_user_id=77)
     current_user(client)
     with client.application.app_context():
         user = User.query.one()
-        assert (user.name, user.is_staff, user.call_url) == ("Ta", True, "meet.google.com/ta")
+        assert (user.id, user.canvas_id, user.name, user.call_url) == (user_id, "77", "Ta", "meet.google.com/ta")
+        # Staff in the course now, and still a student in the old one.
+        assert (user.staff_offerings, user.student_offerings) == ({"cs61a"}, {"data8"})
+
+
+def test_sign_in_never_claims_someone_else_by_email(client):
+    canvas_sign_in(client, "ta@example.edu", {}, canvas_user_id=1)
+    with patch(AUTHORIZE, return_value={"user": {"id": 99}, "access_token": "token"}), \
+         patch.object(canvas_service, "get_profile", return_value={"primary_email": "ta@example.edu"}), \
+         patch.object(canvas_service, "get_user_courses", return_value={}):
+        response = client.get("/authorized/?code=abc&state=xyz")
+    assert response.status_code == 403
+    with client.application.app_context():
+        assert [(u.canvas_id, u.email) for u in User.query] == [("1", "ta@example.edu")]
+
+
+def test_a_changed_email_follows_the_canvas_id(client):
+    canvas_sign_in(client, "ta@example.edu", {}, canvas_user_id=1)
+    canvas_sign_in(client, "ta.new@example.edu", {}, canvas_user_id=1)
+    with client.application.app_context():
+        assert [(u.canvas_id, u.email) for u in User.query] == [("1", "ta.new@example.edu")]
+
+
+def test_a_changed_email_merges_the_moved_user_with_that_email(client):
+    canvas_sign_in(client, "ta@example.edu", {"101": role(is_staff=True)}, canvas_user_id=1)
+    current_user(client)
+    with client.application.app_context():
+        ta = User.query.one()
+        moved_id = moved_user("ta.new@example.edu", staff_in=["data8"], doc_url="docs.google.com/ta")
+        ticket = Ticket(status=TicketStatus.pending, user_id=moved_id, helper_id=ta.id, assignment_id=1, location_id=1,
+                        question="1", course="data8")
+        db.session.add(ticket)
+        db.session.flush()
+        db.session.add(ChatMessage(user_id=moved_id, ticket_id=ticket.id, body="hi", course="data8"))
+        db.session.add(Heartbeat(user_id=moved_id, course="data8", time=utcnow()))
+        db.session.commit()
+        ta_id = ta.id
+
+    canvas_sign_in(client, "ta.new@example.edu", {"101": role(is_staff=True)}, canvas_user_id=1)
+    with client.application.app_context():
+        assert db.session.get(User, moved_id) is None
+        ta = User.query.one()
+        assert (ta.id, ta.email, ta.doc_url) == (ta_id, "ta.new@example.edu", "docs.google.com/ta")
+        assert ta.staff_offerings == {"cs61a", "data8"}
+        assert [(t.user_id, t.helper_id) for t in Ticket.query] == [(ta_id, ta_id)]
+        assert [m.user_id for m in ChatMessage.query] == [ta_id]
+        assert sorted((h.user_id, h.course) for h in Heartbeat.query) == [(ta_id, "cs61a"), (ta_id, "data8")]
+
+
+def test_a_changed_email_owned_by_another_account_keeps_the_old_one(client):
+    canvas_sign_in(client, "ta@example.edu", {}, canvas_user_id=1)
+    canvas_sign_in(client, "other@example.edu", {}, canvas_user_id=2)
+    canvas_sign_in(client, "other@example.edu", {}, canvas_user_id=1)
+    with client.application.app_context():
+        assert sorted((u.canvas_id, u.email) for u in User.query) == [
+            ("1", "ta@example.edu"), ("2", "other@example.edu")]
 
 
 def test_only_people_enrolled_in_the_course_can_open_it(client):
@@ -84,14 +149,15 @@ def test_only_people_enrolled_in_the_course_can_open_it(client):
         assert User.query.filter_by(email="visitor@example.edu").count() == 1
 
 
-def test_cookies_from_the_per_course_sites_are_ignored(client):
+@pytest.mark.parametrize("session_id", ["1", "account-1"])
+def test_cookies_from_before_this_table_are_ignored(client, session_id):
     with client.application.app_context():
-        db.session.add(User(email="ta@example.edu", name="TA", is_staff=True, course="cs61a"))
-        db.session.commit()
+        moved_user("ta@example.edu", staff_in=["cs61a"])
     client.get(COURSE + "/")
-    # Flask-Login's session key, holding a User id as the per-course sites did.
+    # Flask-Login's session key, holding a User id as the per-course sites did,
+    # or an account id as the site did before it had one user per person.
     with client.session_transaction() as session:
-        session["_user_id"] = "1"
+        session["_user_id"] = session_id
     assert current_user(client) is None
 
 
@@ -190,4 +256,4 @@ def test_a_profile_without_an_email_is_refused_clearly(client):
     assert response.status_code == 403
     assert b"no email address" in response.data
     with client.application.app_context():
-        assert Account.query.count() == 0
+        assert User.query.count() == 0
