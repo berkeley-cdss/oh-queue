@@ -288,8 +288,10 @@ def test_merges_users_into_one_per_person(app_context):
         assert people["bob@example.edu"].student_offerings == "cs61a"  # an unknown role counts as student
         assert people["new@example.edu"].is_global_admin
 
-        # Every reference now points at the merged person.
+        # Each person keeps their oldest row's id; someone who only signed in gets the next one.
         ids = {email: row.id for email, row in people.items()}
+        assert ids == {"ada@example.edu": 10, "tutor@example.edu": 13, "bob@example.edu": 14, "new@example.edu": 15}
+        # Every reference now points at the merged person.
         ada, tutor, bob = ids["ada@example.edu"], ids["tutor@example.edu"], ids["bob@example.edu"]
         assert sql("SELECT user_id, helper_id FROM ticket ORDER BY id") == [(ada, tutor), (bob, ada)]
         assert sql("SELECT user_id FROM ticket_event") == [(ada,)]
@@ -326,18 +328,21 @@ def upgrade_raising(app):
     command.upgrade(app.extensions["migrate"].migrate.get_config(), "5b9e2c7d1f30")
 
 
-def test_refuses_references_to_missing_users(app_context):
+def test_rows_whose_user_is_missing_get_a_placeholder(app_context):
     try:
         before_one_user_with_references()
         sql("INSERT INTO user (id, email, name, is_staff, course) VALUES (1, 'a@example.edu', 'A', 0, 'cs61a')")
-        sql("INSERT INTO ticket (id, user_id, helper_id, course) VALUES (1, 1, 7, 'cs61a'), (2, 1, 8, 'cs61a')")
-        sql("INSERT INTO chat_message (id, user_id, course) VALUES (1, 9, 'cs61a')")
+        sql("INSERT INTO ticket (id, user_id, helper_id, course) VALUES (1, 7, 1, 'cs161'), (2, 7, 8, 'cs161')")
+        sql("INSERT INTO chat_message (id, user_id, course) VALUES (1, 7, 'cs161')")
         stamp(revision="42b35af5ed41")
-        with pytest.raises(RuntimeError, match=r"ticket.helper_id \(user ids 7, 8\); chat_message.user_id \(user ids 9\)"):
-            upgrade_raising(app_context)
-        # Nothing changed.
-        assert {"user", "account"} <= tables() and "users" not in tables()
-        assert sql("SELECT helper_id FROM ticket ORDER BY id") == [(7,), (8,)]
+        upgrade(revision="5b9e2c7d1f30")
+        assert sql("SELECT id, email, name, staff_offerings, student_offerings FROM users ORDER BY id") == [
+            (1, "a@example.edu", "A", "", "cs61a"),
+            (7, "unknown-user-7@oh-queue.invalid", "Unknown user 7", "", ""),
+            (8, "unknown-user-8@oh-queue.invalid", "Unknown user 8", "", "")]
+        # The references keep their ids, now someone's.
+        assert sql("SELECT user_id, helper_id FROM ticket ORDER BY id") == [(7, 1), (7, 8)]
+        assert sql("SELECT user_id FROM chat_message") == [(7,)]
     finally:
         drop_old_user_tables()
         sql("DROP TABLE IF EXISTS alembic_version")
@@ -357,12 +362,29 @@ def test_refuses_two_bcourses_accounts_with_one_email(app_context):
         sql("DROP TABLE IF EXISTS alembic_version")
 
 
-def test_refuses_users_without_an_email(app_context):
+def test_drops_users_without_an_email_that_nothing_refers_to(app_context):
     try:
         before_one_user_with_references()
-        sql("INSERT INTO user (id, email, name, is_staff, course) VALUES (1, '', 'No Email', 0, 'cs61a')")
+        sql("""INSERT INTO user (id, email, name, is_staff, course) VALUES
+               (1, '', 'No Email', 1, 'cs61a'), (2, 'a@example.edu', 'A', 0, 'cs61a')""")
+        sql("INSERT INTO ticket (id, user_id, course) VALUES (1, 2, 'cs61a')")
         stamp(revision="42b35af5ed41")
-        with pytest.raises(RuntimeError, match="no email"):
+        upgrade(revision="5b9e2c7d1f30")
+        assert sql("SELECT id, email FROM users") == [(2, "a@example.edu")]
+        assert sql("SELECT user_id FROM ticket") == [(2,)]
+    finally:
+        drop_old_user_tables()
+        sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def test_refuses_users_without_an_email_that_something_refers_to(app_context):
+    try:
+        before_one_user_with_references()
+        sql("""INSERT INTO user (id, email, name, is_staff, course) VALUES
+               (1, '', 'No Email', 0, 'cs61a'), (2, ' ', 'Blank', 0, 'cs61a'), (3, 'a@example.edu', 'A', 0, 'cs61a')""")
+        sql("INSERT INTO chat_message (id, user_id, course) VALUES (1, 2, 'cs61a')")
+        stamp(revision="42b35af5ed41")
+        with pytest.raises(RuntimeError, match=r"rows \[1, 2\] have no email.*chat_message.user_id refer"):
             upgrade_raising(app_context)
         assert {"user", "account"} <= tables() and "users" not in tables()
     finally:
@@ -426,4 +448,25 @@ def test_merging_users_cant_be_undone(app_context):
             command.downgrade(app_context.extensions["migrate"].migrate.get_config(), "42b35af5ed41")
         assert "users" in tables()
     finally:
+        sql("DROP TABLE IF EXISTS alembic_version")
+
+
+def test_merges_more_people_than_fit_in_one_insert(app_context):
+    try:
+        before_one_user_with_references()
+        # 1,201 people, each with a row in two courses, and a ticket from each row.
+        rows = ", ".join(f"({i}, 'p{i // 2}@example.edu', 'P', 0, '{'cs61a' if i % 2 else 'data8'}')"
+                         for i in range(2, 2404))
+        sql(f"INSERT INTO user (id, email, name, is_staff, course) VALUES {rows}")
+        sql("INSERT INTO ticket (user_id, course) SELECT id, course FROM user")
+        stamp(revision="42b35af5ed41")
+        upgrade(revision="5b9e2c7d1f30")
+        assert sql("SELECT COUNT(*), MIN(id), MAX(id) FROM users") == [(1201, 2, 2402)]
+        assert sql("SELECT student_offerings FROM users WHERE email = 'p600@example.edu'") == [("cs61a,data8",)]
+        # Each person's two tickets point at them.
+        assert sql("""SELECT COUNT(*) FROM ticket JOIN users ON users.id = ticket.user_id
+                      GROUP BY users.id HAVING COUNT(*) != 2""") == []
+        assert sql("SELECT COUNT(*) FROM ticket") == [(2402,)]
+    finally:
+        drop_old_user_tables()
         sql("DROP TABLE IF EXISTS alembic_version")

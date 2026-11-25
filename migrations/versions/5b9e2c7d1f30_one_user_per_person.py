@@ -4,10 +4,13 @@ Before: a `user` row per person per course (with that course's is_staff, call
 and doc links and heartbeat), plus an `account` row per person who has signed
 in since the site served every course.
 After: one `users` row per person (matched by email, ignoring case), with
-their roles in each course as sets of course keys, as in sections. Tickets,
-ticket events, group attendance and chat messages are re-pointed at the
-merged rows. Heartbeats move to their own table, one per person per course;
-the old ones are only seconds old, so they aren't kept.
+their roles in each course as sets of course keys, as in sections. Each
+person keeps the id of their oldest row, so only references to their other
+rows (tickets, ticket events, group attendance, chat messages) change:
+staging has 2 million ticket events. Rows that refer to a user row that no
+longer exists get a placeholder person under that id ("Unknown user <id>"),
+so their history stays. Heartbeats move to their own table, one per person
+per course; the old ones are only seconds old, so they aren't kept.
 
 Adapted from sections' 0002_single_user.
 
@@ -44,9 +47,20 @@ def _people(bind):
     old_user = sa.Table("user", meta, autoload_with=bind)
     people = {}
     rows = bind.execute(sa.select(old_user).order_by(old_user.c.id)).all()
-    if any(not row.email for row in rows):
-        raise RuntimeError("Some user rows have no email, so they can't be merged; fix them first.")
+    # A row without an email can't be matched to anyone. With nothing pointing
+    # at it, it holds nothing to keep (staging has one, a staff row from 2020).
+    blank = [row.id for row in rows if not (row.email or "").strip()]
+    referenced = [
+        f"{table}.{column}" for table, column in USER_REFERENCES
+        if blank and bind.execute(sa.text(f'SELECT 1 FROM "{table}" WHERE {column} IN :ids LIMIT 1')
+                                  .bindparams(sa.bindparam("ids", expanding=True)), {"ids": blank}).first()
+    ]
+    if referenced:
+        raise RuntimeError(f"User rows {blank} have no email, so they can't be merged, and {', '.join(referenced)} "
+                           "refer to some of them; fix them first.")
     for row in rows:
+        if row.id in blank:
+            continue
         person = people.setdefault(row.email.lower(), {
             "email": row.email, "name": row.name or row.email, "canvas_id": None,
             "is_global_admin": False, "canvas_courses": {},
@@ -89,10 +103,8 @@ def _people(bind):
     return people
 
 
-def _check_references(bind):
-    """Refuse to start if a table this migration doesn't know references users,
-    or a reference names a user row that doesn't exist: it has no person to
-    point at, and would be lost or stop the migration partway."""
+def _check_tables(bind):
+    """Refuse to start if a table this migration doesn't know references users."""
     inspector = sa.inspect(bind)
     unexpected = [
         table for table in inspector.get_table_names()
@@ -101,17 +113,25 @@ def _check_references(bind):
     ]
     if unexpected:
         raise RuntimeError(f"Tables {unexpected} reference user; extend this migration to re-point them.")
-    dangling = []
+
+
+def _missing_user_ids(bind):
+    """Ids that rows refer to but no user row has. On staging, 34 cs161 tickets
+    from 2020-22 belong to one; its foreign key was added without checking."""
+    missing = set()
     for table, column in USER_REFERENCES:
-        ids = [row[0] for row in bind.execute(sa.text(
-            f'SELECT DISTINCT {column} FROM "{table}" '
-            f'WHERE {column} IS NOT NULL AND {column} NOT IN (SELECT id FROM "user") ORDER BY {column}'
-        ))]
-        if ids:
-            shown = ", ".join(str(i) for i in ids[:10]) + (", ..." if len(ids) > 10 else "")
-            dangling.append(f"{table}.{column} (user ids {shown})")
-    if dangling:
-        raise RuntimeError("Some rows refer to users that don't exist; fix them first: " + "; ".join(dangling))
+        missing |= {row[0] for row in bind.execute(sa.text(
+            f'SELECT DISTINCT t.{column} FROM "{table}" t LEFT JOIN "user" u ON u.id = t.{column} '
+            f"WHERE t.{column} IS NOT NULL AND u.id IS NULL"
+        ))}
+    return sorted(missing)
+
+
+def _insert_in_batches(bind, table, rows, size=500):
+    """Insert ``rows`` with one multi-row INSERT per ``size`` of them: the driver
+    sends an executemany as one round trip per row."""
+    for start in range(0, len(rows), size):
+        bind.execute(sa.insert(table).values(rows[start:start + size]))
 
 
 def _drop_foreign_keys_to(table, referred):
@@ -129,7 +149,8 @@ def upgrade():
     bind = op.get_bind()
     # Everything that can refuse the data, before anything changes.
     people = _people(bind)
-    _check_references(bind)
+    _check_tables(bind)
+    missing = _missing_user_ids(bind)
 
     users = op.create_table(
         "users",
@@ -149,43 +170,62 @@ def upgrade():
     op.create_index("ix_users_email", "users", ["email"], unique=True)
     op.create_index("ix_users_canvas_id", "users", ["canvas_id"], unique=True)
 
+    # Each person keeps their oldest row's id (rows were read in id order), and
+    # a placeholder keeps the missing id, so most references stay as they are.
+    # People who have only signed in get ids after every old one.
+    next_id = max([old_id for person in people.values() for old_id in person["old_ids"]] + missing + [0]) + 1
     for person in people.values():
-        person["id"] = bind.execute(
-            sa.insert(users).returning(users.c.id),
-            {
-                "email": person["email"], "name": person["name"],
-                "canvas_id": person.get("canvas_id"),
-                "is_global_admin": person.get("is_global_admin", False),
-                "canvas_courses": person.get("canvas_courses") or {},
-                "staff_offerings": ",".join(sorted(person["staff"])),
-                "admin_offerings": "",
-                "student_offerings": ",".join(sorted(person["student"])),
-                "call_url": person["call_url"], "doc_url": person["doc_url"],
-            },
-        ).scalar_one()
+        if person["old_ids"]:
+            person["id"] = person["old_ids"][0]
+        else:
+            person["id"], next_id = next_id, next_id + 1
+    for missing_id in missing:
+        people[f"missing {missing_id}"] = {
+            "id": missing_id, "email": f"unknown-user-{missing_id}@oh-queue.invalid",
+            "name": f"Unknown user {missing_id}", "staff": set(), "student": set(),
+            "call_url": None, "doc_url": None, "old_ids": [],
+        }
+    # The rows go in a few statements rather than one each: staging has tens
+    # of thousands of people.
+    rows = []
+    for person in people.values():
+        rows.append({
+            "id": person["id"], "email": person["email"], "name": person["name"],
+            "canvas_id": person.get("canvas_id"),
+            "is_global_admin": person.get("is_global_admin", False),
+            "canvas_courses": person.get("canvas_courses") or {},
+            "staff_offerings": ",".join(sorted(person["staff"])),
+            "admin_offerings": "",
+            "student_offerings": ",".join(sorted(person["student"])),
+            "call_url": person["call_url"], "doc_url": person["doc_url"],
+        })
+    _insert_in_batches(bind, users, rows)
+    if bind.dialect.name == "postgresql":
+        # New people get ids after the merged ones.
+        bind.execute(sa.text(
+            "SELECT setval(pg_get_serial_sequence('users', 'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) "
+            "FROM users"
+        ))
 
-    # Map every old per-course row to its person, then re-point references.
+    # Map each person's other rows to them, then re-point references to those.
     id_map = op.create_table(
         "user_id_map",
         sa.Column("old_id", sa.Integer(), primary_key=True),
         sa.Column("new_id", sa.Integer(), nullable=False),
     )
-    mappings = [{"old_id": old_id, "new_id": person["id"]}
-                for person in people.values() for old_id in person["old_ids"]]
-    if mappings:
-        op.bulk_insert(id_map, mappings)
+    _insert_in_batches(bind, id_map, [{"old_id": old_id, "new_id": person["id"]}
+                                      for person in people.values() for old_id in person["old_ids"]
+                                      if old_id != person["id"]])
 
     for table in dict.fromkeys(t for t, _ in USER_REFERENCES):
         _drop_foreign_keys_to(table, "user")
     for table, column in USER_REFERENCES:
-        # Two steps, through negative ids, since new ids overlap old ones.
-        # "group" is a reserved word, so table names are quoted.
+        # Every new id is some person's kept id, never one being mapped away, so
+        # one pass is enough. "group" is a reserved word, so names are quoted.
         bind.execute(sa.text(
-            f'UPDATE "{table}" SET {column} = '
-            f'-(SELECT new_id FROM user_id_map WHERE old_id = "{table}".{column}) '
-            f"WHERE {column} IS NOT NULL"
+            f'UPDATE "{table}" SET {column} = user_id_map.new_id FROM user_id_map '
+            f'WHERE "{table}".{column} = user_id_map.old_id'
         ))
-        bind.execute(sa.text(f'UPDATE "{table}" SET {column} = -{column} WHERE {column} < 0'))
     for table in dict.fromkeys(t for t, _ in USER_REFERENCES):
         with op.batch_alter_table(table) as batch:
             for referencing_table, column in USER_REFERENCES:
