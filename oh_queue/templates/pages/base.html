@@ -18,9 +18,12 @@
   <body>
     <nav class="navbar navbar-expand-lg bg-primary site-header" data-bs-theme="dark">
       <div class="container-fluid">
-        {# the page this is; its top-level heading #}
+        {# the page this is; its top-level heading. The site's name shows, as the course's does on
+           the course pages, and screen readers hear the page's too. #}
         <h1 class="site-title">
-          <a class="navbar-brand" href="{{ url_for('index') }}">{{ title }}</a>
+          <a class="navbar-brand" href="{{ url_for('index') }}">Office Hours Queue
+            {%- if title and title != 'Office Hours Queue' %}<span class="visually-hidden"> | {{ title }}</span>{% endif -%}
+          </a>
         </h1>
 
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#site-nav"

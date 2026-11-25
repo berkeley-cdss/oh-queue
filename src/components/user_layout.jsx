@@ -42,7 +42,7 @@ export function UserLayout({ state }) {
 
   return (
     <div>
-      <Navbar state={state} mode="activity_log" />
+      <Navbar state={state} mode="ticket_history" />
       <OfflineIndicator offline={state.offline && state.loaded} />
       <main>
         <div className="hero">
