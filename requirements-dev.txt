@@ -1,6 +1,6 @@
 pytest==9.2.0
 pytest-cov==7.1.0
-flake8==7.3.0
+flake8==7.5.0
 # the end to end tests (tests/e2e)
 selenium==4.48.0
 pip-audit==2.10.1
